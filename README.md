@@ -18,7 +18,7 @@ A full-stack algorithmic trading application for ETFs with Python FastAPI backen
 - **FastAPI 0.109.0**: Modern async Python web framework
 - **PostgreSQL + TimescaleDB**: Optimized time-series database
 - **SQLAlchemy 2.0 + Alembic**: ORM and database migrations
-- **pandas-ta**: Technical indicators library
+- **pandas + numpy**: Custom technical indicators implementation
 - **scikit-learn 1.4.0**: Machine learning framework
 - **alpaca-py 0.15.0**: Alpaca trading API client
 
@@ -34,6 +34,8 @@ A full-stack algorithmic trading application for ETFs with Python FastAPI backen
 - Docker and Docker Compose
 - Git
 - Alpaca paper trading account (free at https://alpaca.markets)
+- Node.js and `npm` for frontend development
+- `uv` for backend development
 
 ## Quick Start
 
@@ -82,7 +84,9 @@ docker-compose exec backend alembic upgrade head
 ### 5. Access the Application
 
 - **Frontend**: http://localhost:3000
-- **API Docs**: http://localhost:8000/docs
+- **API Documentation (Swagger UI)**: http://localhost:8000/docs
+- **API Documentation (ReDoc)**: http://localhost:8000/redoc
+- **OpenAPI Schema**: http://localhost:8000/openapi.json
 - **API Health**: http://localhost:8000/health
 
 ## Project Structure
@@ -106,7 +110,7 @@ manage-my-trades/
 │   ├── alembic/                       # Database migrations
 │   ├── tests/                         # Tests
 │   ├── storage/                       # ML models and cache
-│   ├── requirements.txt
+│   ├── pyproject.toml
 │   └── Dockerfile
 │
 ├── frontend/
@@ -132,11 +136,11 @@ To work on the backend with hot reload:
 cd backend
 
 # Create virtual environment (optional, for local development)
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+uv venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
 # Install dependencies
-pip install -r requirements.txt
+uv sync
 
 # Run locally (make sure PostgreSQL is running)
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
@@ -180,10 +184,51 @@ Rollback migration:
 docker-compose exec backend alembic downgrade -1
 ```
 
+## API Documentation
+
+The backend API includes comprehensive Swagger/OpenAPI documentation with interactive testing capabilities.
+
+### Accessing API Documentation
+
+- **Swagger UI** (Interactive): http://localhost:8000/docs
+  - Full interactive API documentation
+  - Test endpoints directly from the browser
+  - View request/response schemas and examples
+  - Organized by tags (Market Data, Technical Analysis, etc.)
+
+- **ReDoc** (Alternative): http://localhost:8000/redoc
+  - Clean, three-panel documentation layout
+  - Better for reading and understanding API structure
+  - Includes example requests and responses
+
+- **OpenAPI Schema**: http://localhost:8000/openapi.json
+  - Raw OpenAPI 3.0 specification in JSON format
+  - Use with code generators and API tools
+
+### API Features
+
+- **Automatic Schema Generation**: All endpoints have auto-generated schemas from Pydantic models
+- **Request Validation**: Built-in validation with helpful error messages
+- **Response Examples**: Each endpoint includes example responses
+- **Tag Organization**: Endpoints grouped by functionality
+- **Status Codes**: Clear documentation of all possible response codes
+
+### Using Swagger UI
+
+1. Navigate to http://localhost:8000/docs
+2. Browse endpoints by category (Market Data, Technical Analysis, etc.)
+3. Click on any endpoint to expand details
+4. Click "Try it out" to test the endpoint
+5. Fill in parameters and request body
+6. Click "Execute" to send the request
+7. View the response with status code, headers, and body
+
 ## API Endpoints
 
 ### Market Data
-- `GET /api/v1/market-data/` - Search symbols and fetch OHLCV data
+- `POST /api/v1/market-data/bars` - Get OHLCV bar data for symbols
+- `GET /api/v1/market-data/search` - Search for ticker symbols
+- `GET /api/v1/market-data/quote/{symbol}` - Get latest quote for a symbol
 
 ### Strategies
 - `GET /api/v1/strategies/` - List all strategies
@@ -208,7 +253,8 @@ docker-compose exec backend alembic downgrade -1
 - `DELETE /api/v1/paper-trading/orders/{id}` - Cancel order
 
 ### Technical Analysis
-- `POST /api/v1/technical-analysis/calculate` - Calculate indicators
+- `POST /api/v1/technical-analysis/calculate` - Calculate technical indicators for a symbol
+- `GET /api/v1/technical-analysis/indicators` - Get list of supported indicators
 
 ### ML Models
 - `GET /api/v1/ml-models/` - List ML models
@@ -354,7 +400,7 @@ This software is for educational purposes only. Do not use it for actual trading
 - [Alpaca API Documentation](https://alpaca.markets/docs/)
 - [FastAPI Documentation](https://fastapi.tiangolo.com/)
 - [Next.js Documentation](https://nextjs.org/docs)
-- [pandas-ta Documentation](https://github.com/twopirllc/pandas-ta)
+- [pandas Documentation](https://pandas.pydata.org/docs/)
 - [TimescaleDB Documentation](https://docs.timescale.com/)
 
 ## Support

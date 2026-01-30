@@ -1,6 +1,7 @@
 """
 Pydantic schemas.
 """
+
 from app.schemas.market_data import (
     OHLCVBar,
     MarketDataRequest,

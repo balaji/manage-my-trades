@@ -1,6 +1,7 @@
 """
 Technical analysis service for calculating indicators.
 """
+
 from datetime import datetime
 from typing import List, Dict, Any
 import logging
@@ -28,7 +29,7 @@ class TechnicalAnalysisService:
         timeframe: str,
         start: datetime,
         end: datetime,
-        indicators: List[Dict[str, Any]]
+        indicators: List[Dict[str, Any]],
     ) -> Dict[str, Any]:
         """
         Calculate technical indicators for a symbol.
@@ -50,7 +51,7 @@ class TechnicalAnalysisService:
                 start=start,
                 end=end,
                 timeframe=timeframe,
-                use_cache=True
+                use_cache=True,
             )
 
             if symbol not in bars_data or not bars_data[symbol]:
@@ -67,11 +68,7 @@ class TechnicalAnalysisService:
 
             logger.info(f"Calculated {len(results)} indicators for {symbol}")
 
-            return {
-                "symbol": symbol,
-                "timeframe": timeframe,
-                "indicators": results
-            }
+            return {"symbol": symbol, "timeframe": timeframe, "indicators": results}
 
         except Exception as e:
             logger.error(f"Error calculating indicators: {e}")

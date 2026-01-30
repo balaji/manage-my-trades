@@ -1,6 +1,7 @@
 """
 Strategy models.
 """
+
 from sqlalchemy import Column, Integer, String, Text, Boolean, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from app.db.session import Base

@@ -1,6 +1,7 @@
 """
 Backtest models.
 """
+
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, JSON, Text
 from sqlalchemy.orm import relationship
 from app.db.session import Base
@@ -27,7 +28,12 @@ class Backtest(Base, TimestampMixin):
 
     # Relationships
     strategy = relationship("Strategy", back_populates="backtests")
-    results = relationship("BacktestResult", back_populates="backtest", uselist=False, cascade="all, delete-orphan")
+    results = relationship(
+        "BacktestResult",
+        back_populates="backtest",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
     trades = relationship("Trade", back_populates="backtest", cascade="all, delete-orphan")
 
 
@@ -37,7 +43,12 @@ class BacktestResult(Base, TimestampMixin):
     __tablename__ = "backtest_results"
 
     id = Column(Integer, primary_key=True, index=True)
-    backtest_id = Column(Integer, ForeignKey("backtests.id", ondelete="CASCADE"), nullable=False, unique=True)
+    backtest_id = Column(
+        Integer,
+        ForeignKey("backtests.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
 
     # Performance metrics
     total_return = Column(Float, nullable=False)

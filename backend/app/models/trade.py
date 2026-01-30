@@ -1,7 +1,17 @@
 """
 Trade models.
 """
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Boolean, Text
+
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Float,
+    DateTime,
+    ForeignKey,
+    Boolean,
+    Text,
+)
 from sqlalchemy.orm import relationship
 from app.db.session import Base
 from app.models.base import TimestampMixin
@@ -13,7 +23,12 @@ class Trade(Base, TimestampMixin):
     __tablename__ = "trades"
 
     id = Column(Integer, primary_key=True, index=True)
-    backtest_id = Column(Integer, ForeignKey("backtests.id", ondelete="CASCADE"), nullable=True, index=True)
+    backtest_id = Column(
+        Integer,
+        ForeignKey("backtests.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
     strategy_id = Column(Integer, ForeignKey("strategies.id"), nullable=False)
     symbol = Column(String(20), nullable=False, index=True)
     side = Column(String(10), nullable=False)  # buy, sell

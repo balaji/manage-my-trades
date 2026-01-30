@@ -1,6 +1,7 @@
 """
 Market data models.
 """
+
 from sqlalchemy import Column, Integer, String, Float, DateTime, Index
 from app.db.session import Base
 
@@ -23,7 +24,12 @@ class MarketData(Base):
     trade_count = Column(Integer, nullable=True)
 
     __table_args__ = (
-        Index('ix_market_data_symbol_timeframe_timestamp', 'symbol', 'timeframe', 'timestamp'),
+        Index(
+            "ix_market_data_symbol_timeframe_timestamp",
+            "symbol",
+            "timeframe",
+            "timestamp",
+        ),
     )
 
 
@@ -41,7 +47,14 @@ class IndicatorCache(Base):
     value = Column(Float, nullable=False)
 
     __table_args__ = (
-        Index('ix_indicator_cache_lookup', 'symbol', 'timeframe', 'indicator_name', 'indicator_params_hash', 'timestamp'),
+        Index(
+            "ix_indicator_cache_lookup",
+            "symbol",
+            "timeframe",
+            "indicator_name",
+            "indicator_params_hash",
+            "timestamp",
+        ),
     )
 
 

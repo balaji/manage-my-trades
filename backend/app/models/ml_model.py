@@ -1,6 +1,7 @@
 """
 Machine learning model metadata.
 """
+
 from sqlalchemy import Column, Integer, String, Float, DateTime, JSON, Text, Boolean
 from app.db.session import Base
 from app.models.base import TimestampMixin

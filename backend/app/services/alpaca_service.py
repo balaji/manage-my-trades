@@ -1,6 +1,7 @@
 """
 Alpaca API service for market data and trading.
 """
+
 from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Any
 import logging
@@ -24,13 +25,12 @@ class AlpacaService:
     def __init__(self):
         """Initialize Alpaca clients."""
         self.data_client = StockHistoricalDataClient(
-            api_key=settings.ALPACA_API_KEY,
-            secret_key=settings.ALPACA_SECRET_KEY
+            api_key=settings.ALPACA_API_KEY, secret_key=settings.ALPACA_SECRET_KEY
         )
         self.trading_client = TradingClient(
             api_key=settings.ALPACA_API_KEY,
             secret_key=settings.ALPACA_SECRET_KEY,
-            paper=True  # Always use paper trading
+            paper=True,  # Always use paper trading
         )
 
     def _convert_timeframe(self, timeframe: str) -> TimeFrame:
@@ -58,11 +58,7 @@ class AlpacaService:
         return timeframe_map[timeframe]
 
     async def get_bars(
-        self,
-        symbols: List[str],
-        start: datetime,
-        end: datetime,
-        timeframe: str = "1d"
+        self, symbols: List[str], start: datetime, end: datetime, timeframe: str = "1d"
     ) -> Dict[str, List[Dict[str, Any]]]:
         """
         Fetch OHLCV bar data for symbols.
@@ -81,7 +77,7 @@ class AlpacaService:
                 symbol_or_symbols=symbols,
                 timeframe=self._convert_timeframe(timeframe),
                 start=start,
-                end=end
+                end=end,
             )
 
             bars_multi = self.data_client.get_stock_bars(request)
@@ -176,8 +172,7 @@ class AlpacaService:
 
         query_lower = query.lower()
         return [
-            etf for etf in popular_etfs
-            if query_lower in etf["symbol"].lower() or query_lower in etf["name"].lower()
+            etf for etf in popular_etfs if query_lower in etf["symbol"].lower() or query_lower in etf["name"].lower()
         ]
 
     async def get_account(self) -> Dict[str, Any]:
@@ -235,11 +230,7 @@ class AlpacaService:
             raise
 
     async def place_market_order(
-        self,
-        symbol: str,
-        quantity: float,
-        side: str,
-        time_in_force: str = "day"
+        self, symbol: str, quantity: float, side: str, time_in_force: str = "day"
     ) -> Dict[str, Any]:
         """
         Place a market order.
@@ -266,7 +257,7 @@ class AlpacaService:
                 symbol=symbol,
                 qty=quantity,
                 side=order_side,
-                time_in_force=tif_map.get(time_in_force.lower(), TimeInForce.DAY)
+                time_in_force=tif_map.get(time_in_force.lower(), TimeInForce.DAY),
             )
 
             order = self.trading_client.submit_order(request)

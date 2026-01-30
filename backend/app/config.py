@@ -1,9 +1,11 @@
 """
 Application configuration module.
 """
-from typing import List
-from pydantic_settings import BaseSettings, SettingsConfigDict
+
 from functools import lru_cache
+from typing import List
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -34,11 +36,7 @@ class Settings(BaseSettings):
     DEFAULT_COMMISSION: float = 0.0  # Alpaca has no commission
     DEFAULT_SLIPPAGE: float = 0.001  # 0.1% slippage
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=True
-    )
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=True)
 
 
 @lru_cache()

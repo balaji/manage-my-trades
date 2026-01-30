@@ -1,6 +1,7 @@
 """
 Alembic environment configuration.
 """
+
 from logging.config import fileConfig
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
@@ -18,9 +19,19 @@ from app.config import get_settings
 
 # Import all models to ensure they are registered with Base
 from app.models import (
-    Strategy, StrategyIndicator, Backtest, BacktestResult,
-    Trade, Signal, Position, Order, MLModel, MLModelMetrics,
-    MarketData, IndicatorCache, PortfolioHistory
+    Strategy,
+    StrategyIndicator,
+    Backtest,
+    BacktestResult,
+    Trade,
+    Signal,
+    Position,
+    Order,
+    MLModel,
+    MLModelMetrics,
+    MarketData,
+    IndicatorCache,
+    PortfolioHistory,
 )
 
 # this is the Alembic Config object, which provides

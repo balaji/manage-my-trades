@@ -1,6 +1,7 @@
 """
 Signal models.
 """
+
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from app.db.session import Base
@@ -20,7 +21,7 @@ class Signal(Base, TimestampMixin):
     price = Column(Float, nullable=False)
     strength = Column(Float, nullable=True)  # Signal strength 0-1
     indicators = Column(JSON, nullable=True, default={})  # Indicator values at signal time
-    metadata = Column(JSON, nullable=True, default={})  # Additional signal metadata
+    metadata_ = Column("metadata", JSON, nullable=True, default={})  # Additional signal metadata
 
     # Relationships
     strategy = relationship("Strategy", back_populates="signals")

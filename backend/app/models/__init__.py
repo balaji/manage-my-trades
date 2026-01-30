@@ -1,6 +1,7 @@
 """
 Database models.
 """
+
 from app.models.strategy import Strategy, StrategyIndicator
 from app.models.backtest import Backtest, BacktestResult
 from app.models.trade import Trade

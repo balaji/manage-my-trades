@@ -1,6 +1,7 @@
 """
 Market data service for caching and retrieving OHLCV data.
 """
+
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 import logging
@@ -28,7 +29,7 @@ class MarketDataService:
         start: datetime,
         end: datetime,
         timeframe: str = "1d",
-        use_cache: bool = True
+        use_cache: bool = True,
     ) -> Dict[str, List[Dict[str, Any]]]:
         """
         Get OHLCV bars for symbols, using cache when possible.
@@ -70,11 +71,7 @@ class MarketDataService:
         return result
 
     async def _get_cached_bars(
-        self,
-        symbol: str,
-        start: datetime,
-        end: datetime,
-        timeframe: str
+        self, symbol: str, start: datetime, end: datetime, timeframe: str
     ) -> Optional[List[Dict[str, Any]]]:
         """
         Get cached bars from database.
@@ -89,14 +86,18 @@ class MarketDataService:
             List of bars or None if not fully cached
         """
         try:
-            query = select(MarketData).where(
-                and_(
-                    MarketData.symbol == symbol,
-                    MarketData.timeframe == timeframe,
-                    MarketData.timestamp >= start,
-                    MarketData.timestamp <= end
+            query = (
+                select(MarketData)
+                .where(
+                    and_(
+                        MarketData.symbol == symbol,
+                        MarketData.timeframe == timeframe,
+                        MarketData.timestamp >= start,
+                        MarketData.timestamp <= end,
+                    )
                 )
-            ).order_by(MarketData.timestamp)
+                .order_by(MarketData.timestamp)
+            )
 
             result = await self.db.execute(query)
             bars = result.scalars().all()
@@ -122,12 +123,7 @@ class MarketDataService:
             logger.error(f"Error retrieving cached bars: {e}")
             return None
 
-    async def _cache_bars(
-        self,
-        symbol: str,
-        timeframe: str,
-        bars: List[Dict[str, Any]]
-    ) -> None:
+    async def _cache_bars(self, symbol: str, timeframe: str, bars: List[Dict[str, Any]]) -> None:
         """
         Cache bars in database.
 
@@ -143,7 +139,7 @@ class MarketDataService:
                     and_(
                         MarketData.symbol == symbol,
                         MarketData.timeframe == timeframe,
-                        MarketData.timestamp == bar["timestamp"]
+                        MarketData.timestamp == bar["timestamp"],
                     )
                 )
                 result = await self.db.execute(query)

@@ -1,19 +1,18 @@
-FROM python:3.11-slim
+FROM ghcr.io/astral-sh/uv:python3.13-trixie-slim
 
-WORKDIR /app
-
-# Install system dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY . /app
 
-# Copy application code
-COPY . .
+# Disable development dependencies
+ENV UV_NO_DEV=1
+
+# Sync the project into a new environment, asserting the lockfile is up to date
+WORKDIR /app
+RUN uv sync --locked
 
 # Create storage directories
 RUN mkdir -p /app/storage/models /app/storage/data
@@ -22,4 +21,5 @@ RUN mkdir -p /app/storage/models /app/storage/data
 EXPOSE 8000
 
 # Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["/app/.venv/bin/fastapi", "run", "app/main.py", "--port", "8000", "--host", "0.0.0.0"]
+#CMD ["uv", "run", "fastapi", "dev"]

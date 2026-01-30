@@ -1,6 +1,7 @@
 """
 Paper trading models.
 """
+
 from sqlalchemy import Column, Integer, String, Float, DateTime, JSON, Text
 from app.db.session import Base
 from app.models.base import TimestampMixin
@@ -44,5 +45,5 @@ class Order(Base, TimestampMixin):
     filled_at = Column(DateTime, nullable=True)
     canceled_at = Column(DateTime, nullable=True)
     failed_at = Column(DateTime, nullable=True)
-    metadata = Column(JSON, nullable=True, default={})
+    metadata_ = Column("metadata", JSON, nullable=True, default={})
     error_message = Column(Text, nullable=True)

@@ -1,6 +1,7 @@
 """
 Technical analysis schemas.
 """
+
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
@@ -15,7 +16,7 @@ class IndicatorRequest(BaseModel):
     end_date: datetime = Field(..., description="End date")
     indicators: List[Dict[str, Any]] = Field(
         ...,
-        description="List of indicators to calculate. Each should have 'name' and optional 'params'"
+        description="List of indicators to calculate. Each should have 'name' and optional 'params'",
     )
 
 
@@ -46,10 +47,7 @@ class IndicatorConfig(BaseModel):
     """Configuration for an indicator."""
 
     name: str = Field(..., description="Indicator name (sma, ema, rsi, macd, etc.)")
-    params: Dict[str, Any] = Field(
-        default_factory=dict,
-        description="Indicator parameters (e.g., {'length': 20})"
-    )
+    params: Dict[str, Any] = Field(default_factory=dict, description="Indicator parameters (e.g., {'length': 20})")
 
 
 class SupportedIndicatorsResponse(BaseModel):
