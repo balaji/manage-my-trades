@@ -2,11 +2,13 @@
 API v1 router.
 """
 from fastapi import APIRouter
+from app.api.v1.endpoints import market_data, technical_analysis
 
 api_router = APIRouter()
 
-# Import and include endpoint routers as they are created
-# from app.api.v1.endpoints import market_data, strategies, backtests, etc.
+# Include endpoint routers
+api_router.include_router(market_data.router, prefix="/market-data", tags=["market-data"])
+api_router.include_router(technical_analysis.router, prefix="/technical-analysis", tags=["technical-analysis"])
 
 @api_router.get("/")
 async def api_root():
