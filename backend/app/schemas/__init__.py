@@ -19,6 +19,14 @@ from app.schemas.technical_analysis import (
     IndicatorConfig,
     SupportedIndicatorsResponse,
 )
+from app.schemas.backtest import (
+    BacktestCreate,
+    BacktestResponse,
+    BacktestListResponse,
+    BacktestResultResponse,
+    TradeResponse,
+    BacktestTradesResponse,
+)
 
 __all__ = [
     "OHLCVBar",
@@ -34,4 +42,10 @@ __all__ = [
     "IndicatorResponse",
     "IndicatorConfig",
     "SupportedIndicatorsResponse",
+    "BacktestCreate",
+    "BacktestResponse",
+    "BacktestListResponse",
+    "BacktestResultResponse",
+    "TradeResponse",
+    "BacktestTradesResponse",
 ]

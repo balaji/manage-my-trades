@@ -51,6 +51,10 @@ tags_metadata = [
         "description": "Create and manage trading strategies with indicator configurations. Generate and retrieve trading signals.",
     },
     {
+        "name": "backtests",
+        "description": "Create and run backtests to test strategies on historical data. Includes performance metrics and trade history.",
+    },
+    {
         "name": "health",
         "description": "Health check and system status endpoints.",
     },
