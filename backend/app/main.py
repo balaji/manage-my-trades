@@ -47,6 +47,10 @@ tags_metadata = [
         "description": "Technical indicator calculations including SMA, EMA, RSI, MACD, Bollinger Bands, and more.",
     },
     {
+        "name": "strategies",
+        "description": "Create and manage trading strategies with indicator configurations. Generate and retrieve trading signals.",
+    },
+    {
         "name": "health",
         "description": "Health check and system status endpoints.",
     },

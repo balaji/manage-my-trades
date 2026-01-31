@@ -11,10 +11,10 @@ export default function Home() {
             <p className="text-sm text-gray-600">View portfolio and real-time data</p>
           </div>
 
-          <div className="p-6 border rounded-lg">
+          <a href="/strategies" className="p-6 border rounded-lg hover:border-blue-500 hover:shadow-lg transition-all">
             <h2 className="text-xl font-semibold mb-2">Strategies</h2>
             <p className="text-sm text-gray-600">Create and manage trading strategies</p>
-          </div>
+          </a>
 
           <div className="p-6 border rounded-lg">
             <h2 className="text-xl font-semibold mb-2">Backtesting</h2>
@@ -26,10 +26,10 @@ export default function Home() {
             <p className="text-sm text-gray-600">Execute strategies with paper money</p>
           </div>
 
-          <div className="p-6 border rounded-lg">
+          <a href="/technical-analysis" className="p-6 border rounded-lg hover:border-blue-500 hover:shadow-lg transition-all">
             <h2 className="text-xl font-semibold mb-2">Technical Analysis</h2>
             <p className="text-sm text-gray-600">Analyze charts and indicators</p>
-          </div>
+          </a>
 
           <div className="p-6 border rounded-lg">
             <h2 className="text-xl font-semibold mb-2">ML Models</h2>
