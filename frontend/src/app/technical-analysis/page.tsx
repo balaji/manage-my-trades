@@ -3,71 +3,159 @@
 /**
  * Technical Analysis page.
  */
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { IChartApi, LineStyle } from 'lightweight-charts';
 import { PriceChart } from '@/components/charts/PriceChart';
+import { OscillatorChart } from '@/components/charts/OscillatorChart';
 import { marketDataApi, technicalAnalysisApi } from '@/lib/api';
 import type { OHLCVBar } from '@/lib/types/market-data';
+
+const RANGES = [
+  { label: '90 days', days: 90 },
+  { label: '30 days', days: 30 },
+  { label: '15 days', days: 15 },
+];
+
+const SMA_COLORS: Record<number, string> = { 10: '#2196F3', 20: '#9C27B0', 30: '#FF5722' };
+const EMA_COLORS: Record<number, string> = { 10: '#00BCD4', 20: '#8BC34A', 30: '#FF9800' };
+const BBAND_COLOR = '#607D8B';
+
+type DataPoint = { timestamp: string; value: number };
+type Indicator = {
+  name: string;
+  data: DataPoint[];
+  color: string;
+  lineStyle?: LineStyle;
+  lineWidth?: number;
+};
 
 export default function TechnicalAnalysisPage() {
   const [symbol, setSymbol] = useState('SPY');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [chartData, setChartData] = useState<OHLCVBar[]>([]);
-  const [indicators, setIndicators] = useState<any[]>([]);
 
-  const handleLoadData = async () => {
+  // SMA / EMA toggleable indicators
+  const [allIndicators, setAllIndicators] = useState<Indicator[]>([]);
+  const [enabledIndicators, setEnabledIndicators] = useState<Set<string>>(new Set(['SMA 10']));
+  const [showBBands, setShowBBands] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Bollinger Bands (always shown when data is loaded)
+  const [bbandIndicators, setBbandIndicators] = useState<Indicator[]>([]);
+
+  // Oscillator data
+  const [rsiData, setRsiData] = useState<DataPoint[]>([]);
+  const [bbpData, setBbpData] = useState<DataPoint[]>([]);
+
+  const [rangeDays, setRangeDays] = useState(90);
+  const [showCloseLine, setShowCloseLine] = useState(false);
+
+  // Chart sync
+  const priceChartRef = useRef<IChartApi | null>(null);
+  const oscillatorChartRef = useRef<IChartApi | null>(null);
+  const syncingRef = useRef(false);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleLoadData = async (days: number = rangeDays) => {
     setLoading(true);
     setError(null);
 
     try {
-      // Get last 90 days of data
       const endDate = new Date();
       const startDate = new Date();
-      startDate.setDate(startDate.getDate() - 90);
+      startDate.setDate(startDate.getDate() - days);
+      endDate.setDate(endDate.getDate() - 1);
 
-      // Fetch market data
-      const marketData = await marketDataApi.getBars({
-        symbols: [symbol],
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
-        timeframe: '1d',
-      });
-
-      if (marketData.length > 0 && marketData[0].bars.length > 0) {
-        setChartData(marketData[0].bars);
-
-        // Calculate some default indicators
-        const indicatorResults = await technicalAnalysisApi.calculateIndicators({
+      const [marketData, indicatorResult] = await Promise.all([
+        marketDataApi.getBars({
+          symbols: [symbol],
+          start_date: startDate.toISOString(),
+          end_date: endDate.toISOString(),
+          timeframe: '1d',
+        }),
+        technicalAnalysisApi.calculateIndicators({
           symbol,
           timeframe: '1d',
           start_date: startDate.toISOString(),
           end_date: endDate.toISOString(),
           indicators: [
-            { name: 'sma', params: { length: 20 } },
-            { name: 'sma', params: { length: 50 } },
-            { name: 'rsi', params: { length: 14 } },
+            { name: 'SMA', params: { length: 10 } },
+            { name: 'SMA', params: { length: 20 } },
+            { name: 'SMA', params: { length: 30 } },
+            { name: 'EMA', params: { length: 10 } },
+            { name: 'EMA', params: { length: 20 } },
+            { name: 'EMA', params: { length: 30 } },
+            { name: 'RSI', params: { length: 14 } },
+            { name: 'BBANDS', params: { length: 20, std: 2.0 } },
           ],
-        });
+        }),
+      ]);
 
-        // Format indicators for chart
-        const formattedIndicators = Object.entries(indicatorResults.indicators).map(
-          ([key, indicator]: [string, any]) => {
-            if (indicator.values) {
-              return {
-                name: `${indicator.name}(${JSON.stringify(indicator.params)})`,
-                data: indicator.values,
-                color: indicator.name === 'sma'
-                  ? (indicator.params.length === 20 ? '#2196F3' : '#FF9800')
-                  : '#9C27B0',
-              };
-            }
-            return null;
-          }
-        ).filter(Boolean);
+      if (marketData.length > 0 && marketData[0].bars.length > 0) {
+        setChartData(marketData[0].bars);
 
-        setIndicators(formattedIndicators as any[]);
+        const results = Object.values(indicatorResult.indicators);
+
+        // RSI
+        const rsiResult = results.find((r) => r.name === 'RSI' && r.values);
+        setRsiData(rsiResult?.values?.filter((v) => v.value !== null) ?? []);
+
+        // Bollinger Bands (multi-column)
+        const bbResult = results.find((r) => r.name === 'BBANDS' && r.columns);
+        if (bbResult?.columns) {
+          const cols = bbResult.columns;
+          const length = bbResult.params.length as number;
+          const std = bbResult.params.std as number;
+
+          const pick = (prefix: string): DataPoint[] =>
+            (cols[`${prefix}_${length}_${std}`] ?? []).filter((v) => v.value !== null);
+
+          setBbandIndicators([
+            { name: 'BB Upper', data: pick('BBU'), color: BBAND_COLOR, lineStyle: LineStyle.Dashed, lineWidth: 1 },
+            { name: 'BB Middle', data: pick('BBM'), color: BBAND_COLOR, lineStyle: LineStyle.Solid, lineWidth: 1 },
+            { name: 'BB Lower', data: pick('BBL'), color: BBAND_COLOR, lineStyle: LineStyle.Dashed, lineWidth: 1 },
+          ]);
+
+          setBbpData(pick('BBP').filter((v) => v.value !== null).map((v) => ({ ...v, value: v.value * 100 })));
+        }
+
+        // SMA / EMA
+        const parsed: Indicator[] = results
+          .filter((r) => (r.name === 'SMA' || r.name === 'EMA') && r.values)
+          .map((r) => {
+            const period = r.params.length as number;
+            const colors = r.name === 'SMA' ? SMA_COLORS : EMA_COLORS;
+            return {
+              name: `${r.name} ${period}`,
+              data: r.values!.filter((v) => v.value !== null),
+              color: colors[period] ?? '#2196F3',
+            };
+          })
+          .sort((a, b) => {
+            const [nameA, pA] = a.name.split(' ');
+            const [nameB, pB] = b.name.split(' ');
+            if (nameA !== nameB) return nameA.localeCompare(nameB);
+            return parseInt(pA) - parseInt(pB);
+          });
+
+        setAllIndicators(parsed);
       } else {
         setError('No data available for this symbol');
+        setAllIndicators([]);
+        setBbandIndicators([]);
+        setRsiData([]);
+        setBbpData([]);
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load data');
@@ -75,6 +163,47 @@ export default function TechnicalAnalysisPage() {
       setLoading(false);
     }
   };
+
+  const toggleIndicator = (name: string) => {
+    setEnabledIndicators((prev) => {
+      const next = new Set(prev);
+      next.has(name) ? next.delete(name) : next.add(name);
+      return next;
+    });
+  };
+
+  // Sync all charts together
+  const syncTo = useCallback((source: IChartApi, targets: (IChartApi | null)[]) => {
+    source.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+      if (syncingRef.current || !range) return;
+      syncingRef.current = true;
+      targets.forEach((t) => t?.timeScale().setVisibleLogicalRange(range));
+      syncingRef.current = false;
+    });
+  }, []);
+
+  const handlePriceChartReady = useCallback((chart: IChartApi) => {
+    priceChartRef.current = chart;
+    if (oscillatorChartRef.current) {
+      syncTo(chart, [oscillatorChartRef.current]);
+      syncTo(oscillatorChartRef.current, [chart]);
+    }
+  }, [syncTo]);
+
+  const handleOscillatorChartReady = useCallback((chart: IChartApi) => {
+    oscillatorChartRef.current = chart;
+    if (priceChartRef.current) {
+      syncTo(chart, [priceChartRef.current]);
+      syncTo(priceChartRef.current, [chart]);
+    }
+  }, [syncTo]);
+
+  const smaGroup = allIndicators.filter((i) => i.name.startsWith('SMA'));
+  const emaGroup = allIndicators.filter((i) => i.name.startsWith('EMA'));
+  const activeIndicators = [
+    ...allIndicators.filter((i) => enabledIndicators.has(i.name)),
+    ...(showBBands ? bbandIndicators : []),
+  ];
 
   return (
     <div className="min-h-screen p-8">
@@ -89,13 +218,14 @@ export default function TechnicalAnalysisPage() {
                 type="text"
                 value={symbol}
                 onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+                onKeyDown={(e) => e.key === 'Enter' && !loading && handleLoadData(rangeDays)}
                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Enter symbol (e.g., SPY)"
               />
             </div>
             <div className="flex items-end">
               <button
-                onClick={handleLoadData}
+                onClick={() => handleLoadData(rangeDays)}
                 disabled={loading}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
@@ -112,19 +242,132 @@ export default function TechnicalAnalysisPage() {
 
           {chartData.length > 0 && (
             <div>
-              <h2 className="text-xl font-semibold mb-4">{symbol} - Daily Chart</h2>
-              <PriceChart data={chartData} indicators={indicators} height={500} />
-
-              <div className="mt-4 flex gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-0.5 bg-blue-500"></div>
-                  <span>SMA(20)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-0.5 bg-orange-500"></div>
-                  <span>SMA(50)</span>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold">{symbol} - Daily Chart</h2>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={showCloseLine}
+                      onChange={(e) => setShowCloseLine(e.target.checked)}
+                      className="w-4 h-4 accent-orange-500"
+                    />
+                    Close line
+                  </label>
+                  {RANGES.map(({ label, days }) => (
+                    <button
+                      key={days}
+                      onClick={() => { setRangeDays(days); handleLoadData(days); }}
+                      disabled={loading}
+                      className={`text-sm px-3 py-1 rounded ${rangeDays === days ? 'bg-blue-600 text-white' : 'text-blue-600 hover:underline'}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
               </div>
+
+              {/* Toolbar: Technicals dropdown + active legend */}
+              <div className="flex items-center gap-4 mb-3">
+                {allIndicators.length > 0 && (
+                  <div className="relative" ref={dropdownRef}>
+                    <button
+                      onClick={() => setDropdownOpen((o) => !o)}
+                      className="flex items-center gap-1.5 text-sm px-3 py-1.5 border rounded-lg hover:bg-gray-50"
+                    >
+                      Technicals
+                      <svg className={`w-3.5 h-3.5 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    {dropdownOpen && (
+                      <div className="absolute left-0 top-full mt-1 bg-white border rounded-lg shadow-lg z-10 min-w-[150px]">
+                        <div className="px-3 pt-2 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">SMA</div>
+                        {smaGroup.map(({ name, color }) => (
+                          <label key={name} className="flex items-center gap-2.5 px-3 py-2 hover:bg-gray-50 cursor-pointer select-none">
+                            <input type="checkbox" checked={enabledIndicators.has(name)} onChange={() => toggleIndicator(name)} className="w-4 h-4" style={{ accentColor: color }} />
+                            <span className="inline-block w-5 h-0.5 rounded" style={{ backgroundColor: color }} />
+                            <span className="text-sm">{name}</span>
+                          </label>
+                        ))}
+                        <div className="px-3 pt-2 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide border-t mt-1">EMA</div>
+                        {emaGroup.map(({ name, color }) => (
+                          <label key={name} className="flex items-center gap-2.5 px-3 py-2 hover:bg-gray-50 cursor-pointer select-none">
+                            <input type="checkbox" checked={enabledIndicators.has(name)} onChange={() => toggleIndicator(name)} className="w-4 h-4" style={{ accentColor: color }} />
+                            <span className="inline-block w-5 h-0.5 rounded" style={{ backgroundColor: color }} />
+                            <span className="text-sm">{name}</span>
+                          </label>
+                        ))}
+                        <div className="px-3 pt-2 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide border-t mt-1">Bollinger Bands</div>
+                        <label className="flex items-center gap-2.5 px-3 py-2 hover:bg-gray-50 cursor-pointer select-none">
+                          <input type="checkbox" checked={showBBands} onChange={(e) => setShowBBands(e.target.checked)} className="w-4 h-4" style={{ accentColor: BBAND_COLOR }} />
+                          <span className="inline-block w-5 h-0.5 rounded" style={{ backgroundColor: BBAND_COLOR }} />
+                          <span className="text-sm">BB (20, 2)</span>
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Active SMA/EMA legend */}
+                {allIndicators.filter((i) => enabledIndicators.has(i.name)).map(({ name, color }) => (
+                  <span key={name} className="flex items-center gap-1.5 text-sm">
+                    <span className="inline-block w-6 h-0.5 rounded" style={{ backgroundColor: color }} />
+                    {name}
+                  </span>
+                ))}
+
+                {/* BBands legend */}
+                {showBBands && bbandIndicators.length > 0 && (
+                  <span className="flex items-center gap-1.5 text-sm">
+                    <span className="inline-block w-6 h-0.5 rounded" style={{ backgroundColor: BBAND_COLOR }} />
+                    BB (20, 2)
+                  </span>
+                )}
+              </div>
+
+              {/* Price chart */}
+              <PriceChart
+                data={chartData}
+                indicators={activeIndicators}
+                height={500}
+                showCloseLine={showCloseLine}
+                onChartReady={handlePriceChartReady}
+              />
+
+              {/* RSI + BB% oscillator */}
+              {(rsiData.length > 0 || bbpData.length > 0) && (
+                <div className="mt-1">
+                  <div className="flex items-center gap-4 mb-1">
+                    {rsiData.length > 0 && (
+                      <span className="flex items-center gap-1.5 text-sm">
+                        <span className="inline-block w-6 h-0.5 rounded" style={{ backgroundColor: '#E91E63' }} />
+                        RSI (14)
+                      </span>
+                    )}
+                    {bbpData.length > 0 && (
+                      <span className="flex items-center gap-1.5 text-sm">
+                        <span className="inline-block w-6 h-0.5 rounded" style={{ backgroundColor: '#FF9800' }} />
+                        BB% (20, 2)
+                      </span>
+                    )}
+                    <span className="text-xs text-gray-400 ml-1">— 70 overbought · 30 oversold</span>
+                  </div>
+                  <OscillatorChart
+                    seriesConfigs={[
+                      { color: '#E91E63', title: 'RSI 14' },
+                      { color: '#FF9800', title: 'BB%' },
+                    ]}
+                    seriesData={[rsiData, bbpData]}
+                    referenceLines={[
+                      { value: 70, color: '#ef5350' },
+                      { value: 30, color: '#26a69a' },
+                    ]}
+                    height={160}
+                    onChartReady={handleOscillatorChartReady}
+                  />
+                </div>
+              )}
             </div>
           )}
 

@@ -4,7 +4,7 @@
  * Price chart component with indicator overlays.
  */
 import React, { useEffect, useRef } from 'react';
-import { createChart, IChartApi, ISeriesApi, CandlestickData, LineData } from 'lightweight-charts';
+import { createChart, IChartApi, ISeriesApi, CandlestickData, LineData, LineStyle } from 'lightweight-charts';
 import type { OHLCVBar } from '@/lib/types/market-data';
 
 interface PriceChartProps {
@@ -13,14 +13,19 @@ interface PriceChartProps {
     name: string;
     data: Array<{ timestamp: string; value: number }>;
     color?: string;
+    lineStyle?: LineStyle;
+    lineWidth?: number;
   }[];
   height?: number;
+  showCloseLine?: boolean;
+  onChartReady?: (chart: IChartApi) => void;
 }
 
-export function PriceChart({ data, indicators = [], height = 400 }: PriceChartProps) {
+export function PriceChart({ data, indicators = [], height = 400, showCloseLine = false, onChartReady }: PriceChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const closeLineSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const indicatorSeriesRef = useRef<Map<string, ISeriesApi<'Line'>>>(new Map());
 
   useEffect(() => {
@@ -51,6 +56,7 @@ export function PriceChart({ data, indicators = [], height = 400 }: PriceChartPr
     });
 
     chartRef.current = chart;
+    onChartReady?.(chart);
 
     // Add candlestick series
     const candlestickSeries = chart.addCandlestickSeries({
@@ -79,6 +85,7 @@ export function PriceChart({ data, indicators = [], height = 400 }: PriceChartPr
       chart.remove();
       chartRef.current = null;
       candlestickSeriesRef.current = null;
+      closeLineSeriesRef.current = null;
       indicatorSeriesRef.current.clear();
     };
   }, [height]);
@@ -96,7 +103,29 @@ export function PriceChart({ data, indicators = [], height = 400 }: PriceChartPr
     }));
 
     candlestickSeriesRef.current.setData(candlestickData);
-  }, [data]);
+
+    if (showCloseLine && chartRef.current) {
+      if (!closeLineSeriesRef.current) {
+        closeLineSeriesRef.current = chartRef.current.addLineSeries({
+          color: '#FF9800',
+          lineWidth: 1,
+          title: 'Close',
+          priceLineVisible: false,
+          lastValueVisible: false,
+        });
+      }
+      const closeData: LineData[] = data.map((bar) => ({
+        time: new Date(bar.timestamp).getTime() / 1000,
+        value: bar.close,
+      }));
+      closeLineSeriesRef.current.setData(closeData);
+    } else if (!showCloseLine && closeLineSeriesRef.current && chartRef.current) {
+      chartRef.current.removeSeries(closeLineSeriesRef.current);
+      closeLineSeriesRef.current = null;
+    }
+
+    chartRef.current?.timeScale().fitContent();
+  }, [data, showCloseLine]);
 
   useEffect(() => {
     if (!chartRef.current) return;
@@ -113,8 +142,11 @@ export function PriceChart({ data, indicators = [], height = 400 }: PriceChartPr
 
       const lineSeries = chartRef.current.addLineSeries({
         color: indicator.color || '#2196F3',
-        lineWidth: 2,
+        lineWidth: indicator.lineWidth ?? 2,
+        lineStyle: indicator.lineStyle ?? LineStyle.Solid,
         title: indicator.name,
+        priceLineVisible: false,
+        lastValueVisible: indicator.lineStyle === undefined,
       });
 
       const lineData: LineData[] = indicator.data.map((point) => ({
