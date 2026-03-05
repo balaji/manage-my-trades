@@ -6,9 +6,8 @@ from sqlalchemy import select, func, and_
 from sqlalchemy.orm import selectinload
 import logging
 
-from app.models.backtest import Backtest, BacktestResult
+from app.models.backtest import Backtest
 from app.models.trade import Trade
-from app.models.strategy import Strategy
 from app.services.strategy_service import StrategyService
 from app.core.backtesting.engine import BacktestEngine
 from app.schemas.backtest import BacktestCreate
@@ -91,9 +90,7 @@ class BacktestService:
             raise ValueError(f"Backtest {backtest_id} not found")
 
         if backtest.status != "pending":
-            raise ValueError(
-                f"Backtest must be pending (current: {backtest.status})"
-            )
+            raise ValueError(f"Backtest must be pending (current: {backtest.status})")
 
         if not backtest.strategy:
             raise ValueError(f"Strategy not found for backtest {backtest_id}")
@@ -177,9 +174,7 @@ class BacktestService:
             Tuple of (backtests list, total count)
         """
         # Build query
-        query = select(Backtest).options(
-            selectinload(Backtest.results), selectinload(Backtest.strategy)
-        )
+        query = select(Backtest).options(selectinload(Backtest.results), selectinload(Backtest.strategy))
 
         # Apply filters
         filters = []
@@ -229,9 +224,7 @@ class BacktestService:
 
         return True
 
-    async def get_backtest_trades(
-        self, backtest_id: int, skip: int = 0, limit: int = 100
-    ) -> Tuple[List[Trade], int]:
+    async def get_backtest_trades(self, backtest_id: int, skip: int = 0, limit: int = 100) -> Tuple[List[Trade], int]:
         """
         Get trades for a backtest.
 

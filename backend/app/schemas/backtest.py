@@ -40,9 +40,7 @@ class BacktestCreate(BaseModel):
         """Validate timeframe is supported."""
         valid_timeframes = ["1m", "5m", "15m", "1h", "1d"]
         if v not in valid_timeframes:
-            raise ValueError(
-                f"Invalid timeframe: {v}. Must be one of {valid_timeframes}"
-            )
+            raise ValueError(f"Invalid timeframe: {v}. Must be one of {valid_timeframes}")
         return v
 
 

@@ -135,9 +135,7 @@ class OrderExecutor:
         commission = self.calculate_commission(exec_price, quantity)
 
         # Validate order
-        can_execute, reason = self.can_execute_order(
-            portfolio, symbol, quantity, exec_price, "buy"
-        )
+        can_execute, reason = self.can_execute_order(portfolio, symbol, quantity, exec_price, "buy")
         if not can_execute:
             raise ValueError(f"Cannot execute buy order: {reason}")
 
@@ -172,22 +170,15 @@ class OrderExecutor:
         commission = self.calculate_commission(exec_price, quantity)
 
         # Validate order
-        can_execute, reason = self.can_execute_order(
-            portfolio, symbol, quantity, exec_price, "sell"
-        )
+        can_execute, reason = self.can_execute_order(portfolio, symbol, quantity, exec_price, "sell")
         if not can_execute:
             raise ValueError(f"Cannot execute sell order: {reason}")
 
         # Execute on portfolio
-        trade, pnl, pnl_pct = portfolio.execute_sell(
-            symbol, quantity, exec_price, commission, timestamp
-        )
+        trade, pnl, pnl_pct = portfolio.execute_sell(symbol, quantity, exec_price, commission, timestamp)
 
         return trade, pnl, pnl_pct
 
     def __repr__(self) -> str:
         """String representation of order executor."""
-        return (
-            f"OrderExecutor(commission=${self.commission:.4f}, "
-            f"slippage={self.slippage*100:.2f}%)"
-        )
+        return f"OrderExecutor(commission=${self.commission:.4f}, slippage={self.slippage * 100:.2f}%)"

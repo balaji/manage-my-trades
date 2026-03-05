@@ -1,7 +1,7 @@
 """Performance metrics calculator for backtesting."""
 
 from typing import List, Tuple, Dict, Any, Optional
-from datetime import datetime, timedelta
+from datetime import datetime
 import numpy as np
 from app.models.trade import Trade
 
@@ -10,9 +10,7 @@ class MetricsCalculator:
     """Calculate backtest performance metrics."""
 
     @staticmethod
-    def calculate_total_return(
-        initial_capital: float, final_capital: float
-    ) -> Tuple[float, float]:
+    def calculate_total_return(initial_capital: float, final_capital: float) -> Tuple[float, float]:
         """
         Calculate total return (absolute and percentage).
 
@@ -59,9 +57,7 @@ class MetricsCalculator:
         returns = []
         for i in range(1, len(equity_values)):
             if equity_values[i - 1] > 0:
-                daily_return = (
-                    equity_values[i] - equity_values[i - 1]
-                ) / equity_values[i - 1]
+                daily_return = (equity_values[i] - equity_values[i - 1]) / equity_values[i - 1]
                 returns.append(daily_return)
 
         if len(returns) < 2:
@@ -86,9 +82,7 @@ class MetricsCalculator:
         return float(annualized_sharpe)
 
     @staticmethod
-    def calculate_max_drawdown(
-        equity_curve: List[Tuple[datetime, float]]
-    ) -> Tuple[float, float]:
+    def calculate_max_drawdown(equity_curve: List[Tuple[datetime, float]]) -> Tuple[float, float]:
         """
         Calculate maximum drawdown (peak to trough decline).
 
@@ -250,15 +244,9 @@ class MetricsCalculator:
                 return duration.total_seconds() / 3600  # Convert to hours
             return None
 
-        durations = [
-            d for t in closed_trades if (d := calculate_duration(t)) is not None
-        ]
-        win_durations = [
-            d for t in winning_trades if (d := calculate_duration(t)) is not None
-        ]
-        loss_durations = [
-            d for t in losing_trades if (d := calculate_duration(t)) is not None
-        ]
+        durations = [d for t in closed_trades if (d := calculate_duration(t)) is not None]
+        win_durations = [d for t in winning_trades if (d := calculate_duration(t)) is not None]
+        loss_durations = [d for t in losing_trades if (d := calculate_duration(t)) is not None]
 
         avg_trade_duration = np.mean(durations) if durations else None
         avg_win_duration = np.mean(win_durations) if win_durations else None
@@ -272,15 +260,9 @@ class MetricsCalculator:
             "avg_loss": float(avg_loss) if avg_loss is not None else None,
             "largest_win": float(largest_win) if largest_win is not None else None,
             "largest_loss": float(largest_loss) if largest_loss is not None else None,
-            "avg_trade_duration": float(avg_trade_duration)
-            if avg_trade_duration is not None
-            else None,
-            "avg_win_duration": float(avg_win_duration)
-            if avg_win_duration is not None
-            else None,
-            "avg_loss_duration": float(avg_loss_duration)
-            if avg_loss_duration is not None
-            else None,
+            "avg_trade_duration": float(avg_trade_duration) if avg_trade_duration is not None else None,
+            "avg_win_duration": float(avg_win_duration) if avg_win_duration is not None else None,
+            "avg_loss_duration": float(avg_loss_duration) if avg_loss_duration is not None else None,
         }
 
     @staticmethod
@@ -305,14 +287,10 @@ class MetricsCalculator:
             Dictionary with all metrics
         """
         # Returns
-        total_return, total_return_pct = MetricsCalculator.calculate_total_return(
-            initial_capital, final_capital
-        )
+        total_return, total_return_pct = MetricsCalculator.calculate_total_return(initial_capital, final_capital)
 
         # Risk metrics
-        sharpe_ratio = MetricsCalculator.calculate_sharpe_ratio(
-            equity_curve, risk_free_rate
-        )
+        sharpe_ratio = MetricsCalculator.calculate_sharpe_ratio(equity_curve, risk_free_rate)
         max_dd, max_dd_pct = MetricsCalculator.calculate_max_drawdown(equity_curve)
 
         # Trade metrics

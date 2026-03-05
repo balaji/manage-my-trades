@@ -1,6 +1,6 @@
 """Main backtesting engine for strategy simulation."""
 
-from typing import List, Dict, Tuple, Any, Optional
+from typing import List, Dict, Tuple
 from datetime import datetime
 import logging
 import pandas as pd
@@ -33,12 +33,8 @@ class BacktestEngine:
         """
         self.backtest = backtest
         self.strategy = strategy
-        self.portfolio = PortfolioState(
-            cash=backtest.initial_capital, timestamp=backtest.start_date
-        )
-        self.executor = OrderExecutor(
-            commission=backtest.commission, slippage=backtest.slippage
-        )
+        self.portfolio = PortfolioState(cash=backtest.initial_capital, timestamp=backtest.start_date)
+        self.executor = OrderExecutor(commission=backtest.commission, slippage=backtest.slippage)
         self.position_sizer = PositionSizer()
         self.trades: List[Trade] = []
         self.equity_curve: List[Tuple[datetime, float]] = []
@@ -56,9 +52,7 @@ class BacktestEngine:
         Returns:
             BacktestResult with performance metrics
         """
-        logger.info(
-            f"Starting backtest {self.backtest.id} for strategy {self.strategy.id}"
-        )
+        logger.info(f"Starting backtest {self.backtest.id} for strategy {self.strategy.id}")
 
         # 1. Fetch historical market data for all symbols
         market_data = await self._fetch_market_data(db)
@@ -94,9 +88,7 @@ class BacktestEngine:
             # Log progress every 10%
             if i % max(1, len(timeline) // 10) == 0:
                 progress = (i / len(timeline)) * 100
-                logger.info(
-                    f"Backtest progress: {progress:.1f}% - Equity: ${equity:.2f}"
-                )
+                logger.info(f"Backtest progress: {progress:.1f}% - Equity: ${equity:.2f}")
 
         # 5. Calculate performance metrics
         result = self._calculate_results()
@@ -105,9 +97,7 @@ class BacktestEngine:
 
         return result
 
-    async def _fetch_market_data(
-        self, db: AsyncSession
-    ) -> Dict[str, pd.DataFrame]:
+    async def _fetch_market_data(self, db: AsyncSession) -> Dict[str, pd.DataFrame]:
         """
         Fetch OHLCV data for all symbols using MarketDataService.
 
@@ -184,9 +174,7 @@ class BacktestEngine:
 
         return sorted(list(all_timestamps))
 
-    def _get_current_prices(
-        self, market_data: Dict[str, pd.DataFrame], timestamp: datetime
-    ) -> Dict[str, float]:
+    def _get_current_prices(self, market_data: Dict[str, pd.DataFrame], timestamp: datetime) -> Dict[str, float]:
         """
         Get current prices for all symbols at timestamp.
 
@@ -217,9 +205,7 @@ class BacktestEngine:
 
         return prices
 
-    def _get_signals_at_timestamp(
-        self, signals: List[Signal], timestamp: datetime
-    ) -> List[Signal]:
+    def _get_signals_at_timestamp(self, signals: List[Signal], timestamp: datetime) -> List[Signal]:
         """
         Get all signals at a specific timestamp.
 
@@ -232,9 +218,7 @@ class BacktestEngine:
         """
         return [s for s in signals if s.timestamp == timestamp]
 
-    def _process_buy_signals(
-        self, signals: List[Signal], prices: Dict[str, float], timestamp: datetime
-    ):
+    def _process_buy_signals(self, signals: List[Signal], prices: Dict[str, float], timestamp: datetime):
         """
         Process buy signals, execute orders, create trades.
 
@@ -266,26 +250,19 @@ class BacktestEngine:
                     continue
 
                 # Calculate execution price with slippage
-                exec_price = self.executor.calculate_execution_price(
-                    prices[symbol], "buy"
-                )
+                exec_price = self.executor.calculate_execution_price(prices[symbol], "buy")
                 commission = self.executor.calculate_commission(exec_price, size)
 
                 # Check if we can execute
                 if self.portfolio.can_buy(symbol, size, exec_price, commission):
-                    trade = self.portfolio.execute_buy(
-                        symbol, size, exec_price, commission, timestamp
-                    )
+                    trade = self.portfolio.execute_buy(symbol, size, exec_price, commission, timestamp)
                     trade.backtest_id = self.backtest.id
                     trade.strategy_id = self.strategy.id
                     trade.trade_type = "backtest"
                     self.trades.append(trade)
                     self.open_positions[symbol] = trade
 
-                    logger.debug(
-                        f"BUY {size:.2f} {symbol} @ ${exec_price:.2f} "
-                        f"(commission: ${commission:.2f})"
-                    )
+                    logger.debug(f"BUY {size:.2f} {symbol} @ ${exec_price:.2f} (commission: ${commission:.2f})")
                 else:
                     logger.debug(
                         f"Insufficient funds for {symbol}: need ${(size * exec_price) + commission:.2f}, "
@@ -295,9 +272,7 @@ class BacktestEngine:
             except Exception as e:
                 logger.error(f"Error processing buy signal for {symbol}: {e}")
 
-    def _process_sell_signals(
-        self, signals: List[Signal], prices: Dict[str, float], timestamp: datetime
-    ):
+    def _process_sell_signals(self, signals: List[Signal], prices: Dict[str, float], timestamp: datetime):
         """
         Process sell signals, close positions, update trades.
 
@@ -325,15 +300,11 @@ class BacktestEngine:
                 quantity = position.quantity
 
                 # Calculate execution price with slippage
-                exec_price = self.executor.calculate_execution_price(
-                    prices[symbol], "sell"
-                )
+                exec_price = self.executor.calculate_execution_price(prices[symbol], "sell")
                 commission = self.executor.calculate_commission(exec_price, quantity)
 
                 # Execute sell
-                trade, pnl, pnl_pct = self.portfolio.execute_sell(
-                    symbol, quantity, exec_price, commission, timestamp
-                )
+                trade, pnl, pnl_pct = self.portfolio.execute_sell(symbol, quantity, exec_price, commission, timestamp)
 
                 # Update the original trade if we're tracking it
                 if symbol in self.open_positions:
@@ -351,10 +322,7 @@ class BacktestEngine:
                     trade.trade_type = "backtest"
                     self.trades.append(trade)
 
-                logger.debug(
-                    f"SELL {quantity:.2f} {symbol} @ ${exec_price:.2f} "
-                    f"P&L: ${pnl:.2f} ({pnl_pct:.2f}%)"
-                )
+                logger.debug(f"SELL {quantity:.2f} {symbol} @ ${exec_price:.2f} P&L: ${pnl:.2f} ({pnl_pct:.2f}%)")
 
             except Exception as e:
                 logger.error(f"Error processing sell signal for {symbol}: {e}")

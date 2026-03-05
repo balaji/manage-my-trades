@@ -50,9 +50,7 @@ class PositionSizer:
             )
 
     @staticmethod
-    def _fixed_percentage(
-        portfolio_equity: float, price: float, config: Dict[str, Any]
-    ) -> float:
+    def _fixed_percentage(portfolio_equity: float, price: float, config: Dict[str, Any]) -> float:
         """
         Allocate a fixed percentage of portfolio equity.
 
@@ -108,9 +106,7 @@ class PositionSizer:
         return shares
 
     @staticmethod
-    def _equal_weight(
-        portfolio_equity: float, price: float, config: Dict[str, Any]
-    ) -> float:
+    def _equal_weight(portfolio_equity: float, price: float, config: Dict[str, Any]) -> float:
         """
         Divide portfolio equally across N symbols.
 
@@ -128,9 +124,7 @@ class PositionSizer:
             raise ValueError("'num_positions' is required for 'equal_weight' method")
 
         if num_positions <= 0:
-            raise ValueError(
-                f"num_positions must be positive, got: {num_positions}"
-            )
+            raise ValueError(f"num_positions must be positive, got: {num_positions}")
 
         if price <= 0:
             raise ValueError(f"Price must be positive, got: {price}")
@@ -163,9 +157,7 @@ class PositionSizer:
             return math.floor(shares)
 
     @staticmethod
-    def calculate_max_position_size(
-        cash: float, price: float, commission: float = 0.0
-    ) -> float:
+    def calculate_max_position_size(cash: float, price: float, commission: float = 0.0) -> float:
         """
         Calculate maximum shares that can be bought with available cash.
 

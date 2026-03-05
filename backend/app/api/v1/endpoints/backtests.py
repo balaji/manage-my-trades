@@ -17,9 +17,7 @@ router = APIRouter()
 
 
 @router.post("/", response_model=BacktestResponse, status_code=201)
-async def create_backtest(
-    backtest_data: BacktestCreate, db: AsyncSession = Depends(get_db)
-):
+async def create_backtest(backtest_data: BacktestCreate, db: AsyncSession = Depends(get_db)):
     """
     Create a new backtest (status='pending').
     Use POST /backtests/{id}/run to execute it.

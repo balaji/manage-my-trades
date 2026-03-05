@@ -71,9 +71,7 @@ class PortfolioState:
 
         return sum(pos.market_value for pos in self.positions.values())
 
-    def can_buy(
-        self, symbol: str, quantity: float, price: float, commission: float
-    ) -> bool:
+    def can_buy(self, symbol: str, quantity: float, price: float, commission: float) -> bool:
         """Check if buy order can be executed."""
         total_cost = (quantity * price) + commission
         return self.cash >= total_cost
@@ -90,9 +88,7 @@ class PortfolioState:
         total_cost = (quantity * price) + commission
 
         if not self.can_buy(symbol, quantity, price, commission):
-            raise ValueError(
-                f"Insufficient cash. Need ${total_cost:.2f}, have ${self.cash:.2f}"
-            )
+            raise ValueError(f"Insufficient cash. Need ${total_cost:.2f}, have ${self.cash:.2f}")
 
         # Deduct cash
         self.cash -= total_cost
@@ -210,11 +206,7 @@ class PortfolioState:
 
     def __repr__(self) -> str:
         """String representation of portfolio state."""
-        return (
-            f"PortfolioState(cash=${self.cash:.2f}, "
-            f"positions={len(self.positions)}, "
-            f"timestamp={self.timestamp})"
-        )
+        return f"PortfolioState(cash=${self.cash:.2f}, positions={len(self.positions)}, timestamp={self.timestamp})"
 
 
 # Alias for backward compatibility

@@ -35,7 +35,7 @@ services:
       - DATA_CACHE_PATH=/app/storage/data
       - DEBUG=True
       - LOG_LEVEL=INFO
-      - CORS_ORIGINS=["http://localhost:3000"]
+      - CORS_ORIGINS=["http://bigmac.local:3000"]
     networks:
       - trading_network      
 #    volumes:
@@ -54,8 +54,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
-      - NEXT_PUBLIC_WS_URL=ws://localhost:8000/ws
+      - NEXT_PUBLIC_API_URL=http://bigmac.local:8000/api/v1
+      - NEXT_PUBLIC_WS_URL=ws://bigmac.local:8000/ws
     networks:
       - trading_network
 #    volumes:

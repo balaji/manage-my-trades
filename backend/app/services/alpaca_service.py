@@ -2,7 +2,7 @@
 Alpaca API service for market data and trading.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List, Optional, Dict, Any
 import logging
 
@@ -10,7 +10,7 @@ from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.requests import StockBarsRequest, StockLatestQuoteRequest
 from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
 from alpaca.trading.client import TradingClient
-from alpaca.trading.requests import MarketOrderRequest, LimitOrderRequest
+from alpaca.trading.requests import MarketOrderRequest
 from alpaca.trading.enums import OrderSide, TimeInForce
 
 from app.config import get_settings
@@ -81,6 +81,7 @@ class AlpacaService:
             )
 
             bars_multi = self.data_client.get_stock_bars(request)
+            bars_multi = bars_multi.data
 
             result = {}
             for symbol in symbols:
