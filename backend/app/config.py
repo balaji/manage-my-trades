@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     # Database
-    DATABASE_URL: str = "postgresql+asyncpg://trading_user:trading_password@localhost:5432/trading_db"
+    DATABASE_URL: str = "postgresql+psycopg://trading_user:trading_password@localhost:5432/trading_db"
 
     # CORS
     CORS_ORIGINS: List[str] = ["http://localhost:3000"]
