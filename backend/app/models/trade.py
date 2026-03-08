@@ -9,7 +9,6 @@ from sqlalchemy import (
     Float,
     DateTime,
     ForeignKey,
-    Boolean,
     Text,
 )
 from sqlalchemy.orm import relationship

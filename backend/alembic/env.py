@@ -18,21 +18,6 @@ from app.db.session import Base
 from app.config import get_settings
 
 # Import all models to ensure they are registered with Base
-from app.models import (
-    Strategy,
-    StrategyIndicator,
-    Backtest,
-    BacktestResult,
-    Trade,
-    Signal,
-    Position,
-    Order,
-    MLModel,
-    MLModelMetrics,
-    MarketData,
-    IndicatorCache,
-    PortfolioHistory,
-)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

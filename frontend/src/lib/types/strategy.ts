@@ -3,21 +3,21 @@
  */
 
 export enum StrategyType {
-  TECHNICAL = 'technical',
-  ML = 'ml',
-  COMBINED = 'combined',
+  TECHNICAL = "technical",
+  ML = "ml",
+  COMBINED = "combined",
 }
 
 export enum SignalType {
-  BUY = 'buy',
-  SELL = 'sell',
-  HOLD = 'hold',
+  BUY = "buy",
+  SELL = "sell",
+  HOLD = "hold",
 }
 
 export enum IndicatorUsage {
-  ENTRY = 'entry',
-  EXIT = 'exit',
-  FILTER = 'filter',
+  ENTRY = "entry",
+  EXIT = "exit",
+  FILTER = "filter",
 }
 
 export interface StrategyIndicatorConfig {
@@ -111,11 +111,11 @@ export interface GetSignalsParams {
 export function getStrategyTypeLabel(type: StrategyType): string {
   switch (type) {
     case StrategyType.TECHNICAL:
-      return 'Technical';
+      return "Technical";
     case StrategyType.ML:
-      return 'Machine Learning';
+      return "Machine Learning";
     case StrategyType.COMBINED:
-      return 'Combined';
+      return "Combined";
     default:
       return type;
   }
@@ -127,11 +127,11 @@ export function getStrategyTypeLabel(type: StrategyType): string {
 export function getSignalTypeLabel(type: SignalType): string {
   switch (type) {
     case SignalType.BUY:
-      return 'Buy';
+      return "Buy";
     case SignalType.SELL:
-      return 'Sell';
+      return "Sell";
     case SignalType.HOLD:
-      return 'Hold';
+      return "Hold";
     default:
       return type;
   }
@@ -143,13 +143,13 @@ export function getSignalTypeLabel(type: SignalType): string {
 export function getSignalTypeColor(type: SignalType | string): string {
   switch (type) {
     case SignalType.BUY:
-      return 'text-green-500';
+      return "text-green-500";
     case SignalType.SELL:
-      return 'text-red-500';
+      return "text-red-500";
     case SignalType.HOLD:
-      return 'text-yellow-500';
+      return "text-yellow-500";
     default:
-      return 'text-gray-500';
+      return "text-gray-500";
   }
 }
 
@@ -157,6 +157,6 @@ export function getSignalTypeColor(type: SignalType | string): string {
  * Format signal strength as a percentage string.
  */
 export function formatSignalStrength(strength: number | null): string {
-  if (strength === null || strength === undefined) return 'N/A';
+  if (strength === null || strength === undefined) return "N/A";
   return `${(strength * 100).toFixed(1)}%`;
 }

@@ -4,12 +4,12 @@ Signal service for generating and managing trading signals.
 
 from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
-from datetime import datetime, timedelta
+from sqlalchemy import select
+from datetime import datetime
 import logging
 
 from app.models.signal import Signal
-from app.models.strategy import Strategy, StrategyIndicator
+from app.models.strategy import Strategy
 from app.services.technical_analysis_service import TechnicalAnalysisService
 from app.services.market_data_service import MarketDataService
 
