@@ -12,8 +12,9 @@ import type { OHLCVBar } from '@/lib/types/market-data';
 
 const RANGES = [
   { label: '90 days', days: 90 },
-  { label: '30 days', days: 30 },
-  { label: '15 days', days: 15 },
+  { label: '6 months', days: 180 },
+  { label: '1 year', days: 365 },
+  { label: '3 years', days: 1095 },
 ];
 
 const SMA_COLORS: Record<number, string> = { 10: '#2196F3', 20: '#9C27B0', 30: '#FF5722' };

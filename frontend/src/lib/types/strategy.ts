@@ -136,3 +136,27 @@ export function getSignalTypeLabel(type: SignalType): string {
       return type;
   }
 }
+
+/**
+ * Get CSS color class for signal type.
+ */
+export function getSignalTypeColor(type: SignalType | string): string {
+  switch (type) {
+    case SignalType.BUY:
+      return 'text-green-500';
+    case SignalType.SELL:
+      return 'text-red-500';
+    case SignalType.HOLD:
+      return 'text-yellow-500';
+    default:
+      return 'text-gray-500';
+  }
+}
+
+/**
+ * Format signal strength as a percentage string.
+ */
+export function formatSignalStrength(strength: number | null): string {
+  if (strength === null || strength === undefined) return 'N/A';
+  return `${(strength * 100).toFixed(1)}%`;
+}

@@ -1,0 +1,14 @@
+pre-commit:
+  commands:
+    ruff-format:
+      glob: "backend/**/*.py"
+      run: cd backend && uv run ruff format {staged_files}
+    ruff-check:
+      glob: "backend/**/*.py"
+      run: cd backend && uv run ruff check --fix {staged_files}
+    prettier:
+      glob: "frontend/**/*.{ts,tsx,js,jsx,json,css}"
+      run: cd frontend && npx prettier --write {staged_files}
+    eslint:
+      glob: "frontend/**/*.{ts,tsx,js,jsx}"
+      run: cd frontend && npx next lint --fix --file {staged_files}

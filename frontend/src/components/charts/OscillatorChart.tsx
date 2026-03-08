@@ -7,6 +7,7 @@ import {
   ISeriesApi,
   LineData,
   LineStyle,
+  UTCTimestamp,
 } from 'lightweight-charts';
 
 export interface OscillatorSeriesConfig {
@@ -115,10 +116,17 @@ export function OscillatorChart({
 
     seriesData.forEach((points, i) => {
       if (!seriesRefs.current[i] || !points.length) return;
-      const lineData: LineData[] = points.map((p) => ({
-        time: new Date(p.timestamp).getTime() / 1000,
-        value: p.value,
-      }));
+      const closeMap = new Map<number, LineData>();
+      points.forEach((bar) => {
+        const time = (new Date(bar.timestamp).getTime() / 1000) as UTCTimestamp;
+        closeMap.set(time, { time, value: bar.value });
+      });
+      const lineData: LineData[] = Array.from(closeMap.values()).sort((a, b) => (a.time as number) - (b.time as number));
+      
+      // const lineData: LineData[] = points.map((p) => ({
+      //   time: new Date(p.timestamp).getTime() / 1000,
+      //   value: p.value,
+      // }));
       seriesRefs.current[i].setData(lineData);
       if (firstTime === null) firstTime = lineData[0].time as number;
       lastTime = lineData[lineData.length - 1].time as number;
@@ -129,8 +137,8 @@ export function OscillatorChart({
         if (!refLineRefs.current[i]) return;
         refLineRefs.current[i].applyOptions({ color: ref.color });
         refLineRefs.current[i].setData([
-          { time: firstTime as number, value: ref.value },
-          { time: lastTime as number, value: ref.value },
+          { time: firstTime as UTCTimestamp, value: ref.value },
+          { time: lastTime as UTCTimestamp, value: ref.value },
         ]);
       });
     }

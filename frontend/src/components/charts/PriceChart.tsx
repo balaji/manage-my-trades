@@ -4,7 +4,7 @@
  * Price chart component with indicator overlays.
  */
 import React, { useEffect, useRef } from 'react';
-import { createChart, IChartApi, ISeriesApi, CandlestickData, LineData, LineStyle } from 'lightweight-charts';
+import { createChart, IChartApi, ISeriesApi, CandlestickData, LineData, LineStyle, UTCTimestamp, LineWidth } from 'lightweight-charts';
 import type { OHLCVBar } from '@/lib/types/market-data';
 
 interface PriceChartProps {
@@ -93,14 +93,13 @@ export function PriceChart({ data, indicators = [], height = 400, showCloseLine 
   useEffect(() => {
     if (!candlestickSeriesRef.current || !data.length) return;
 
-    // Convert data to candlestick format
-    const candlestickData: CandlestickData[] = data.map((bar) => ({
-      time: new Date(bar.timestamp).getTime() / 1000,
-      open: bar.open,
-      high: bar.high,
-      low: bar.low,
-      close: bar.close,
-    }));
+    // Convert data to candlestick format, deduplicate by time (keep last), and sort ascending
+    const candlestickMap = new Map<UTCTimestamp, CandlestickData>();
+    data.forEach((bar) => {
+      const time = (new Date(bar.timestamp).getTime() / 1000) as UTCTimestamp;
+      candlestickMap.set(time, { time, open: bar.open, high: bar.high, low: bar.low, close: bar.close });
+    });
+    const candlestickData: CandlestickData[] = Array.from(candlestickMap.values()).sort((a, b) => (a.time as number) - (b.time as number));
 
     candlestickSeriesRef.current.setData(candlestickData);
 
@@ -114,10 +113,12 @@ export function PriceChart({ data, indicators = [], height = 400, showCloseLine 
           lastValueVisible: false,
         });
       }
-      const closeData: LineData[] = data.map((bar) => ({
-        time: new Date(bar.timestamp).getTime() / 1000,
-        value: bar.close,
-      }));
+      const closeMap = new Map<UTCTimestamp, LineData>();
+      data.forEach((bar) => {
+        const time = (new Date(bar.timestamp).getTime() / 1000) as UTCTimestamp;
+        closeMap.set(time, { time, value: bar.close });
+      });
+      const closeData: LineData[] = Array.from(closeMap.values()).sort((a, b) => (a.time as number) - (b.time as number));
       closeLineSeriesRef.current.setData(closeData);
     } else if (!showCloseLine && closeLineSeriesRef.current && chartRef.current) {
       chartRef.current.removeSeries(closeLineSeriesRef.current);
@@ -142,17 +143,19 @@ export function PriceChart({ data, indicators = [], height = 400, showCloseLine 
 
       const lineSeries = chartRef.current.addLineSeries({
         color: indicator.color || '#2196F3',
-        lineWidth: indicator.lineWidth ?? 2,
+        lineWidth: (indicator.lineWidth ?? 2) as LineWidth,
         lineStyle: indicator.lineStyle ?? LineStyle.Solid,
         title: indicator.name,
         priceLineVisible: false,
         lastValueVisible: indicator.lineStyle === undefined,
       });
 
-      const lineData: LineData[] = indicator.data.map((point) => ({
-        time: new Date(point.timestamp).getTime() / 1000,
-        value: point.value,
-      }));
+      const lineMap = new Map<UTCTimestamp, LineData>();
+      indicator.data.forEach((point) => {
+        const time = (new Date(point.timestamp).getTime() / 1000) as UTCTimestamp;
+        lineMap.set(time, { time, value: point.value });
+      });
+      const lineData: LineData[] = Array.from(lineMap.values()).sort((a, b) => (a.time as number) - (b.time as number));
 
       lineSeries.setData(lineData);
       indicatorSeriesRef.current.set(indicator.name, lineSeries);

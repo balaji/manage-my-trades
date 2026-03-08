@@ -16,21 +16,11 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
     LOG_LEVEL: str = "INFO"
-
-    # Database
-    DATABASE_URL: str = "postgresql+psycopg://trading_user:trading_password@localhost:5432/trading_db"
-
-    # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000"]
-
-    # Alpaca API
+    DATABASE_URL: str = ""
+    CORS_ORIGINS: List[str] = []
     ALPACA_API_KEY: str = ""
     ALPACA_SECRET_KEY: str = ""
-    ALPACA_BASE_URL: str = "https://paper-api.alpaca.markets"
-
-    # Storage
-    MODEL_STORAGE_PATH: str = "/app/storage/models"
-    DATA_CACHE_PATH: str = "/app/storage/data"
+    ALPACA_BASE_URL: str = ""
 
     # Trading Configuration
     DEFAULT_COMMISSION: float = 0.0  # Alpaca has no commission

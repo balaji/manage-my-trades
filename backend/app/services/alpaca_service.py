@@ -14,12 +14,14 @@ from alpaca.trading.requests import MarketOrderRequest
 from alpaca.trading.enums import OrderSide, TimeInForce
 
 from app.config import get_settings
+from app.services.alpaca_service_base import AlpacaServiceBase
+from app.services.alpaca_service_http import AlpacaServiceHttp
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
-class AlpacaService:
+class AlpacaService(AlpacaServiceBase):
     """Service for interacting with Alpaca API."""
 
     def __init__(self):
@@ -73,20 +75,34 @@ class AlpacaService:
             Dictionary mapping symbols to list of bar data
         """
         try:
-            request = StockBarsRequest(
-                symbol_or_symbols=symbols,
-                timeframe=self._convert_timeframe(timeframe),
-                start=start,
-                end=end,
-            )
+            accumulated: Dict[str, list] = {}
+            next_page_token = None
+            page_count = 0
 
-            bars_multi = self.data_client.get_stock_bars(request)
-            bars_multi = bars_multi.data
+            while True:
+                request = StockBarsRequest(
+                    symbol_or_symbols=symbols,
+                    timeframe=self._convert_timeframe(timeframe),
+                    start=start,
+                    end=end,
+                    page_token=next_page_token,
+                )
+                response = self.data_client.get_stock_bars(request)
+                page_count += 1
+
+                for symbol, bars in response.data.items():
+                    accumulated.setdefault(symbol, []).extend(bars)
+
+                next_page_token = response.next_page_token
+                if not next_page_token:
+                    break
+
+                logger.info(f"Fetching page {page_count + 1} for {len(symbols)} symbols")
 
             result = {}
             for symbol in symbols:
-                if symbol in bars_multi:
-                    bars = bars_multi[symbol]
+                if symbol in accumulated:
+                    bars = accumulated[symbol]
                     result[symbol] = [
                         {
                             "timestamp": bar.timestamp,
@@ -103,7 +119,10 @@ class AlpacaService:
                 else:
                     result[symbol] = []
 
-            logger.info(f"Fetched bars for {len(symbols)} symbols from {start} to {end}")
+            total_bars = sum(len(v) for v in result.values())
+            logger.info(
+                f"Fetched {total_bars} bars for {len(symbols)} symbols from {start} to {end} ({page_count} page(s))"
+            )
             return result
 
         except Exception as e:
@@ -343,12 +362,12 @@ class AlpacaService:
 
 
 # Singleton instance
-_alpaca_service: Optional[AlpacaService] = None
+_alpaca_service: Optional[AlpacaServiceBase] = None
 
 
-def get_alpaca_service() -> AlpacaService:
+def get_alpaca_service() -> AlpacaServiceBase:
     """Get or create Alpaca service instance."""
     global _alpaca_service
     if _alpaca_service is None:
-        _alpaca_service = AlpacaService()
+        _alpaca_service = AlpacaServiceHttp()
     return _alpaca_service

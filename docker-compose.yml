@@ -37,10 +37,7 @@ services:
       - LOG_LEVEL=INFO
       - CORS_ORIGINS=["http://bigmac.local:3000"]
     networks:
-      - trading_network      
-#    volumes:
-#      - ./backend:/app
-#      - backend_storage:/app/storage
+      - trading_network
     depends_on:
       postgres:
         condition: service_healthy
@@ -58,17 +55,12 @@ services:
       - NEXT_PUBLIC_WS_URL=ws://bigmac.local:8000/ws
     networks:
       - trading_network
-#    volumes:
-#      - ./frontend:/app
-#      - /app/node_modules
-#      - /app/.next
     depends_on:
       - backend
     restart: unless-stopped
 
 volumes:
   postgres_data:
-  # backend_storage:
 
 networks:
   trading_network:
