@@ -15,6 +15,7 @@ const RANGES = [
   { label: "6 months", days: 180 },
   { label: "1 year", days: 365 },
   { label: "3 years", days: 1095 },
+  { label: "10 years", days: 3650 },
 ];
 
 const SMA_COLORS: Record<number, string> = {
@@ -504,34 +505,6 @@ export default function TechnicalAnalysisPage() {
               </p>
             </div>
           )}
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">Available Indicators</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 border rounded-lg">
-              <h3 className="font-semibold mb-2">Trend</h3>
-              <ul className="text-sm text-gray-600 space-y-1">
-                <li>• Simple Moving Average (SMA)</li>
-                <li>• Exponential Moving Average (EMA)</li>
-              </ul>
-            </div>
-            <div className="p-4 border rounded-lg">
-              <h3 className="font-semibold mb-2">Momentum</h3>
-              <ul className="text-sm text-gray-600 space-y-1">
-                <li>• Relative Strength Index (RSI)</li>
-                <li>• MACD</li>
-                <li>• Stochastic Oscillator</li>
-              </ul>
-            </div>
-            <div className="p-4 border rounded-lg">
-              <h3 className="font-semibold mb-2">Volatility</h3>
-              <ul className="text-sm text-gray-600 space-y-1">
-                <li>• Bollinger Bands</li>
-                <li>• Average True Range (ATR)</li>
-              </ul>
-            </div>
-          </div>
         </div>
       </div>
     </div>
