@@ -13,6 +13,7 @@ import {
   deactivateStrategy,
   deleteStrategy,
 } from "@/lib/api/strategies";
+import { apiClient } from "@/lib/api/client";
 import {
   Strategy,
   Signal,
@@ -33,6 +34,7 @@ export default function StrategyDetailPage() {
   const [loading, setLoading] = useState(true);
   const [loadingSignals, setLoadingSignals] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [generatingSignals, setGeneratingSignals] = useState(false);
 
   const loadStrategy = useCallback(async () => {
     setLoading(true);
@@ -81,6 +83,45 @@ export default function StrategyDetailPage() {
         `Failed to ${strategy.is_active ? "deactivate" : "activate"} strategy: ${err.message}`,
       );
     }
+  };
+
+  const handleGenerateSignals = async () => {
+    if (!strategy) return;
+    const symbol = prompt("Enter symbol to generate signals for (e.g. SPY):", "SPY");
+    if (!symbol) return;
+    setGeneratingSignals(true);
+    try {
+      await apiClient.post(
+        `/strategies/${strategy.id}/signals?symbol=${encodeURIComponent(symbol.toUpperCase())}`,
+      );
+      await loadSignals();
+    } catch (err: any) {
+      alert(`Failed to generate signals: ${err.message}`);
+    } finally {
+      setGeneratingSignals(false);
+    }
+  };
+
+  const handleExportConfig = () => {
+    if (!strategy) return;
+    const config = {
+      name: strategy.name,
+      description: strategy.description,
+      strategy_type: strategy.strategy_type,
+      config: strategy.config,
+      indicators: strategy.indicators.map(({ indicator_name, parameters, usage }) => ({
+        indicator_name,
+        parameters,
+        usage,
+      })),
+    };
+    const blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${strategy.name.replace(/\s+/g, "_")}_config.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleDelete = async () => {
@@ -315,13 +356,25 @@ export default function StrategyDetailPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-lg font-semibold mb-4">Actions</h2>
               <div className="space-y-2">
-                <button className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                <button
+                  onClick={() =>
+                    router.push(`/backtests/new?strategyId=${strategy.id}`)
+                  }
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
                   Run Backtest
                 </button>
-                <button className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
-                  Generate Signals
+                <button
+                  onClick={handleGenerateSignals}
+                  disabled={generatingSignals}
+                  className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  {generatingSignals ? "Generating..." : "Generate Signals"}
                 </button>
-                <button className="w-full px-4 py-2 border rounded hover:bg-gray-50">
+                <button
+                  onClick={handleExportConfig}
+                  className="w-full px-4 py-2 border rounded hover:bg-gray-50"
+                >
                   Export Configuration
                 </button>
               </div>

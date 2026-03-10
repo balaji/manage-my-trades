@@ -257,6 +257,47 @@ async def deactivate_strategy(
     return strategy
 
 
+@router.post(
+    "/{strategy_id}/signals",
+    response_model=SignalListResponse,
+    summary="Generate signals for a strategy",
+    description="Generate trading signals for a strategy over a date range.",
+)
+async def generate_strategy_signals(
+    strategy_id: int,
+    symbol: str = Query(..., description="Symbol to generate signals for"),
+    start_date: Optional[datetime] = Query(None, description="Start date (defaults to 90 days ago)"),
+    end_date: Optional[datetime] = Query(None, description="End date (defaults to today)"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Generate trading signals for a strategy on a given symbol."""
+    from datetime import timezone, timedelta
+
+    strategy_service = StrategyService(db)
+    strategy = await strategy_service.get_strategy(strategy_id)
+    if not strategy:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Strategy with ID {strategy_id} not found",
+        )
+
+    now = datetime.now(timezone.utc)
+    if start_date is None:
+        start_date = now - timedelta(days=90)
+    if end_date is None:
+        end_date = now
+
+    signal_service = SignalService(db)
+    try:
+        signals = await signal_service.generate_signals(strategy, symbol, start_date, end_date)
+        return SignalListResponse(signals=signals, total=len(signals))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate signals: {str(e)}",
+        )
+
+
 @router.get(
     "/{strategy_id}/signals",
     response_model=SignalListResponse,

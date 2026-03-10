@@ -27,18 +27,22 @@ export default function Home() {
             </p>
           </Link>
 
-          <div className="p-6 border rounded-lg">
+          <Link
+            href="/backtests"
+            className="p-6 border rounded-lg hover:border-blue-500 hover:shadow-lg transition-all"
+          >
             <h2 className="text-xl font-semibold mb-2">Backtesting</h2>
             <p className="text-sm text-gray-600">
               Test strategies on historical data
             </p>
-          </div>
+          </Link>
 
-          <div className="p-6 border rounded-lg">
+          <div className="p-6 border rounded-lg opacity-60 cursor-not-allowed">
             <h2 className="text-xl font-semibold mb-2">Paper Trading</h2>
             <p className="text-sm text-gray-600">
               Execute strategies with paper money
             </p>
+            <p className="text-xs text-gray-400 mt-2">Coming soon</p>
           </div>
 
           <a
