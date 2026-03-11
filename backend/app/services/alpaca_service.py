@@ -2,7 +2,7 @@
 Alpaca API service for market data and trading.
 """
 
-from datetime import datetime
+from datetime import date
 from typing import List, Optional, Dict, Any
 import logging
 
@@ -60,7 +60,7 @@ class AlpacaService(AlpacaServiceBase):
         return timeframe_map[timeframe]
 
     async def get_bars(
-        self, symbols: List[str], start: datetime, end: datetime, timeframe: str = "1d"
+        self, symbols: List[str], start: date, end: date, timeframe: str = "1d"
     ) -> Dict[str, List[Dict[str, Any]]]:
         """
         Fetch OHLCV bar data for symbols.
@@ -105,7 +105,7 @@ class AlpacaService(AlpacaServiceBase):
                     bars = accumulated[symbol]
                     result[symbol] = [
                         {
-                            "timestamp": bar.timestamp,
+                            "timestamp": bar.timestamp.date(),
                             "open": float(bar.open),
                             "high": float(bar.high),
                             "low": float(bar.low),

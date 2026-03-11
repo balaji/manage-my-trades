@@ -3,7 +3,7 @@ Abstract base class for Alpaca API service implementations.
 """
 
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import date
 from typing import List, Optional, Dict, Any
 
 
@@ -16,7 +16,7 @@ class AlpacaServiceBase(ABC):
 
     @abstractmethod
     async def get_bars(
-        self, symbols: List[str], start: datetime, end: datetime, timeframe: str = "1d"
+        self, symbols: List[str], start: date, end: date, timeframe: str = "1d"
     ) -> Dict[str, List[Dict[str, Any]]]:
         """Fetch OHLCV bar data for one or more symbols."""
 

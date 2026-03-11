@@ -1,7 +1,7 @@
 """Main backtesting engine for strategy simulation."""
 
 from typing import List, Dict, Tuple
-from datetime import datetime
+from datetime import date
 import logging
 import pandas as pd
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -37,7 +37,7 @@ class BacktestEngine:
         self.executor = OrderExecutor(commission=backtest.commission, slippage=backtest.slippage)
         self.position_sizer = PositionSizer()
         self.trades: List[Trade] = []
-        self.equity_curve: List[Tuple[datetime, float]] = []
+        self.equity_curve: List[Tuple[date, float]] = []
 
         # Track open positions for signal matching
         self.open_positions: Dict[str, Trade] = {}  # symbol -> Trade
@@ -111,15 +111,13 @@ class BacktestEngine:
             try:
                 bars = await market_data_service.get_bars(
                     symbols=[symbol],
-                    timeframe=self._convert_timeframe(self.backtest.timeframe),
-                    start=self.backtest.start_date.isoformat(),
-                    end=self.backtest.end_date.isoformat(),
+                    start=self.backtest.start_date,
+                    end=self.backtest.end_date,
                 )
 
                 if bars and symbol in bars:
                     # Convert to DataFrame
                     df = pd.DataFrame(bars[symbol])
-                    df["timestamp"] = pd.to_datetime(df["timestamp"])
                     df.set_index("timestamp", inplace=True)
                     market_data[symbol] = df
                     logger.info(f"Loaded {len(df)} bars for {symbol}")
@@ -157,7 +155,7 @@ class BacktestEngine:
 
         return all_signals
 
-    def _create_timeline(self, market_data: Dict[str, pd.DataFrame]) -> List[datetime]:
+    def _create_timeline(self, market_data: Dict[str, pd.DataFrame]) -> List[date]:
         """
         Create chronologically ordered timeline merging all symbols.
 
@@ -174,7 +172,7 @@ class BacktestEngine:
 
         return sorted(list(all_timestamps))
 
-    def _get_current_prices(self, market_data: Dict[str, pd.DataFrame], timestamp: datetime) -> Dict[str, float]:
+    def _get_current_prices(self, market_data: Dict[str, pd.DataFrame], timestamp: date) -> Dict[str, float]:
         """
         Get current prices for all symbols at timestamp.
 
@@ -205,7 +203,7 @@ class BacktestEngine:
 
         return prices
 
-    def _get_signals_at_timestamp(self, signals: List[Signal], timestamp: datetime) -> List[Signal]:
+    def _get_signals_at_timestamp(self, signals: List[Signal], timestamp: date) -> List[Signal]:
         """
         Get all signals at a specific timestamp.
 
@@ -218,7 +216,7 @@ class BacktestEngine:
         """
         return [s for s in signals if s.timestamp == timestamp]
 
-    def _process_buy_signals(self, signals: List[Signal], prices: Dict[str, float], timestamp: datetime):
+    def _process_buy_signals(self, signals: List[Signal], prices: Dict[str, float], timestamp: date):
         """
         Process buy signals, execute orders, create trades.
 
@@ -272,7 +270,7 @@ class BacktestEngine:
             except Exception as e:
                 logger.error(f"Error processing buy signal for {symbol}: {e}")
 
-    def _process_sell_signals(self, signals: List[Signal], prices: Dict[str, float], timestamp: datetime):
+    def _process_sell_signals(self, signals: List[Signal], prices: Dict[str, float], timestamp: date):
         """
         Process sell signals, close positions, update trades.
 
@@ -392,10 +390,7 @@ class BacktestEngine:
         )
 
         # Convert equity curve to JSON-serializable format
-        equity_curve_data = {
-            "timestamps": [ts.isoformat() for ts, _ in self.equity_curve],
-            "values": [float(val) for _, val in self.equity_curve],
-        }
+        equity_curve_data = [{"date": ts.strftime("%Y-%m-%d"), "value": float(val)} for ts, val in self.equity_curve]
 
         # Create result
         result = BacktestResult(
@@ -414,28 +409,7 @@ class BacktestEngine:
             avg_loss=metrics["avg_loss"],
             avg_trade_duration=metrics["avg_trade_duration"],
             final_capital=metrics["final_capital"],
-            equity_curve=equity_curve_data,
+            equity_curve={"curve": equity_curve_data},
         )
 
         return result
-
-    def _convert_timeframe(self, timeframe: str) -> str:
-        """
-        Convert backtest timeframe to Alpaca API format.
-
-        Args:
-            timeframe: Timeframe from backtest (1m, 5m, 15m, 1h, 1d)
-
-        Returns:
-            Alpaca API timeframe format
-        """
-        # Map common formats
-        mapping = {
-            "1m": "1Min",
-            "5m": "5Min",
-            "15m": "15Min",
-            "1h": "1Hour",
-            "1d": "1Day",
-        }
-
-        return mapping.get(timeframe.lower(), "1Day")

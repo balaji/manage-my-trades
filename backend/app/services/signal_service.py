@@ -5,7 +5,7 @@ Signal service for generating and managing trading signals.
 from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from datetime import datetime
+from datetime import date
 import logging
 
 from app.models.signal import Signal
@@ -29,8 +29,8 @@ class SignalService:
         self,
         strategy: Strategy,
         symbol: str,
-        start_date: datetime,
-        end_date: datetime,
+        start_date: date,
+        end_date: date,
     ) -> List[Signal]:
         """
         Generate trading signals for a strategy on a symbol.
@@ -49,9 +49,8 @@ class SignalService:
         # Get market data
         bars = await self.market_data_service.get_bars(
             symbols=[symbol],
-            timeframe="1Day",
-            start=start_date.isoformat(),
-            end=end_date.isoformat(),
+            start=start_date,
+            end=end_date,
         )
 
         if not bars or symbol not in bars:
@@ -63,14 +62,14 @@ class SignalService:
             return []
 
         # Calculate all indicators for the strategy
-        indicator_values = await self._calculate_strategy_indicators(strategy, symbol, start_date, end_date)
+        indicator_values = self._calculate_strategy_indicators(strategy, symbol, bars)
 
         # Generate signals based on strategy configuration
         signals = []
         for i, bar in enumerate(bar_data):
             # Get indicator values at this point
             current_indicators = {
-                name: values[i] if i < len(values) else None for name, values in indicator_values.items()
+                name: values[i]["value"] if i < len(values) else None for name, values in indicator_values.items()
             }
 
             # Evaluate entry/exit conditions
@@ -100,8 +99,8 @@ class SignalService:
         self,
         strategy_id: int,
         symbol: Optional[str] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
         signal_type: Optional[str] = None,
         skip: int = 0,
         limit: int = 100,
@@ -145,13 +144,7 @@ class SignalService:
 
         return list(signals), total
 
-    async def _calculate_strategy_indicators(
-        self,
-        strategy: Strategy,
-        symbol: str,
-        start_date: datetime,
-        end_date: datetime,
-    ) -> Dict[str, List[float]]:
+    def _calculate_strategy_indicators(self, strategy: Strategy, symbol: str, bars) -> Dict[str, List[float]]:
         """
         Calculate all indicators for a strategy.
 
@@ -168,16 +161,18 @@ class SignalService:
 
         for indicator_config in strategy.indicators:
             try:
-                result = await self.technical_analysis_service.calculate_indicators(
+                result = self.technical_analysis_service.calculate_indicators_with_bars(
                     symbol=symbol,
-                    start_date=start_date.isoformat(),
-                    end_date=end_date.isoformat(),
-                    timeframe="1Day",
-                    indicators={indicator_config.indicator_name: indicator_config.parameters},
+                    bars_data=bars,
+                    timeframe="1d",
+                    indicators=[{"name": indicator_config.indicator_name, "params": indicator_config.parameters}],
                 )
 
-                if indicator_config.indicator_name in result:
-                    indicator_values[indicator_config.indicator_name] = result[indicator_config.indicator_name]
+                indicators = result.get("indicators", {})
+                if indicator_config.indicator_name in indicators:
+                    indicator_values[indicator_config.indicator_name] = indicators[indicator_config.indicator_name][
+                        "values"
+                    ]
             except Exception as e:
                 logger.error(f"Failed to calculate {indicator_config.indicator_name}: {e}")
 

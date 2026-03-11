@@ -2,7 +2,7 @@
 Technical analysis schemas.
 """
 
-from datetime import datetime
+from datetime import date
 from typing import List, Dict, Any
 from pydantic import BaseModel, Field
 
@@ -12,8 +12,8 @@ class IndicatorRequest(BaseModel):
 
     symbol: str = Field(..., description="Ticker symbol")
     timeframe: str = Field(default="1d", description="Timeframe (1m, 5m, 15m, 1h, 1d)")
-    start_date: datetime = Field(..., description="Start date")
-    end_date: datetime = Field(..., description="End date")
+    start_date: date = Field(..., description="Start date")
+    end_date: date = Field(..., description="End date")
     indicators: List[Dict[str, Any]] = Field(
         ...,
         description="List of indicators to calculate. Each should have 'name' and optional 'params'",
@@ -23,7 +23,7 @@ class IndicatorRequest(BaseModel):
 class IndicatorValue(BaseModel):
     """Single indicator value at a timestamp."""
 
-    timestamp: datetime
+    timestamp: date
     value: float
 
 

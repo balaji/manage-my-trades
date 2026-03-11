@@ -2,7 +2,7 @@
 Market data service for caching and retrieving OHLCV data.
 """
 
-from datetime import datetime
+from datetime import date
 from typing import List, Dict, Any, Optional
 import logging
 
@@ -26,8 +26,8 @@ class MarketDataService:
     async def get_bars(
         self,
         symbols: List[str],
-        start: datetime,
-        end: datetime,
+        start: date,
+        end: date,
         timeframe: str = "1d",
         use_cache: bool = True,
     ) -> Dict[str, List[Dict[str, Any]]]:
@@ -36,8 +36,8 @@ class MarketDataService:
 
         Args:
             symbols: List of ticker symbols
-            start: Start datetime
-            end: End datetime
+            start: Start date
+            end: End date
             timeframe: Timeframe string
             use_cache: Whether to use cached data
 
@@ -71,15 +71,15 @@ class MarketDataService:
         return result
 
     async def _get_cached_bars(
-        self, symbol: str, start: datetime, end: datetime, timeframe: str
+        self, symbol: str, start: date, end: date, timeframe: str
     ) -> Optional[List[Dict[str, Any]]]:
         """
         Get cached bars from database.
 
         Args:
             symbol: Ticker symbol
-            start: Start datetime
-            end: End datetime
+            start: Start date
+            end: End date
             timeframe: Timeframe string
 
         Returns:
@@ -92,11 +92,11 @@ class MarketDataService:
                     and_(
                         MarketData.symbol == symbol,
                         MarketData.timeframe == timeframe,
-                        MarketData.timestamp >= start,
-                        MarketData.timestamp <= end,
+                        MarketData.trade_date >= start,
+                        MarketData.trade_date <= end,
                     )
                 )
-                .order_by(MarketData.timestamp)
+                .order_by(MarketData.trade_date)
             )
 
             result = await self.db.execute(query)
@@ -107,7 +107,7 @@ class MarketDataService:
 
             return [
                 {
-                    "timestamp": bar.timestamp,
+                    "timestamp": bar.trade_date,
                     "open": bar.open,
                     "high": bar.high,
                     "low": bar.low,
@@ -134,12 +134,13 @@ class MarketDataService:
         """
         try:
             for bar in bars:
+                trade_date = bar["timestamp"]
                 # Check if bar already exists
                 query = select(MarketData).where(
                     and_(
                         MarketData.symbol == symbol,
                         MarketData.timeframe == timeframe,
-                        MarketData.timestamp == bar["timestamp"],
+                        MarketData.trade_date == trade_date,
                     )
                 )
                 result = await self.db.execute(query)
@@ -150,7 +151,7 @@ class MarketDataService:
                     market_data = MarketData(
                         symbol=symbol,
                         timeframe=timeframe,
-                        timestamp=bar["timestamp"],
+                        trade_date=trade_date,
                         open=bar["open"],
                         high=bar["high"],
                         low=bar["low"],

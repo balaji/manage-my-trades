@@ -4,7 +4,7 @@ Strategy schemas for API requests and responses.
 
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, date
 from enum import Enum
 
 
@@ -178,7 +178,7 @@ class SignalResponse(BaseModel):
     strategy_id: int
     symbol: str
     signal_type: str
-    timestamp: datetime
+    timestamp: date
     price: float
     strength: Optional[float]
     indicators: dict

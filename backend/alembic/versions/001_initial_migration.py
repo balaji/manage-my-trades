@@ -61,8 +61,8 @@ def upgrade() -> None:
         sa.Column("strategy_id", sa.Integer(), nullable=False),
         sa.Column("name", sa.String(length=255), nullable=False),
         sa.Column("symbols", postgresql.JSON(astext_type=sa.Text()), nullable=False),
-        sa.Column("start_date", sa.DateTime(), nullable=False),
-        sa.Column("end_date", sa.DateTime(), nullable=False),
+        sa.Column("start_date", sa.Date(), nullable=False),
+        sa.Column("end_date", sa.Date(), nullable=False),
         sa.Column("initial_capital", sa.Float(), nullable=False),
         sa.Column("timeframe", sa.String(length=10), nullable=False, default="1d"),
         sa.Column("commission", sa.Float(), nullable=True, default=0.0),
@@ -296,7 +296,7 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("symbol", sa.String(length=20), nullable=False),
         sa.Column("timeframe", sa.String(length=10), nullable=False),
-        sa.Column("timestamp", sa.DateTime(), nullable=False),
+        sa.Column("trade_date", sa.Date(), nullable=False),
         sa.Column("open", sa.Float(), nullable=False),
         sa.Column("high", sa.Float(), nullable=False),
         sa.Column("low", sa.Float(), nullable=False),
@@ -309,11 +309,11 @@ def upgrade() -> None:
     op.create_index(op.f("ix_market_data_id"), "market_data", ["id"], unique=False)
     op.create_index(op.f("ix_market_data_symbol"), "market_data", ["symbol"], unique=False)
     op.create_index(op.f("ix_market_data_timeframe"), "market_data", ["timeframe"], unique=False)
-    op.create_index(op.f("ix_market_data_timestamp"), "market_data", ["timestamp"], unique=False)
+    op.create_index(op.f("ix_market_data_trade_date"), "market_data", ["trade_date"], unique=False)
     op.create_index(
-        "ix_market_data_symbol_timeframe_timestamp",
+        "ix_market_data_symbol_timeframe_trade_date",
         "market_data",
-        ["symbol", "timeframe", "timestamp"],
+        ["symbol", "timeframe", "trade_date"],
         unique=False,
     )
 

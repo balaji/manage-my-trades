@@ -95,15 +95,15 @@ export default function TechnicalAnalysisPage() {
       const [marketData, indicatorResult] = await Promise.all([
         marketDataApi.getBars({
           symbols: [symbol],
-          start_date: startDate.toISOString(),
-          end_date: endDate.toISOString(),
+          start_date: startDate.toISOString().split("T")[0],
+          end_date: endDate.toISOString().split("T")[0],
           timeframe: "1d",
         }),
         technicalAnalysisApi.calculateIndicators({
           symbol,
           timeframe: "1d",
-          start_date: startDate.toISOString(),
-          end_date: endDate.toISOString(),
+          start_date: startDate.toISOString().split("T")[0],
+          end_date: endDate.toISOString().split("T")[0],
           indicators: [
             { name: "SMA", params: { length: 10 } },
             { name: "SMA", params: { length: 20 } },

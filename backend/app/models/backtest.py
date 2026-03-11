@@ -2,7 +2,7 @@
 Backtest models.
 """
 
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, JSON, Text
+from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, JSON, Text
 from sqlalchemy.orm import relationship
 from app.db.session import Base
 from app.models.base import TimestampMixin
@@ -17,8 +17,8 @@ class Backtest(Base, TimestampMixin):
     strategy_id = Column(Integer, ForeignKey("strategies.id"), nullable=False)
     name = Column(String(255), nullable=False)
     symbols = Column(JSON, nullable=False)  # List of symbols
-    start_date = Column(DateTime, nullable=False, index=True)
-    end_date = Column(DateTime, nullable=False, index=True)
+    start_date = Column(Date, nullable=False, index=True)
+    end_date = Column(Date, nullable=False, index=True)
     initial_capital = Column(Float, nullable=False)
     timeframe = Column(String(10), nullable=False, default="1d")  # 1m, 5m, 15m, 1h, 1d
     commission = Column(Float, default=0.0)

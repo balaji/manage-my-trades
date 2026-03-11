@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, date
 
 
 class BacktestCreate(BaseModel):
@@ -11,8 +11,8 @@ class BacktestCreate(BaseModel):
     strategy_id: int
     name: str
     symbols: List[str]
-    start_date: datetime
-    end_date: datetime
+    start_date: date
+    end_date: date
     initial_capital: float = Field(gt=0, default=10000.0)
     timeframe: str = Field(default="1d")  # 1m, 5m, 15m, 1h, 1d
     commission: float = Field(ge=0, default=0.0)
@@ -50,10 +50,10 @@ class TradeResponse(BaseModel):
     id: int
     symbol: str
     side: str
-    entry_date: datetime
+    entry_date: date
     entry_price: float
     quantity: float
-    exit_date: Optional[datetime] = None
+    exit_date: Optional[date] = None
     exit_price: Optional[float] = None
     pnl: Optional[float] = None
     pnl_pct: Optional[float] = None
@@ -92,8 +92,8 @@ class BacktestResponse(BaseModel):
     strategy_id: int
     name: str
     symbols: List[str]
-    start_date: datetime
-    end_date: datetime
+    start_date: date
+    end_date: date
     initial_capital: float
     timeframe: str
     commission: float

@@ -2,7 +2,7 @@
 Technical analysis service for calculating indicators.
 """
 
-from datetime import datetime
+from datetime import date
 from typing import List, Dict, Any
 import logging
 import pandas as pd
@@ -27,8 +27,8 @@ class TechnicalAnalysisService:
         self,
         symbol: str,
         timeframe: str,
-        start: datetime,
-        end: datetime,
+        start: date,
+        end: date,
         indicators: List[Dict[str, Any]],
     ) -> Dict[str, Any]:
         """
@@ -54,6 +54,20 @@ class TechnicalAnalysisService:
                 use_cache=True,
             )
 
+            return self.calculate_indicators_with_bars(bars_data, symbol, timeframe, indicators)
+
+        except Exception as e:
+            logger.error(f"Error calculating indicators: {e}")
+            raise
+
+    def calculate_indicators_with_bars(
+        self,
+        bars_data: Dict[str, List[Dict[str, Any]]],
+        symbol: str,
+        timeframe: str,
+        indicators: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        try:
             if symbol not in bars_data or not bars_data[symbol]:
                 raise ValueError(f"No market data found for {symbol}")
 

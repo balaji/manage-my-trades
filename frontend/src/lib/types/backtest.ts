@@ -36,7 +36,7 @@ export interface BacktestResult {
   avg_loss: number | null;
   avg_trade_duration: number | null;
   final_capital: number;
-  equity_curve: Record<string, number>;
+  equity_curve: { curve: Array<{ date: string; value: number }> };
 }
 
 export interface Backtest {

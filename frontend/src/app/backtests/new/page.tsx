@@ -90,8 +90,8 @@ export default function NewBacktestPage() {
         strategy_id: parseInt(form.strategy_id),
         name: form.name,
         symbols,
-        start_date: new Date(form.start_date).toISOString(),
-        end_date: new Date(form.end_date).toISOString(),
+        start_date: form.start_date,
+        end_date: form.end_date,
         initial_capital: parseFloat(form.initial_capital),
         timeframe: form.timeframe,
         commission: parseFloat(form.commission),
@@ -281,9 +281,7 @@ export default function NewBacktestPage() {
                 min="0"
                 step="any"
                 value={form.slippage}
-                onChange={(e) =>
-                  setForm({ ...form, slippage: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, slippage: e.target.value })}
                 className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               <p className="text-xs text-gray-500 mt-1">

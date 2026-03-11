@@ -2,7 +2,7 @@
 Market data schemas.
 """
 
-from datetime import datetime
+from datetime import datetime, date
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 class OHLCVBar(BaseModel):
     """OHLCV bar data."""
 
-    timestamp: datetime
+    timestamp: date
     open: float
     high: float
     low: float
@@ -24,8 +24,8 @@ class MarketDataRequest(BaseModel):
     """Request for market data."""
 
     symbols: List[str] = Field(..., description="List of ticker symbols")
-    start_date: datetime = Field(..., description="Start date")
-    end_date: datetime = Field(..., description="End date")
+    start_date: date = Field(..., description="Start date")
+    end_date: date = Field(..., description="End date")
     timeframe: str = Field(default="1d", description="Timeframe (1m, 5m, 15m, 1h, 1d)")
 
 
@@ -67,7 +67,7 @@ class MarketDataCache(BaseModel):
     id: int
     symbol: str
     timeframe: str
-    timestamp: datetime
+    timestamp: date
     open: float
     high: float
     low: float

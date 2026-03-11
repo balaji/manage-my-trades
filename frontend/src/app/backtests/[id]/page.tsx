@@ -15,7 +15,11 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { getBacktest, getBacktestTrades, deleteBacktest } from "@/lib/api/backtests";
+import {
+  getBacktest,
+  getBacktestTrades,
+  deleteBacktest,
+} from "@/lib/api/backtests";
 import { Backtest, BacktestTrade } from "@/lib/types/backtest";
 
 function MetricCard({
@@ -131,11 +135,7 @@ export default function BacktestDetailPage() {
   }
 
   // Build equity curve chart data
-  const equityData = backtest.results?.equity_curve
-    ? Object.entries(backtest.results.equity_curve)
-        .map(([date, value]) => ({ date, value: value as number }))
-        .sort((a, b) => a.date.localeCompare(b.date))
-    : [];
+  const equityData = backtest.results?.equity_curve.curve ?? [];
 
   const r = backtest.results;
 
@@ -214,8 +214,12 @@ export default function BacktestDetailPage() {
               />
               <MetricCard
                 label="Profit Factor"
-                value={r.profit_factor != null ? r.profit_factor.toFixed(2) : "—"}
-                positive={r.profit_factor != null ? r.profit_factor >= 1 : undefined}
+                value={
+                  r.profit_factor != null ? r.profit_factor.toFixed(2) : "—"
+                }
+                positive={
+                  r.profit_factor != null ? r.profit_factor >= 1 : undefined
+                }
               />
               <MetricCard
                 label="Total Trades"
@@ -355,9 +359,7 @@ export default function BacktestDetailPage() {
                         {trade.pnl != null ? (
                           <span
                             className={
-                              trade.pnl >= 0
-                                ? "text-green-600"
-                                : "text-red-600"
+                              trade.pnl >= 0 ? "text-green-600" : "text-red-600"
                             }
                           >
                             {trade.pnl >= 0 ? "+" : ""}${trade.pnl.toFixed(2)}

@@ -1,7 +1,7 @@
 """Portfolio state management for backtesting."""
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date
 from typing import Dict, Optional, Tuple
 from app.models.trade import Trade
 
@@ -13,7 +13,7 @@ class Position:
     symbol: str
     quantity: float  # Support fractional shares
     avg_entry_price: float
-    entry_date: datetime
+    entry_date: date
     current_price: float = 0.0
 
     @property
@@ -49,7 +49,7 @@ class PortfolioState:
 
     cash: float
     positions: Dict[str, Position] = field(default_factory=dict)
-    timestamp: Optional[datetime] = None
+    timestamp: Optional[date] = None
 
     def get_total_equity(self, current_prices: Dict[str, float]) -> float:
         """Calculate total portfolio value (cash + positions)."""
@@ -82,7 +82,7 @@ class PortfolioState:
         quantity: float,
         price: float,
         commission: float,
-        timestamp: datetime,
+        timestamp: date,
     ) -> Trade:
         """Execute buy and return Trade object."""
         total_cost = (quantity * price) + commission
@@ -133,7 +133,7 @@ class PortfolioState:
         quantity: float,
         price: float,
         commission: float,
-        timestamp: datetime,
+        timestamp: date,
     ) -> Tuple[Trade, float, float]:
         """
         Execute sell and return (Trade object, pnl, pnl_pct).

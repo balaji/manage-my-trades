@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 import logging
 
 from app.models.backtest import Backtest
+from app.models.strategy import Strategy
 from app.models.trade import Trade
 from app.services.strategy_service import StrategyService
 from app.core.backtesting.engine import BacktestEngine
@@ -69,7 +70,7 @@ class BacktestService:
 
         logger.info(f"Created backtest {backtest.id}: {backtest.name}")
 
-        return backtest
+        return await self.get_backtest(backtest.id)
 
     async def run_backtest(self, backtest_id: int) -> Backtest:
         """
@@ -149,7 +150,7 @@ class BacktestService:
         result = await self.db.execute(
             select(Backtest)
             .options(selectinload(Backtest.results))
-            .options(selectinload(Backtest.strategy))
+            .options(selectinload(Backtest.strategy).selectinload(Strategy.indicators))
             .where(Backtest.id == backtest_id)
         )
         return result.scalar_one_or_none()
@@ -174,7 +175,9 @@ class BacktestService:
             Tuple of (backtests list, total count)
         """
         # Build query
-        query = select(Backtest).options(selectinload(Backtest.results), selectinload(Backtest.strategy))
+        query = select(Backtest).options(
+            selectinload(Backtest.results), selectinload(Backtest.strategy).selectinload(Strategy.indicators)
+        )
 
         # Apply filters
         filters = []

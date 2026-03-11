@@ -2,7 +2,7 @@
 Alpaca API service using direct HTTP calls via httpx (no alpaca-py SDK dependency).
 """
 
-from datetime import datetime
+from datetime import datetime, date
 from typing import List, Optional, Dict, Any
 import logging
 
@@ -42,7 +42,7 @@ class AlpacaServiceHttp(AlpacaServiceBase):
         return timeframe_map[timeframe]
 
     async def get_bars(
-        self, symbols: List[str], start: datetime, end: datetime, timeframe: str = "1d"
+        self, symbols: List[str], start: date, end: date, timeframe: str = "1d"
     ) -> Dict[str, List[Dict[str, Any]]]:
         """Fetch OHLCV bar data for symbols."""
         try:
@@ -79,7 +79,7 @@ class AlpacaServiceHttp(AlpacaServiceBase):
                 raw_bars = accumulated.get(symbol, [])
                 result[symbol] = [
                     {
-                        "timestamp": datetime.fromisoformat(bar["t"].replace("Z", "+00:00")),
+                        "timestamp": datetime.fromisoformat(bar["t"].replace("Z", "+00:00")).date(),
                         "open": float(bar["o"]),
                         "high": float(bar["h"]),
                         "low": float(bar["l"]),

@@ -42,6 +42,15 @@ services:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+    develop:
+      watch:
+        - action: sync
+          path: ./backend/app
+          target: /app/app
+        - action: rebuild
+          path: ./backend/pyproject.toml
+        - action: rebuild
+          path: ./backend/uv.lock
 
   frontend:
     build:
@@ -58,6 +67,18 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+    develop:
+      watch:
+        - action: sync
+          path: ./frontend/src
+          target: /app/src
+        - action: sync
+          path: ./frontend/public
+          target: /app/public
+        - action: rebuild
+          path: ./frontend/package.json
+        - action: rebuild
+          path: ./frontend/package-lock.json
 
 volumes:
   postgres_data:

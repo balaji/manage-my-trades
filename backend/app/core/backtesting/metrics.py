@@ -1,7 +1,7 @@
 """Performance metrics calculator for backtesting."""
 
 from typing import List, Tuple, Dict, Any, Optional
-from datetime import datetime
+from datetime import date
 import numpy as np
 from app.models.trade import Trade
 
@@ -31,9 +31,7 @@ class MetricsCalculator:
         return absolute_return, percentage_return
 
     @staticmethod
-    def calculate_sharpe_ratio(
-        equity_curve: List[Tuple[datetime, float]], risk_free_rate: float = 0.02
-    ) -> Optional[float]:
+    def calculate_sharpe_ratio(equity_curve: List[Tuple[date, float]], risk_free_rate: float = 0.02) -> Optional[float]:
         """
         Calculate annualized Sharpe ratio.
 
@@ -82,7 +80,7 @@ class MetricsCalculator:
         return float(annualized_sharpe)
 
     @staticmethod
-    def calculate_max_drawdown(equity_curve: List[Tuple[datetime, float]]) -> Tuple[float, float]:
+    def calculate_max_drawdown(equity_curve: List[Tuple[date, float]]) -> Tuple[float, float]:
         """
         Calculate maximum drawdown (peak to trough decline).
 
@@ -269,7 +267,7 @@ class MetricsCalculator:
     def calculate_all_metrics(
         initial_capital: float,
         final_capital: float,
-        equity_curve: List[Tuple[datetime, float]],
+        equity_curve: List[Tuple[date, float]],
         trades: List[Trade],
         risk_free_rate: float = 0.02,
     ) -> Dict[str, Any]:

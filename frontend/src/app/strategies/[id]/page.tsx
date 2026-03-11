@@ -87,7 +87,10 @@ export default function StrategyDetailPage() {
 
   const handleGenerateSignals = async () => {
     if (!strategy) return;
-    const symbol = prompt("Enter symbol to generate signals for (e.g. SPY):", "SPY");
+    const symbol = prompt(
+      "Enter symbol to generate signals for (e.g. SPY):",
+      "SPY",
+    );
     if (!symbol) return;
     setGeneratingSignals(true);
     try {
@@ -109,13 +112,17 @@ export default function StrategyDetailPage() {
       description: strategy.description,
       strategy_type: strategy.strategy_type,
       config: strategy.config,
-      indicators: strategy.indicators.map(({ indicator_name, parameters, usage }) => ({
-        indicator_name,
-        parameters,
-        usage,
-      })),
+      indicators: strategy.indicators.map(
+        ({ indicator_name, parameters, usage }) => ({
+          indicator_name,
+          parameters,
+          usage,
+        }),
+      ),
     };
-    const blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(config, null, 2)], {
+      type: "application/json",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;

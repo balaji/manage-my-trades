@@ -5,7 +5,7 @@ Strategy API endpoints.
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
-from datetime import datetime
+from datetime import date
 
 from app.db.session import get_db
 from app.services.strategy_service import StrategyService
@@ -266,12 +266,12 @@ async def deactivate_strategy(
 async def generate_strategy_signals(
     strategy_id: int,
     symbol: str = Query(..., description="Symbol to generate signals for"),
-    start_date: Optional[datetime] = Query(None, description="Start date (defaults to 90 days ago)"),
-    end_date: Optional[datetime] = Query(None, description="End date (defaults to today)"),
+    start_date: Optional[date] = Query(None, description="Start date (defaults to 90 days ago)"),
+    end_date: Optional[date] = Query(None, description="End date (defaults to today)"),
     db: AsyncSession = Depends(get_db),
 ):
     """Generate trading signals for a strategy on a given symbol."""
-    from datetime import timezone, timedelta
+    from datetime import timedelta
 
     strategy_service = StrategyService(db)
     strategy = await strategy_service.get_strategy(strategy_id)
@@ -281,11 +281,10 @@ async def generate_strategy_signals(
             detail=f"Strategy with ID {strategy_id} not found",
         )
 
-    now = datetime.now(timezone.utc)
     if start_date is None:
-        start_date = now - timedelta(days=90)
+        start_date = date.today() - timedelta(days=90)
     if end_date is None:
-        end_date = now
+        end_date = date.today()
 
     signal_service = SignalService(db)
     try:
@@ -307,8 +306,8 @@ async def generate_strategy_signals(
 async def get_strategy_signals(
     strategy_id: int,
     symbol: Optional[str] = Query(None, description="Filter by symbol"),
-    start_date: Optional[datetime] = Query(None, description="Filter signals after this date"),
-    end_date: Optional[datetime] = Query(None, description="Filter signals before this date"),
+    start_date: Optional[date] = Query(None, description="Filter signals after this date"),
+    end_date: Optional[date] = Query(None, description="Filter signals before this date"),
     signal_type: Optional[str] = Query(None, description="Filter by signal type (buy, sell, hold)"),
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
