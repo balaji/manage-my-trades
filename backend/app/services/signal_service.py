@@ -19,11 +19,11 @@ logger = logging.getLogger(__name__)
 class SignalService:
     """Service for generating and managing trading signals."""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession, market_db: AsyncSession):
         """Initialize signal service."""
         self.db = db
-        self.technical_analysis_service = TechnicalAnalysisService(db)
-        self.market_data_service = MarketDataService(db)
+        self.technical_analysis_service = TechnicalAnalysisService(market_db)
+        self.market_data_service = MarketDataService(market_db)
 
     async def generate_signals(
         self,

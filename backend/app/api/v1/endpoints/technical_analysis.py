@@ -6,7 +6,7 @@ from typing import Dict, Any
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.session import get_db
+from app.db.session import get_market_db
 from app.services.technical_analysis_service import TechnicalAnalysisService
 from app.schemas.technical_analysis import (
     IndicatorRequest,
@@ -46,7 +46,9 @@ router = APIRouter()
         500: {"description": "Internal server error"},
     },
 )
-async def calculate_indicators(request: IndicatorRequest, db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
+async def calculate_indicators(
+    request: IndicatorRequest, market_db: AsyncSession = Depends(get_market_db)
+) -> Dict[str, Any]:
     """
     Calculate one or more technical indicators for a symbol.
 
@@ -87,7 +89,7 @@ async def calculate_indicators(request: IndicatorRequest, db: AsyncSession = Dep
     - Time-series data with calculated indicator values
     """
     try:
-        service = TechnicalAnalysisService(db)
+        service = TechnicalAnalysisService(market_db)
         result = await service.calculate_indicators(
             symbol=request.symbol,
             timeframe=request.timeframe,
@@ -133,7 +135,7 @@ async def calculate_indicators(request: IndicatorRequest, db: AsyncSession = Dep
         500: {"description": "Internal server error"},
     },
 )
-async def get_supported_indicators(db: AsyncSession = Depends(get_db)):
+async def get_supported_indicators(market_db: AsyncSession = Depends(get_market_db)):
     """
     Get a comprehensive list of all supported technical indicators.
 
@@ -151,7 +153,7 @@ async def get_supported_indicators(db: AsyncSession = Depends(get_db)):
     - Use the returned information to construct requests for `/calculate`
     """
     try:
-        service = TechnicalAnalysisService(db)
+        service = TechnicalAnalysisService(market_db)
         indicators = service.get_supported_indicators()
 
         return SupportedIndicatorsResponse(indicators=indicators)

@@ -18,10 +18,9 @@ logger = logging.getLogger(__name__)
 class TechnicalAnalysisService:
     """Service for technical analysis and indicator calculation."""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, market_db: AsyncSession):
         """Initialize service."""
-        self.db = db
-        self.market_data_service = MarketDataService(db)
+        self.market_data_service = MarketDataService(market_db)
 
     async def calculate_indicators(
         self,

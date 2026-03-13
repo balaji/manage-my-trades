@@ -18,9 +18,9 @@ logger = logging.getLogger(__name__)
 class MarketDataService:
     """Service for managing market data."""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, market_db: AsyncSession):
         """Initialize service."""
-        self.db = db
+        self.db = market_db
         self.alpaca_service = get_alpaca_service()
 
     async def get_bars(

@@ -42,12 +42,13 @@ class BacktestEngine:
         # Track open positions for signal matching
         self.open_positions: Dict[str, Trade] = {}  # symbol -> Trade
 
-    async def run(self, db: AsyncSession) -> BacktestResult:
+    async def run(self, db: AsyncSession, market_db: AsyncSession) -> BacktestResult:
         """
         Execute full backtest simulation.
 
         Args:
-            db: Database session
+            db: Trading database session
+            market_db: Market data database session
 
         Returns:
             BacktestResult with performance metrics
@@ -55,13 +56,13 @@ class BacktestEngine:
         logger.info(f"Starting backtest {self.backtest.id} for strategy {self.strategy.id}")
 
         # 1. Fetch historical market data for all symbols
-        market_data = await self._fetch_market_data(db)
+        market_data = await self._fetch_market_data(market_db)
 
         if not market_data:
             raise ValueError("No market data available for backtest")
 
         # 2. Generate signals using existing SignalService
-        all_signals = await self._generate_signals(db)
+        all_signals = await self._generate_signals(db, market_db)
 
         logger.info(f"Generated {len(all_signals)} total signals")
 
@@ -97,14 +98,14 @@ class BacktestEngine:
 
         return result
 
-    async def _fetch_market_data(self, db: AsyncSession) -> Dict[str, pd.DataFrame]:
+    async def _fetch_market_data(self, market_db: AsyncSession) -> Dict[str, pd.DataFrame]:
         """
         Fetch OHLCV data for all symbols using MarketDataService.
 
         Returns:
             Dict mapping symbol to DataFrame with OHLCV data
         """
-        market_data_service = MarketDataService(db)
+        market_data_service = MarketDataService(market_db)
         market_data = {}
 
         for symbol in self.backtest.symbols:
@@ -129,14 +130,14 @@ class BacktestEngine:
 
         return market_data
 
-    async def _generate_signals(self, db: AsyncSession) -> List[Signal]:
+    async def _generate_signals(self, db: AsyncSession, market_db: AsyncSession) -> List[Signal]:
         """
         Generate signals using SignalService for all symbols.
 
         Returns:
             List of all signals across all symbols
         """
-        signal_service = SignalService(db)
+        signal_service = SignalService(db, market_db)
         all_signals = []
 
         for symbol in self.backtest.symbols:

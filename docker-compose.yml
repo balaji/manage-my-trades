@@ -27,7 +27,8 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql+psycopg://trading_user:trading_password@postgres:5432/trading_db
+      - TRADING_DATA_DATABASE_URL=postgresql+psycopg://trading_user:trading_password@postgres:5432/trading_db
+      - MARKET_DATA_DATABASE_URL=postgresql+psycopg://trading_user:trading_password@postgres:5432/market_data_db
       - ALPACA_API_KEY=${ALPACA_API_KEY}
       - ALPACA_SECRET_KEY=${ALPACA_SECRET_KEY}
       - ALPACA_BASE_URL=https://paper-api.alpaca.markets

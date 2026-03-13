@@ -19,9 +19,10 @@ logger = logging.getLogger(__name__)
 class BacktestService:
     """Service for managing backtests."""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession, market_db: AsyncSession):
         """Initialize backtest service."""
         self.db = db
+        self.market_db = market_db
         self.strategy_service = StrategyService(db)
 
     async def create_backtest(self, backtest_data: BacktestCreate) -> Backtest:
@@ -106,7 +107,7 @@ class BacktestService:
 
             # Run backtest engine
             engine = BacktestEngine(backtest, backtest.strategy)
-            result = await engine.run(self.db)
+            result = await engine.run(self.db, self.market_db)
 
             # Save results
             result.backtest_id = backtest.id

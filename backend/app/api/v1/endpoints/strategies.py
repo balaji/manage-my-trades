@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 from datetime import date
 
-from app.db.session import get_db
+from app.db.session import get_db, get_market_db
 from app.services.strategy_service import StrategyService
 from app.services.signal_service import SignalService
 from app.schemas.strategy import (
@@ -269,6 +269,7 @@ async def generate_strategy_signals(
     start_date: Optional[date] = Query(None, description="Start date (defaults to 90 days ago)"),
     end_date: Optional[date] = Query(None, description="End date (defaults to today)"),
     db: AsyncSession = Depends(get_db),
+    market_db: AsyncSession = Depends(get_market_db),
 ):
     """Generate trading signals for a strategy on a given symbol."""
     from datetime import timedelta
@@ -286,7 +287,7 @@ async def generate_strategy_signals(
     if end_date is None:
         end_date = date.today()
 
-    signal_service = SignalService(db)
+    signal_service = SignalService(db, market_db)
     try:
         signals = await signal_service.generate_signals(strategy, symbol, start_date, end_date)
         return SignalListResponse(signals=signals, total=len(signals))
@@ -312,6 +313,7 @@ async def get_strategy_signals(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of records to return"),
     db: AsyncSession = Depends(get_db),
+    market_db: AsyncSession = Depends(get_market_db),
 ):
     """
     Get trading signals for a strategy.
@@ -334,7 +336,7 @@ async def get_strategy_signals(
         )
 
     # Get signals
-    signal_service = SignalService(db)
+    signal_service = SignalService(db, market_db)
     try:
         signals, total = await signal_service.get_strategy_signals(
             strategy_id=strategy_id,

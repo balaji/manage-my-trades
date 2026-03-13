@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 import logging
 
 from app.config import get_settings
-from app.db.session import init_db
+from app.db.session import init_db, init_market_db
 from app.api.v1 import api_router
 
 # Configure logging
@@ -31,6 +31,12 @@ async def lifespan(app: FastAPI):
         logger.info("Database initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize database: {e}")
+        raise
+    try:
+        await init_market_db()
+        logger.info("Market data database initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize market data database: {e}")
         raise
 
     yield

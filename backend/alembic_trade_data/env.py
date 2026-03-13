@@ -30,7 +30,7 @@ if config.config_file_name is not None:
 
 # Get database URL from settings
 settings = get_settings()
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("+asyncpg", ""))
+config.set_main_option("sqlalchemy.url", settings.TRADING_DATA_DATABASE_URL.replace("+asyncpg", ""))
 
 # add your model's MetaData object here
 # for 'autogenerate' support

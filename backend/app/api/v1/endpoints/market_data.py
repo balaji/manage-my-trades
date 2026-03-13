@@ -6,7 +6,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.session import get_db
+from app.db.session import get_market_db
 from app.services.market_data_service import MarketDataService
 from app.schemas.market_data import (
     MarketDataRequest,
@@ -54,7 +54,7 @@ router = APIRouter()
 async def get_market_data(
     request: MarketDataRequest,
     use_cache: bool = Query(True, description="Use cached data if available"),
-    db: AsyncSession = Depends(get_db),
+    market_db: AsyncSession = Depends(get_market_db),
 ):
     """
     Get OHLCV (Open, High, Low, Close, Volume) bar data for one or more symbols.
@@ -74,7 +74,7 @@ async def get_market_data(
     - List of market data responses, one per symbol with OHLCV bars
     """
     try:
-        service = MarketDataService(db)
+        service = MarketDataService(market_db)
         data = await service.get_bars(
             symbols=request.symbols,
             start=request.start_date,
@@ -126,7 +126,7 @@ async def get_market_data(
 )
 async def search_symbols(
     query: str = Query(..., description="Search query (symbol or company name)", min_length=1),
-    db: AsyncSession = Depends(get_db),
+    market_db: AsyncSession = Depends(get_market_db),
 ):
     """
     Search for ticker symbols by symbol code or company name.
@@ -142,7 +142,7 @@ async def search_symbols(
     - Query: "S&P" returns all symbols matching "S&P"
     """
     try:
-        service = MarketDataService(db)
+        service = MarketDataService(market_db)
         symbols = await service.search_symbols(query)
 
         return SymbolSearchResponse(symbols=[SymbolInfo(**s) for s in symbols])
@@ -174,7 +174,7 @@ async def search_symbols(
         500: {"description": "Internal server error"},
     },
 )
-async def get_latest_quote(symbol: str, db: AsyncSession = Depends(get_db)):
+async def get_latest_quote(symbol: str, market_db: AsyncSession = Depends(get_market_db)):
     """
     Get the most recent quote (bid/ask/last price) for a symbol.
 
@@ -189,7 +189,7 @@ async def get_latest_quote(symbol: str, db: AsyncSession = Depends(get_db)):
     - May return last available quote when market is closed
     """
     try:
-        service = MarketDataService(db)
+        service = MarketDataService(market_db)
         quote = await service.get_latest_quote(symbol)
 
         if not quote:

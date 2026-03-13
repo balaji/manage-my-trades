@@ -3,10 +3,10 @@ Market data models.
 """
 
 from sqlalchemy import Column, Integer, String, Float, Date, DateTime, Index
-from app.db.session import Base
+from app.db.session import MarketDataBase, Base
 
 
-class MarketData(Base):
+class MarketData(MarketDataBase):
     """OHLCV market data cache (TimescaleDB hypertable)."""
 
     __tablename__ = "market_data"
@@ -33,7 +33,7 @@ class MarketData(Base):
     )
 
 
-class IndicatorCache(Base):
+class IndicatorCache(MarketDataBase):
     """Cached indicator values."""
 
     __tablename__ = "indicator_cache"
