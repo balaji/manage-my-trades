@@ -2,13 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(git add:*)",
-      "Bash(git commit -m \"$\\(cat <<''EOF''\nPhase 2: Market Data & Indicators complete\n\nBackend implementations:\n- Alpaca service for fetching market data and trading operations\n- Market data service with database caching\n- Technical indicator calculator using pandas-ta\n- Support for 7 indicators: SMA, EMA, RSI, MACD, Stochastic, Bollinger Bands, ATR\n- Market data API endpoints \\(bars, quotes, symbol search\\)\n- Technical analysis API endpoints \\(calculate indicators, list supported\\)\n\nFrontend implementations:\n- TypeScript types for market data and technical analysis\n- API client with error handling\n- Market data API functions\n- Technical analysis API functions\n- PriceChart component using lightweight-charts\n- Technical Analysis page with interactive chart\n\nFeatures delivered:\n✅ Real-time market data fetching from Alpaca\n✅ Database caching for OHLCV data\n✅ 7 technical indicators calculated with pandas-ta\n✅ REST API endpoints for market data and indicators\n✅ Interactive candlestick chart with indicator overlays\n✅ Technical analysis page with symbol selection\n\nReady for Phase 3: Strategy System\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(grep:*)",
       "Bash(tree:*)",
       "Bash(python:*)",
       "Bash(npm run:*)",
-      "Bash(npx tsc:*)",
-      "Bash(find /Users/balaji/projects/manage-my-trades -name \"*seed*\" -o -name \"*example*\" -o -name \"*fixture*\" 2>/dev/null | head -20)"
+      "Bash(npx tsc:*)"
     ]
   }
 }
