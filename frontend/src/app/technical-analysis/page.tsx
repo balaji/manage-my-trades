@@ -1,34 +1,34 @@
-"use client";
+'use client';
 
 /**
  * Technical Analysis page.
  */
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { IChartApi, LineStyle } from "lightweight-charts";
-import { PriceChart } from "@/components/charts/PriceChart";
-import { OscillatorChart } from "@/components/charts/OscillatorChart";
-import { marketDataApi, technicalAnalysisApi } from "@/lib/api";
-import type { OHLCVBar } from "@/lib/types/market-data";
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { IChartApi, LineStyle } from 'lightweight-charts';
+import { PriceChart } from '@/components/charts/PriceChart';
+import { OscillatorChart } from '@/components/charts/OscillatorChart';
+import { marketDataApi, technicalAnalysisApi } from '@/lib/api';
+import type { OHLCVBar } from '@/lib/types/market-data';
 
 const RANGES = [
-  { label: "90 days", days: 90 },
-  { label: "6 months", days: 180 },
-  { label: "1 year", days: 365 },
-  { label: "3 years", days: 1095 },
-  { label: "10 years", days: 3650 },
+  { label: '90 days', days: 90 },
+  { label: '6 months', days: 180 },
+  { label: '1 year', days: 365 },
+  { label: '3 years', days: 1095 },
+  { label: '10 years', days: 3650 },
 ];
 
 const SMA_COLORS: Record<number, string> = {
-  10: "#2196F3",
-  20: "#9C27B0",
-  30: "#FF5722",
+  10: '#2196F3',
+  20: '#9C27B0',
+  30: '#FF5722',
 };
 const EMA_COLORS: Record<number, string> = {
-  10: "#00BCD4",
-  20: "#8BC34A",
-  30: "#FF9800",
+  10: '#00BCD4',
+  20: '#8BC34A',
+  30: '#FF9800',
 };
-const BBAND_COLOR = "#607D8B";
+const BBAND_COLOR = '#607D8B';
 
 type DataPoint = { timestamp: string; value: number };
 type Indicator = {
@@ -40,16 +40,14 @@ type Indicator = {
 };
 
 export default function TechnicalAnalysisPage() {
-  const [symbol, setSymbol] = useState("SPY");
+  const [symbol, setSymbol] = useState('SPY');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [chartData, setChartData] = useState<OHLCVBar[]>([]);
 
   // SMA / EMA toggleable indicators
   const [allIndicators, setAllIndicators] = useState<Indicator[]>([]);
-  const [enabledIndicators, setEnabledIndicators] = useState<Set<string>>(
-    new Set(["SMA 10"]),
-  );
+  const [enabledIndicators, setEnabledIndicators] = useState<Set<string>>(new Set(['SMA 10']));
   const [showBBands, setShowBBands] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -71,15 +69,12 @@ export default function TechnicalAnalysisPage() {
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node)
-      ) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setDropdownOpen(false);
       }
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   const handleLoadData = async (days: number = rangeDays) => {
@@ -95,24 +90,24 @@ export default function TechnicalAnalysisPage() {
       const [marketData, indicatorResult] = await Promise.all([
         marketDataApi.getBars({
           symbols: [symbol],
-          start_date: startDate.toISOString().split("T")[0],
-          end_date: endDate.toISOString().split("T")[0],
-          timeframe: "1d",
+          start_date: startDate.toISOString().split('T')[0],
+          end_date: endDate.toISOString().split('T')[0],
+          timeframe: '1d',
         }),
         technicalAnalysisApi.calculateIndicators({
           symbol,
-          timeframe: "1d",
-          start_date: startDate.toISOString().split("T")[0],
-          end_date: endDate.toISOString().split("T")[0],
+          timeframe: '1d',
+          start_date: startDate.toISOString().split('T')[0],
+          end_date: endDate.toISOString().split('T')[0],
           indicators: [
-            { name: "SMA", params: { length: 10 } },
-            { name: "SMA", params: { length: 20 } },
-            { name: "SMA", params: { length: 30 } },
-            { name: "EMA", params: { length: 10 } },
-            { name: "EMA", params: { length: 20 } },
-            { name: "EMA", params: { length: 30 } },
-            { name: "RSI", params: { length: 14 } },
-            { name: "BBANDS", params: { length: 20, std: 2.0 } },
+            { name: 'SMA', params: { length: 10 } },
+            { name: 'SMA', params: { length: 20 } },
+            { name: 'SMA', params: { length: 30 } },
+            { name: 'EMA', params: { length: 10 } },
+            { name: 'EMA', params: { length: 20 } },
+            { name: 'EMA', params: { length: 30 } },
+            { name: 'RSI', params: { length: 14 } },
+            { name: 'BBANDS', params: { length: 20, std: 2.0 } },
           ],
         }),
       ]);
@@ -123,39 +118,37 @@ export default function TechnicalAnalysisPage() {
         const results = Object.values(indicatorResult.indicators);
 
         // RSI
-        const rsiResult = results.find((r) => r.name === "RSI" && r.values);
+        const rsiResult = results.find((r) => r.name === 'RSI' && r.values);
         setRsiData(rsiResult?.values?.filter((v) => v.value !== null) ?? []);
 
         // Bollinger Bands (multi-column)
-        const bbResult = results.find((r) => r.name === "BBANDS" && r.columns);
+        const bbResult = results.find((r) => r.name === 'BBANDS' && r.columns);
         if (bbResult?.columns) {
           const cols = bbResult.columns;
           const length = bbResult.params.length as number;
           const std = bbResult.params.std as number;
 
           const pick = (prefix: string): DataPoint[] =>
-            (cols[`${prefix}_${length}_${std}`] ?? []).filter(
-              (v) => v.value !== null,
-            );
+            (cols[`${prefix}_${length}_${std}`] ?? []).filter((v) => v.value !== null);
 
           setBbandIndicators([
             {
-              name: "BB Upper",
-              data: pick("BBU"),
+              name: 'BB Upper',
+              data: pick('BBU'),
               color: BBAND_COLOR,
               lineStyle: LineStyle.Dashed,
               lineWidth: 1,
             },
             {
-              name: "BB Middle",
-              data: pick("BBM"),
+              name: 'BB Middle',
+              data: pick('BBM'),
               color: BBAND_COLOR,
               lineStyle: LineStyle.Solid,
               lineWidth: 1,
             },
             {
-              name: "BB Lower",
-              data: pick("BBL"),
+              name: 'BB Lower',
+              data: pick('BBL'),
               color: BBAND_COLOR,
               lineStyle: LineStyle.Dashed,
               lineWidth: 1,
@@ -163,41 +156,41 @@ export default function TechnicalAnalysisPage() {
           ]);
 
           setBbpData(
-            pick("BBP")
+            pick('BBP')
               .filter((v) => v.value !== null)
-              .map((v) => ({ ...v, value: v.value * 100 })),
+              .map((v) => ({ ...v, value: v.value * 100 }))
           );
         }
 
         // SMA / EMA
         const parsed: Indicator[] = results
-          .filter((r) => (r.name === "SMA" || r.name === "EMA") && r.values)
+          .filter((r) => (r.name === 'SMA' || r.name === 'EMA') && r.values)
           .map((r) => {
             const period = r.params.length as number;
-            const colors = r.name === "SMA" ? SMA_COLORS : EMA_COLORS;
+            const colors = r.name === 'SMA' ? SMA_COLORS : EMA_COLORS;
             return {
               name: `${r.name} ${period}`,
               data: r.values!.filter((v) => v.value !== null),
-              color: colors[period] ?? "#2196F3",
+              color: colors[period] ?? '#2196F3',
             };
           })
           .sort((a, b) => {
-            const [nameA, pA] = a.name.split(" ");
-            const [nameB, pB] = b.name.split(" ");
+            const [nameA, pA] = a.name.split(' ');
+            const [nameB, pB] = b.name.split(' ');
             if (nameA !== nameB) return nameA.localeCompare(nameB);
             return parseInt(pA) - parseInt(pB);
           });
 
         setAllIndicators(parsed);
       } else {
-        setError("No data available for this symbol");
+        setError('No data available for this symbol');
         setAllIndicators([]);
         setBbandIndicators([]);
         setRsiData([]);
         setBbpData([]);
       }
     } catch (err: any) {
-      setError(err.message || "Failed to load data");
+      setError(err.message || 'Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -212,17 +205,14 @@ export default function TechnicalAnalysisPage() {
   };
 
   // Sync all charts together
-  const syncTo = useCallback(
-    (source: IChartApi, targets: (IChartApi | null)[]) => {
-      source.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-        if (syncingRef.current || !range) return;
-        syncingRef.current = true;
-        targets.forEach((t) => t?.timeScale().setVisibleLogicalRange(range));
-        syncingRef.current = false;
-      });
-    },
-    [],
-  );
+  const syncTo = useCallback((source: IChartApi, targets: (IChartApi | null)[]) => {
+    source.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+      if (syncingRef.current || !range) return;
+      syncingRef.current = true;
+      targets.forEach((t) => t?.timeScale().setVisibleLogicalRange(range));
+      syncingRef.current = false;
+    });
+  }, []);
 
   const handlePriceChartReady = useCallback(
     (chart: IChartApi) => {
@@ -232,7 +222,7 @@ export default function TechnicalAnalysisPage() {
         syncTo(oscillatorChartRef.current, [chart]);
       }
     },
-    [syncTo],
+    [syncTo]
   );
 
   const handleOscillatorChartReady = useCallback(
@@ -243,11 +233,11 @@ export default function TechnicalAnalysisPage() {
         syncTo(priceChartRef.current, [chart]);
       }
     },
-    [syncTo],
+    [syncTo]
   );
 
-  const smaGroup = allIndicators.filter((i) => i.name.startsWith("SMA"));
-  const emaGroup = allIndicators.filter((i) => i.name.startsWith("EMA"));
+  const smaGroup = allIndicators.filter((i) => i.name.startsWith('SMA'));
+  const emaGroup = allIndicators.filter((i) => i.name.startsWith('EMA'));
   const activeIndicators = [
     ...allIndicators.filter((i) => enabledIndicators.has(i.name)),
     ...(showBBands ? bbandIndicators : []),
@@ -266,9 +256,7 @@ export default function TechnicalAnalysisPage() {
                 type="text"
                 value={symbol}
                 onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-                onKeyDown={(e) =>
-                  e.key === "Enter" && !loading && handleLoadData(rangeDays)
-                }
+                onKeyDown={(e) => e.key === 'Enter' && !loading && handleLoadData(rangeDays)}
                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Enter symbol (e.g., SPY)"
               />
@@ -279,23 +267,17 @@ export default function TechnicalAnalysisPage() {
                 disabled={loading}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
-                {loading ? "Loading..." : "Load Chart"}
+                {loading ? 'Loading...' : 'Load Chart'}
               </button>
             </div>
           </div>
 
-          {error && (
-            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-              {error}
-            </div>
-          )}
+          {error && <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">{error}</div>}
 
           {chartData.length > 0 && (
             <div>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold">
-                  {symbol} - Daily Chart
-                </h2>
+                <h2 className="text-xl font-semibold">{symbol} - Daily Chart</h2>
                 <div className="flex items-center gap-3">
                   <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
                     <input
@@ -314,7 +296,7 @@ export default function TechnicalAnalysisPage() {
                         handleLoadData(days);
                       }}
                       disabled={loading}
-                      className={`text-sm px-3 py-1 rounded ${rangeDays === days ? "bg-blue-600 text-white" : "text-blue-600 hover:underline"}`}
+                      className={`text-sm px-3 py-1 rounded ${rangeDays === days ? 'bg-blue-600 text-white' : 'text-blue-600 hover:underline'}`}
                     >
                       {label}
                     </button>
@@ -332,17 +314,12 @@ export default function TechnicalAnalysisPage() {
                     >
                       Technicals
                       <svg
-                        className={`w-3.5 h-3.5 transition-transform ${dropdownOpen ? "rotate-180" : ""}`}
+                        className={`w-3.5 h-3.5 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`}
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 9l-7 7-7-7"
-                        />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
                     </button>
                     {dropdownOpen && (
@@ -362,10 +339,7 @@ export default function TechnicalAnalysisPage() {
                               className="w-4 h-4"
                               style={{ accentColor: color }}
                             />
-                            <span
-                              className="inline-block w-5 h-0.5 rounded"
-                              style={{ backgroundColor: color }}
-                            />
+                            <span className="inline-block w-5 h-0.5 rounded" style={{ backgroundColor: color }} />
                             <span className="text-sm">{name}</span>
                           </label>
                         ))}
@@ -384,10 +358,7 @@ export default function TechnicalAnalysisPage() {
                               className="w-4 h-4"
                               style={{ accentColor: color }}
                             />
-                            <span
-                              className="inline-block w-5 h-0.5 rounded"
-                              style={{ backgroundColor: color }}
-                            />
+                            <span className="inline-block w-5 h-0.5 rounded" style={{ backgroundColor: color }} />
                             <span className="text-sm">{name}</span>
                           </label>
                         ))}
@@ -402,10 +373,7 @@ export default function TechnicalAnalysisPage() {
                             className="w-4 h-4"
                             style={{ accentColor: BBAND_COLOR }}
                           />
-                          <span
-                            className="inline-block w-5 h-0.5 rounded"
-                            style={{ backgroundColor: BBAND_COLOR }}
-                          />
+                          <span className="inline-block w-5 h-0.5 rounded" style={{ backgroundColor: BBAND_COLOR }} />
                           <span className="text-sm">BB (20, 2)</span>
                         </label>
                       </div>
@@ -417,14 +385,8 @@ export default function TechnicalAnalysisPage() {
                 {allIndicators
                   .filter((i) => enabledIndicators.has(i.name))
                   .map(({ name, color }) => (
-                    <span
-                      key={name}
-                      className="flex items-center gap-1.5 text-sm"
-                    >
-                      <span
-                        className="inline-block w-6 h-0.5 rounded"
-                        style={{ backgroundColor: color }}
-                      />
+                    <span key={name} className="flex items-center gap-1.5 text-sm">
+                      <span className="inline-block w-6 h-0.5 rounded" style={{ backgroundColor: color }} />
                       {name}
                     </span>
                   ))}
@@ -432,10 +394,7 @@ export default function TechnicalAnalysisPage() {
                 {/* BBands legend */}
                 {showBBands && bbandIndicators.length > 0 && (
                   <span className="flex items-center gap-1.5 text-sm">
-                    <span
-                      className="inline-block w-6 h-0.5 rounded"
-                      style={{ backgroundColor: BBAND_COLOR }}
-                    />
+                    <span className="inline-block w-6 h-0.5 rounded" style={{ backgroundColor: BBAND_COLOR }} />
                     BB (20, 2)
                   </span>
                 )}
@@ -456,35 +415,27 @@ export default function TechnicalAnalysisPage() {
                   <div className="flex items-center gap-4 mb-1">
                     {rsiData.length > 0 && (
                       <span className="flex items-center gap-1.5 text-sm">
-                        <span
-                          className="inline-block w-6 h-0.5 rounded"
-                          style={{ backgroundColor: "#E91E63" }}
-                        />
+                        <span className="inline-block w-6 h-0.5 rounded" style={{ backgroundColor: '#E91E63' }} />
                         RSI (14)
                       </span>
                     )}
                     {bbpData.length > 0 && (
                       <span className="flex items-center gap-1.5 text-sm">
-                        <span
-                          className="inline-block w-6 h-0.5 rounded"
-                          style={{ backgroundColor: "#FF9800" }}
-                        />
+                        <span className="inline-block w-6 h-0.5 rounded" style={{ backgroundColor: '#FF9800' }} />
                         BB% (20, 2)
                       </span>
                     )}
-                    <span className="text-xs text-gray-400 ml-1">
-                      — 70 overbought · 30 oversold
-                    </span>
+                    <span className="text-xs text-gray-400 ml-1">— 70 overbought · 30 oversold</span>
                   </div>
                   <OscillatorChart
                     seriesConfigs={[
-                      { color: "#E91E63", title: "RSI 14" },
-                      { color: "#FF9800", title: "BB%" },
+                      { color: '#E91E63', title: 'RSI 14' },
+                      { color: '#FF9800', title: 'BB%' },
                     ]}
                     seriesData={[rsiData, bbpData]}
                     referenceLines={[
-                      { value: 70, color: "#ef5350" },
-                      { value: 30, color: "#26a69a" },
+                      { value: 70, color: '#ef5350' },
+                      { value: 30, color: '#26a69a' },
                     ]}
                     height={160}
                     onChartReady={handleOscillatorChartReady}
@@ -496,13 +447,8 @@ export default function TechnicalAnalysisPage() {
 
           {!loading && chartData.length === 0 && !error && (
             <div className="text-center py-12 text-gray-500">
-              <p>
-                Enter a symbol and click &quot;Load Chart&quot; to view
-                technical analysis
-              </p>
-              <p className="text-sm mt-2">
-                Popular ETFs: SPY, QQQ, IWM, DIA, GLD
-              </p>
+              <p>Enter a symbol and click &quot;Load Chart&quot; to view technical analysis</p>
+              <p className="text-sm mt-2">Popular ETFs: SPY, QQQ, IWM, DIA, GLD</p>
             </div>
           )}
         </div>

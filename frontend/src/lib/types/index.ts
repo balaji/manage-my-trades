@@ -3,5 +3,5 @@
  * Centralized exports for all type modules.
  */
 
-export * from "./strategy";
-export * from "./market-data";
+export * from './strategy';
+export * from './market-data';

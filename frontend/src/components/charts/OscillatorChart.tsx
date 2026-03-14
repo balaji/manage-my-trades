@@ -1,14 +1,7 @@
-"use client";
+'use client';
 
-import React, { useEffect, useRef } from "react";
-import {
-  createChart,
-  IChartApi,
-  ISeriesApi,
-  LineData,
-  LineStyle,
-  UTCTimestamp,
-} from "lightweight-charts";
+import React, { useEffect, useRef } from 'react';
+import { createChart, IChartApi, ISeriesApi, LineData, LineStyle, UTCTimestamp } from 'lightweight-charts';
 
 export interface OscillatorSeriesConfig {
   color: string;
@@ -37,8 +30,8 @@ export function OscillatorChart({
 }: OscillatorChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
-  const seriesRefs = useRef<ISeriesApi<"Line">[]>([]);
-  const refLineRefs = useRef<ISeriesApi<"Line">[]>([]);
+  const seriesRefs = useRef<ISeriesApi<'Line'>[]>([]);
+  const refLineRefs = useRef<ISeriesApi<'Line'>[]>([]);
 
   // Create chart and series once (based on seriesConfigs length)
   useEffect(() => {
@@ -48,20 +41,20 @@ export function OscillatorChart({
       width: containerRef.current.clientWidth,
       height,
       layout: {
-        background: { color: "#ffffff" },
-        textColor: "#333",
+        background: { color: '#ffffff' },
+        textColor: '#333',
       },
       grid: {
-        vertLines: { color: "#f0f0f0" },
-        horzLines: { color: "#f0f0f0" },
+        vertLines: { color: '#f0f0f0' },
+        horzLines: { color: '#f0f0f0' },
       },
       crosshair: { mode: 1 },
       rightPriceScale: {
-        borderColor: "#cccccc",
+        borderColor: '#cccccc',
         scaleMargins: { top: 0.1, bottom: 0.1 },
       },
       timeScale: {
-        borderColor: "#cccccc",
+        borderColor: '#cccccc',
         timeVisible: true,
       },
     });
@@ -74,18 +67,18 @@ export function OscillatorChart({
         lineWidth: 2,
         title: cfg.title,
         priceLineVisible: false,
-      }),
+      })
     );
 
     refLineRefs.current = referenceLines.map(() =>
       chart.addLineSeries({
-        color: "#cccccc", // placeholder; updated when data arrives
+        color: '#cccccc', // placeholder; updated when data arrives
         lineWidth: 1,
         lineStyle: LineStyle.Dashed,
         priceLineVisible: false,
         lastValueVisible: false,
-        title: "",
-      }),
+        title: '',
+      })
     );
 
     onChartReady?.(chart);
@@ -97,10 +90,10 @@ export function OscillatorChart({
         });
       }
     };
-    window.addEventListener("resize", handleResize);
+    window.addEventListener('resize', handleResize);
 
     return () => {
-      window.removeEventListener("resize", handleResize);
+      window.removeEventListener('resize', handleResize);
       chart.remove();
       chartRef.current = null;
       seriesRefs.current = [];
@@ -124,7 +117,7 @@ export function OscillatorChart({
         closeMap.set(time, { time, value: bar.value });
       });
       const lineData: LineData[] = Array.from(closeMap.values()).sort(
-        (a, b) => (a.time as number) - (b.time as number),
+        (a, b) => (a.time as number) - (b.time as number)
       );
 
       // const lineData: LineData[] = points.map((p) => ({
@@ -151,11 +144,5 @@ export function OscillatorChart({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seriesData]);
 
-  return (
-    <div
-      ref={containerRef}
-      className="w-full"
-      style={{ height: `${height}px` }}
-    />
-  );
+  return <div ref={containerRef} className="w-full" style={{ height: `${height}px` }} />;
 }

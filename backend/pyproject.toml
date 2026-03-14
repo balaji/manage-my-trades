@@ -28,6 +28,10 @@ dependencies = [
     "websockets>=16.0",
 ]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
 [tool.ruff]
 # Allow lines to be as long as 120.
 line-length = 120

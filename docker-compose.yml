@@ -1,5 +1,5 @@
 services:
-  postgres:
+  database:
     image: timescale/timescaledb:latest-pg18
     container_name: trading_db
     environment:
@@ -9,9 +9,9 @@ services:
     ports:
       - "5432:5432"
     networks:
-      - trading_network      
+      - trading_network
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - trades_data:/var/lib/postgresql
       - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U trading_user -d trading_db"]
@@ -27,8 +27,8 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - TRADING_DATA_DATABASE_URL=postgresql+psycopg://trading_user:trading_password@postgres:5432/trading_db
-      - MARKET_DATA_DATABASE_URL=postgresql+psycopg://trading_user:trading_password@postgres:5432/market_data_db
+      - TRADE_DATA_DATABASE_URL=postgresql+psycopg://trading_user:trading_password@database:5432/trading_db
+      - MARKET_DATA_DATABASE_URL=postgresql+psycopg://trading_user:trading_password@database:5432/market_data_db
       - ALPACA_API_KEY=${ALPACA_API_KEY}
       - ALPACA_SECRET_KEY=${ALPACA_SECRET_KEY}
       - ALPACA_BASE_URL=https://paper-api.alpaca.markets
@@ -40,7 +40,7 @@ services:
     networks:
       - trading_network
     depends_on:
-      postgres:
+      database:
         condition: service_healthy
     restart: unless-stopped
     develop:
@@ -48,6 +48,9 @@ services:
         - action: sync
           path: ./backend/app
           target: /app/app
+        - action: sync
+          path: ./backend/tests
+          target: /app/tests
         - action: rebuild
           path: ./backend/pyproject.toml
         - action: rebuild
@@ -82,7 +85,8 @@ services:
           path: ./frontend/package-lock.json
 
 volumes:
-  postgres_data:
+  trades_data:
+    external: true
 
 networks:
   trading_network:

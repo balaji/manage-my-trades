@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
     LOG_LEVEL: str = "INFO"
-    TRADING_DATA_DATABASE_URL: str = ""
+    TRADE_DATA_DATABASE_URL: str = ""
     MARKET_DATA_DATABASE_URL: str = ""
     CORS_ORIGINS: List[str] = []
     ALPACA_API_KEY: str = ""

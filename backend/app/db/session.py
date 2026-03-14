@@ -3,15 +3,17 @@ Database session management.
 """
 
 from typing import AsyncGenerator
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import declarative_base
+
 from app.config import get_settings
 
 settings = get_settings()
 
 # Create async engine
 engine = create_async_engine(
-    settings.TRADING_DATA_DATABASE_URL,
+    settings.TRADE_DATA_DATABASE_URL,
     echo=False,
     future=True,
     pool_pre_ping=True,

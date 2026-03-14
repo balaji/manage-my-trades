@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint --fix",
+    "format": "prettier --write"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.17.19",

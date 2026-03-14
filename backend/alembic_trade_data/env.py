@@ -2,20 +2,21 @@
 Alembic environment configuration.
 """
 
-from logging.config import fileConfig
-from sqlalchemy import pool
-from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import async_engine_from_config
-from alembic import context
 import asyncio
 import os
 import sys
+from logging.config import fileConfig
+
+from alembic import context
+from sqlalchemy import pool
+from sqlalchemy.engine import Connection
+from sqlalchemy.ext.asyncio import async_engine_from_config
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.db.session import Base
 from app.config import get_settings
+from app.db.session import Base
 
 # Import all models to ensure they are registered with Base
 
@@ -30,7 +31,7 @@ if config.config_file_name is not None:
 
 # Get database URL from settings
 settings = get_settings()
-config.set_main_option("sqlalchemy.url", settings.TRADING_DATA_DATABASE_URL.replace("+asyncpg", ""))
+config.set_main_option("sqlalchemy.url", settings.TRADE_DATA_DATABASE_URL.replace("+asyncpg", ""))
 
 # add your model's MetaData object here
 # for 'autogenerate' support

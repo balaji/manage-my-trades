@@ -1,19 +1,19 @@
-"use client";
+'use client';
 
 /**
  * Strategy detail page.
  */
-import React, { useState, useEffect, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   getStrategy,
   getStrategySignals,
   activateStrategy,
   deactivateStrategy,
   deleteStrategy,
-} from "@/lib/api/strategies";
-import { apiClient } from "@/lib/api/client";
+} from '@/lib/api/strategies';
+import { apiClient } from '@/lib/api/client';
 import {
   Strategy,
   Signal,
@@ -22,7 +22,7 @@ import {
   getSignalTypeLabel,
   getSignalTypeColor,
   formatSignalStrength,
-} from "@/lib/types/strategy";
+} from '@/lib/types/strategy';
 
 export default function StrategyDetailPage() {
   const params = useParams();
@@ -44,7 +44,7 @@ export default function StrategyDetailPage() {
       const data = await getStrategy(strategyId);
       setStrategy(data);
     } catch (err: any) {
-      setError(err.message || "Failed to load strategy");
+      setError(err.message || 'Failed to load strategy');
     } finally {
       setLoading(false);
     }
@@ -57,7 +57,7 @@ export default function StrategyDetailPage() {
       const response = await getStrategySignals(strategyId, { limit: 20 });
       setSignals(response.signals);
     } catch (err: any) {
-      console.error("Failed to load signals:", err);
+      console.error('Failed to load signals:', err);
     } finally {
       setLoadingSignals(false);
     }
@@ -79,24 +79,17 @@ export default function StrategyDetailPage() {
       }
       await loadStrategy();
     } catch (err: any) {
-      alert(
-        `Failed to ${strategy.is_active ? "deactivate" : "activate"} strategy: ${err.message}`,
-      );
+      alert(`Failed to ${strategy.is_active ? 'deactivate' : 'activate'} strategy: ${err.message}`);
     }
   };
 
   const handleGenerateSignals = async () => {
     if (!strategy) return;
-    const symbol = prompt(
-      "Enter symbol to generate signals for (e.g. SPY):",
-      "SPY",
-    );
+    const symbol = prompt('Enter symbol to generate signals for (e.g. SPY):', 'SPY');
     if (!symbol) return;
     setGeneratingSignals(true);
     try {
-      await apiClient.post(
-        `/strategies/${strategy.id}/signals?symbol=${encodeURIComponent(symbol.toUpperCase())}`,
-      );
+      await apiClient.post(`/strategies/${strategy.id}/signals?symbol=${encodeURIComponent(symbol.toUpperCase())}`);
       await loadSignals();
     } catch (err: any) {
       alert(`Failed to generate signals: ${err.message}`);
@@ -112,21 +105,19 @@ export default function StrategyDetailPage() {
       description: strategy.description,
       strategy_type: strategy.strategy_type,
       config: strategy.config,
-      indicators: strategy.indicators.map(
-        ({ indicator_name, parameters, usage }) => ({
-          indicator_name,
-          parameters,
-          usage,
-        }),
-      ),
+      indicators: strategy.indicators.map(({ indicator_name, parameters, usage }) => ({
+        indicator_name,
+        parameters,
+        usage,
+      })),
     };
     const blob = new Blob([JSON.stringify(config, null, 2)], {
-      type: "application/json",
+      type: 'application/json',
     });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
+    const a = document.createElement('a');
     a.href = url;
-    a.download = `${strategy.name.replace(/\s+/g, "_")}_config.json`;
+    a.download = `${strategy.name.replace(/\s+/g, '_')}_config.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -134,17 +125,13 @@ export default function StrategyDetailPage() {
   const handleDelete = async () => {
     if (!strategy) return;
 
-    if (
-      !confirm(
-        `Are you sure you want to delete "${strategy.name}"? This cannot be undone.`,
-      )
-    ) {
+    if (!confirm(`Are you sure you want to delete "${strategy.name}"? This cannot be undone.`)) {
       return;
     }
 
     try {
       await deleteStrategy(strategy.id);
-      router.push("/strategies");
+      router.push('/strategies');
     } catch (err: any) {
       alert(`Failed to delete strategy: ${err.message}`);
     }
@@ -165,12 +152,9 @@ export default function StrategyDetailPage() {
       <div className="min-h-screen p-8">
         <div className="max-w-7xl mx-auto">
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
-            {error || "Strategy not found"}
+            {error || 'Strategy not found'}
           </div>
-          <Link
-            href="/strategies"
-            className="inline-block mt-4 text-blue-600 hover:underline"
-          >
+          <Link href="/strategies" className="inline-block mt-4 text-blue-600 hover:underline">
             ← Back to Strategies
           </Link>
         </div>
@@ -183,10 +167,7 @@ export default function StrategyDetailPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <Link
-            href="/strategies"
-            className="text-blue-600 hover:underline mb-2 inline-block"
-          >
+          <Link href="/strategies" className="text-blue-600 hover:underline mb-2 inline-block">
             ← Back to Strategies
           </Link>
           <div className="flex justify-between items-start">
@@ -195,36 +176,29 @@ export default function StrategyDetailPage() {
                 <h1 className="text-3xl font-bold">{strategy.name}</h1>
                 <span
                   className={`px-3 py-1 text-sm font-semibold rounded ${
-                    strategy.is_active
-                      ? "bg-green-100 text-green-800"
-                      : "bg-gray-100 text-gray-800"
+                    strategy.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                   }`}
                 >
-                  {strategy.is_active ? "Active" : "Inactive"}
+                  {strategy.is_active ? 'Active' : 'Inactive'}
                 </span>
                 <span className="px-3 py-1 text-sm font-semibold rounded bg-blue-100 text-blue-800">
                   {getStrategyTypeLabel(strategy.strategy_type as StrategyType)}
                 </span>
               </div>
-              <p className="text-gray-600">
-                {strategy.description || "No description"}
-              </p>
+              <p className="text-gray-600">{strategy.description || 'No description'}</p>
             </div>
             <div className="flex gap-2">
               <button
                 onClick={handleToggleActive}
                 className={`px-4 py-2 rounded ${
                   strategy.is_active
-                    ? "bg-yellow-600 text-white hover:bg-yellow-700"
-                    : "bg-green-600 text-white hover:bg-green-700"
+                    ? 'bg-yellow-600 text-white hover:bg-yellow-700'
+                    : 'bg-green-600 text-white hover:bg-green-700'
                 }`}
               >
-                {strategy.is_active ? "Deactivate" : "Activate"}
+                {strategy.is_active ? 'Deactivate' : 'Activate'}
               </button>
-              <button
-                onClick={handleDelete}
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-              >
+              <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
                 Delete
               </button>
             </div>
@@ -252,9 +226,7 @@ export default function StrategyDetailPage() {
                   {strategy.indicators.map((indicator) => (
                     <div key={indicator.id} className="border rounded-lg p-4">
                       <div className="flex justify-between items-start mb-2">
-                        <h3 className="font-semibold text-lg capitalize">
-                          {indicator.indicator_name}
-                        </h3>
+                        <h3 className="font-semibold text-lg capitalize">{indicator.indicator_name}</h3>
                         <span className="px-2 py-1 text-xs font-semibold rounded bg-purple-100 text-purple-800">
                           {indicator.usage}
                         </span>
@@ -290,35 +262,22 @@ export default function StrategyDetailPage() {
                     </thead>
                     <tbody>
                       {signals.map((signal) => (
-                        <tr
-                          key={signal.id}
-                          className="border-b hover:bg-gray-50"
-                        >
-                          <td className="py-2 px-4 text-sm">
-                            {new Date(signal.timestamp).toLocaleString()}
-                          </td>
-                          <td className="py-2 px-4 font-mono">
-                            {signal.symbol}
-                          </td>
+                        <tr key={signal.id} className="border-b hover:bg-gray-50">
+                          <td className="py-2 px-4 text-sm">{new Date(signal.timestamp).toLocaleString()}</td>
+                          <td className="py-2 px-4 font-mono">{signal.symbol}</td>
                           <td className="py-2 px-4">
                             <span
                               className={`px-2 py-1 text-xs font-semibold rounded`}
                               style={{
                                 backgroundColor: `${getSignalTypeColor(signal.signal_type as any)}20`,
-                                color: getSignalTypeColor(
-                                  signal.signal_type as any,
-                                ),
+                                color: getSignalTypeColor(signal.signal_type as any),
                               }}
                             >
                               {getSignalTypeLabel(signal.signal_type as any)}
                             </span>
                           </td>
-                          <td className="py-2 px-4 text-right font-mono">
-                            ${signal.price.toFixed(2)}
-                          </td>
-                          <td className="py-2 px-4 text-right">
-                            {formatSignalStrength(signal.strength)}
-                          </td>
+                          <td className="py-2 px-4 text-right font-mono">${signal.price.toFixed(2)}</td>
+                          <td className="py-2 px-4 text-right">{formatSignalStrength(signal.strength)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -336,9 +295,7 @@ export default function StrategyDetailPage() {
               <div className="space-y-3">
                 <div>
                   <div className="text-sm text-gray-600">Indicators</div>
-                  <div className="text-2xl font-bold">
-                    {strategy.indicators.length}
-                  </div>
+                  <div className="text-2xl font-bold">{strategy.indicators.length}</div>
                 </div>
                 <div>
                   <div className="text-sm text-gray-600">Recent Signals</div>
@@ -346,15 +303,11 @@ export default function StrategyDetailPage() {
                 </div>
                 <div>
                   <div className="text-sm text-gray-600">Created</div>
-                  <div className="text-sm">
-                    {new Date(strategy.created_at).toLocaleDateString()}
-                  </div>
+                  <div className="text-sm">{new Date(strategy.created_at).toLocaleDateString()}</div>
                 </div>
                 <div>
                   <div className="text-sm text-gray-600">Last Updated</div>
-                  <div className="text-sm">
-                    {new Date(strategy.updated_at).toLocaleDateString()}
-                  </div>
+                  <div className="text-sm">{new Date(strategy.updated_at).toLocaleDateString()}</div>
                 </div>
               </div>
             </div>
@@ -364,9 +317,7 @@ export default function StrategyDetailPage() {
               <h2 className="text-lg font-semibold mb-4">Actions</h2>
               <div className="space-y-2">
                 <button
-                  onClick={() =>
-                    router.push(`/backtests/new?strategyId=${strategy.id}`)
-                  }
+                  onClick={() => router.push(`/backtests/new?strategyId=${strategy.id}`)}
                   className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                 >
                   Run Backtest
@@ -376,12 +327,9 @@ export default function StrategyDetailPage() {
                   disabled={generatingSignals}
                   className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                  {generatingSignals ? "Generating..." : "Generate Signals"}
+                  {generatingSignals ? 'Generating...' : 'Generate Signals'}
                 </button>
-                <button
-                  onClick={handleExportConfig}
-                  className="w-full px-4 py-2 border rounded hover:bg-gray-50"
-                >
+                <button onClick={handleExportConfig} className="w-full px-4 py-2 border rounded hover:bg-gray-50">
                   Export Configuration
                 </button>
               </div>

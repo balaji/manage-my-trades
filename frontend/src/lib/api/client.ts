@@ -2,10 +2,9 @@
  * Base API client configuration.
  */
 
-import axios, { AxiosError } from "axios";
+import axios, { AxiosError } from 'axios';
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://bigmac.local:8000/api/v1";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://bigmac.local:8000/api/v1';
 
 /**
  * Configured axios instance for API calls.
@@ -13,7 +12,7 @@ const API_BASE_URL =
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json',
   },
   timeout: 30000, // 30 seconds
 });
@@ -42,7 +41,7 @@ export function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     return error.message;
   }
-  return "An unknown error occurred";
+  return 'An unknown error occurred';
 }
 
 /**

@@ -2,9 +2,9 @@
  * API client for technical analysis endpoints.
  */
 
-import { apiClient, handleApiError } from "./client";
+import { apiClient, handleApiError } from './client';
 
-const TECHNICAL_ANALYSIS_BASE = "/technical-analysis";
+const TECHNICAL_ANALYSIS_BASE = '/technical-analysis';
 
 export interface IndicatorConfig {
   name: string;
@@ -50,13 +50,11 @@ export const technicalAnalysisApi = {
   /**
    * Calculate one or more technical indicators for a symbol.
    */
-  async calculateIndicators(
-    request: CalculateIndicatorsRequest,
-  ): Promise<CalculateIndicatorsResponse> {
+  async calculateIndicators(request: CalculateIndicatorsRequest): Promise<CalculateIndicatorsResponse> {
     try {
       const response = await apiClient.post<CalculateIndicatorsResponse>(
         `${TECHNICAL_ANALYSIS_BASE}/calculate`,
-        request,
+        request
       );
       return response.data;
     } catch (error) {
