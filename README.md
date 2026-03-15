@@ -1,3 +1,5 @@
+🚨🚨UNDER ACTIVE DEVELOPMENT🚨🚨
+
 # Manage My Trades — Algorithmic ETF Trading Platform
 
 A full-stack platform for managing trading strategies, running backtests, and performing technical analysis. Features a Next.js frontend for strategy management and technical analysis visualization, and a FastAPI backend for signal generation, backtesting, and paper trading with Alpaca Markets.
