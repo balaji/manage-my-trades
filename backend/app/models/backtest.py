@@ -2,8 +2,11 @@
 Backtest models.
 """
 
-from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, JSON, Text
+import json
+
+from sqlalchemy import JSON, Column, Date, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from app.db.session import Base
 from app.models.base import TimestampMixin
 
@@ -35,6 +38,27 @@ class Backtest(Base, TimestampMixin):
         cascade="all, delete-orphan",
     )
     trades = relationship("Trade", back_populates="backtest", cascade="all, delete-orphan")
+
+    def __repr__(self):
+        """Serialize backtest to dictionary."""
+        return json.dumps(
+            {
+                "id": self.id,
+                "strategy_id": self.strategy_id,
+                "name": self.name,
+                "symbols": self.symbols,
+                "start_date": self.start_date.isoformat(),
+                "end_date": self.end_date.isoformat(),
+                "initial_capital": self.initial_capital,
+                "timeframe": self.timeframe,
+                "commission": self.commission,
+                "slippage": self.slippage,
+                "status": self.status,
+                "error_message": self.error_message,
+                "created_at": self.created_at.isoformat(),
+                "updated_at": self.updated_at.isoformat(),
+            }
+        )
 
 
 class BacktestResult(Base, TimestampMixin):

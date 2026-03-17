@@ -1,17 +1,18 @@
 """Service for managing backtests."""
 
-from typing import List, Optional, Tuple
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_
-from sqlalchemy.orm import selectinload
 import logging
+from typing import List, Optional, Tuple
 
+from sqlalchemy import and_, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from app.core.backtesting.engine import BacktestEngine
 from app.models.backtest import Backtest
 from app.models.strategy import Strategy
 from app.models.trade import Trade
-from app.services.strategy_service import StrategyService
-from app.core.backtesting.engine import BacktestEngine
 from app.schemas.backtest import BacktestCreate
+from app.services.strategy_service import StrategyService
 
 logger = logging.getLogger(__name__)
 

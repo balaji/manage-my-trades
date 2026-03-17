@@ -4,14 +4,15 @@ Trade models.
 
 from sqlalchemy import (
     Column,
+    DateTime,
+    Float,
+    ForeignKey,
     Integer,
     String,
-    Float,
-    DateTime,
-    ForeignKey,
     Text,
 )
 from sqlalchemy.orm import relationship
+
 from app.db.session import Base
 from app.models.base import TimestampMixin
 
@@ -41,11 +42,11 @@ class Trade(Base, TimestampMixin):
 
     # Exit
     exit_date = Column(DateTime, nullable=True)
-    exit_price = Column(Float, nullable=True)
+    exit_price = Column(Float, nullable=True, default=0.0)
     exit_order_id = Column(String(100), nullable=True)
 
     # P&L
-    pnl = Column(Float, nullable=True)
+    pnl = Column(Float, nullable=True, default=0.0)
     pnl_pct = Column(Float, nullable=True)
     commission = Column(Float, default=0.0)
 
@@ -55,3 +56,6 @@ class Trade(Base, TimestampMixin):
 
     # Relationships
     backtest = relationship("Backtest", back_populates="trades")
+
+    def __repr__(self):
+        return f"<Trade id={self.id} symbol={self.symbol} side={self.side} quantity={self.quantity} entry_price={self.entry_price} exit_price={self.exit_price} pnl={self.pnl} pnl_pct={self.pnl_pct} status={self.status} entry_date={self.entry_date} exit_date={self.exit_date} strategy_id={self.strategy_id} trade_type={self.trade_type} backtest_id={self.backtest_id} created_at={self.created_at} updated_at={self.updated_at} notes={self.notes}>"

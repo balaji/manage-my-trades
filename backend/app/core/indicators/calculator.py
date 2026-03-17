@@ -2,12 +2,13 @@
 Core indicator calculation engine.
 """
 
-from typing import List, Dict, Any, Optional
-import pandas as pd
-import numpy as np
 import hashlib
 import json
 import logging
+from typing import Any, Dict, List, Optional
+
+import numpy as np
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -239,26 +240,24 @@ class IndicatorCalculator:
 
             try:
                 result = self.calculate(name, params)
+                logger.info(f"Calculated {name} with params {params}")
+                logger.info(result)
 
                 # Create unique key for this indicator configuration
-                key = f"{name}_{self.create_hash(name, params)[:8]}"
+                # key = f"{name}_{self.create_hash(name, params)[:8]}"
 
                 # Convert to dict format
-                if isinstance(result, pd.Series):
-                    results[key] = {
-                        "name": name,
-                        "params": params,
-                        "values": [
-                            {"timestamp": idx, "value": float(val)} for idx, val in result.items() if pd.notna(val)
-                        ],
-                    }
-                elif isinstance(result, pd.DataFrame):
-                    # For multi-column indicators (MACD, BBands, Stoch)
-                    results[key] = {"name": name, "params": params, "columns": {}}
-                    for col in result.columns:
-                        results[key]["columns"][col] = [
-                            {"timestamp": idx, "value": float(val)} for idx, val in result[col].items() if pd.notna(val)
-                        ]
+                # if isinstance(result, pd.Series):
+                results[name] = {
+                    "values": [{"timestamp": idx, "value": float(val)} for idx, val in result.items() if pd.notna(val)],
+                }
+                # elif isinstance(result, pd.DataFrame):
+                #     # For multi-column indicators (MACD, BBands, Stoch)
+                #     results[key] = {"name": name, "params": params, "columns": {}}
+                #     for col in result.columns:
+                #         results[key]["columns"][col] = [
+                #             {"timestamp": idx, "value": float(val)} for idx, val in result[col].items() if pd.notna(val)
+                #         ]
 
             except Exception as e:
                 logger.error(f"Error calculating {name}: {e}")

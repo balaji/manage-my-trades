@@ -42,12 +42,12 @@ class BacktestEngine:
         # Track open positions for signal matching
         self.open_positions: Dict[str, Trade] = {}  # symbol -> Trade
 
-    async def run(self, db: AsyncSession, market_db: AsyncSession) -> BacktestResult:
+    async def run(self, trade_db: AsyncSession, market_db: AsyncSession) -> BacktestResult:
         """
         Execute full backtest simulation.
 
         Args:
-            db: Trading database session
+            trade_db: Trading database session
             market_db: Market data database session
 
         Returns:
@@ -62,7 +62,7 @@ class BacktestEngine:
             raise ValueError("No market data available for backtest")
 
         # 2. Generate signals using existing SignalService
-        all_signals = await self._generate_signals(db, market_db)
+        all_signals = await self._generate_signals(trade_db, market_db)
 
         logger.info(f"Generated {len(all_signals)} total signals")
 
@@ -233,7 +233,7 @@ class BacktestEngine:
 
             # Skip if already have a position
             if self.portfolio.has_position(symbol):
-                logger.debug(f"Skipping buy signal for {symbol} - already have position")
+                logger.info(f"Skipping buy signal for {symbol} - already have position")
                 continue
 
             if symbol not in prices:
@@ -245,7 +245,7 @@ class BacktestEngine:
                 size = self._calculate_position_size(symbol, prices[symbol])
 
                 if size <= 0:
-                    logger.debug(f"Position size is 0 for {symbol}, skipping")
+                    logger.info(f"Position size is 0 for {symbol}, skipping")
                     continue
 
                 # Calculate execution price with slippage
@@ -261,9 +261,9 @@ class BacktestEngine:
                     self.trades.append(trade)
                     self.open_positions[symbol] = trade
 
-                    logger.debug(f"BUY {size:.2f} {symbol} @ ${exec_price:.2f} (commission: ${commission:.2f})")
+                    logger.info(f"BUY {size:.2f} {symbol} @ ${exec_price:.2f} (commission: ${commission:.2f})")
                 else:
-                    logger.debug(
+                    logger.info(
                         f"Insufficient funds for {symbol}: need ${(size * exec_price) + commission:.2f}, "
                         f"have ${self.portfolio.cash:.2f}"
                     )
@@ -287,7 +287,7 @@ class BacktestEngine:
 
             # Skip if no position
             if not self.portfolio.has_position(symbol):
-                logger.debug(f"Skipping sell signal for {symbol} - no position")
+                logger.info(f"Skipping sell signal for {symbol} - no position")
                 continue
 
             if symbol not in prices:
@@ -321,7 +321,7 @@ class BacktestEngine:
                     trade.trade_type = "backtest"
                     self.trades.append(trade)
 
-                logger.debug(f"SELL {quantity:.2f} {symbol} @ ${exec_price:.2f} P&L: ${pnl:.2f} ({pnl_pct:.2f}%)")
+                logger.info(f"SELL {quantity:.2f} {symbol} @ ${exec_price:.2f} P&L: ${pnl:.2f} ({pnl_pct:.2f}%)")
 
             except Exception as e:
                 logger.error(f"Error processing sell signal for {symbol}: {e}")
