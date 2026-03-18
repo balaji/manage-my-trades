@@ -165,8 +165,7 @@ class MetricsCalculator:
         gross_loss = abs(sum(t.pnl for t in closed_trades if t.pnl < 0))
 
         if gross_loss == 0:
-            # No losing trades - return None or infinity indicator
-            return None if gross_profit == 0 else float("inf")
+            return None  # No losing trades: undefined, not infinity
 
         profit_factor = gross_profit / gross_loss
 
