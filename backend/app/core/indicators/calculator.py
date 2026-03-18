@@ -240,24 +240,21 @@ class IndicatorCalculator:
 
             try:
                 result = self.calculate(name, params)
-                logger.info(f"Calculated {name} with params {params}")
-                logger.info(result)
-
-                # Create unique key for this indicator configuration
-                # key = f"{name}_{self.create_hash(name, params)[:8]}"
-
                 # Convert to dict format
-                # if isinstance(result, pd.Series):
-                results[name] = {
-                    "values": [{"timestamp": idx, "value": float(val)} for idx, val in result.items() if pd.notna(val)],
-                }
-                # elif isinstance(result, pd.DataFrame):
-                #     # For multi-column indicators (MACD, BBands, Stoch)
-                #     results[key] = {"name": name, "params": params, "columns": {}}
-                #     for col in result.columns:
-                #         results[key]["columns"][col] = [
-                #             {"timestamp": idx, "value": float(val)} for idx, val in result[col].items() if pd.notna(val)
-                #         ]
+                if isinstance(result, pd.Series):
+                    results[name] = {
+                        "values": [
+                            {"timestamp": idx, "value": float(val)} for idx, val in result.items() if pd.notna(val)
+                        ],
+                        "params": params,
+                    }
+                elif isinstance(result, pd.DataFrame):
+                    # For multi-column indicators (MACD, BBands, Stoch)
+                    results[name] = {"params": params, "columns": {}}
+                    for col in result.columns:
+                        results[name]["columns"][col] = [
+                            {"timestamp": idx, "value": float(val)} for idx, val in result[col].items() if pd.notna(val)
+                        ]
 
             except Exception as e:
                 logger.error(f"Error calculating {name}: {e}")

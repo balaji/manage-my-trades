@@ -114,15 +114,14 @@ export default function TechnicalAnalysisPage() {
 
       if (marketData.length > 0 && marketData[0].bars.length > 0) {
         setChartData(marketData[0].bars);
-
-        const results = Object.values(indicatorResult.indicators);
+        const results = indicatorResult.indicators;
 
         // RSI
-        const rsiResult = results.find((r) => r.name === 'RSI' && r.values);
+        const rsiResult = results['RSI'];
         setRsiData(rsiResult?.values?.filter((v) => v.value !== null) ?? []);
 
         // Bollinger Bands (multi-column)
-        const bbResult = results.find((r) => r.name === 'BBANDS' && r.columns);
+        const bbResult = results['BBANDS'];
         if (bbResult?.columns) {
           const cols = bbResult.columns;
           const length = bbResult.params.length as number;
@@ -163,25 +162,19 @@ export default function TechnicalAnalysisPage() {
         }
 
         // SMA / EMA
-        const parsed: Indicator[] = results
-          .filter((r) => (r.name === 'SMA' || r.name === 'EMA') && r.values)
-          .map((r) => {
-            const period = r.params.length as number;
-            const colors = r.name === 'SMA' ? SMA_COLORS : EMA_COLORS;
-            return {
-              name: `${r.name} ${period}`,
-              data: r.values!.filter((v) => v.value !== null),
-              color: colors[period] ?? '#2196F3',
-            };
-          })
-          .sort((a, b) => {
-            const [nameA, pA] = a.name.split(' ');
-            const [nameB, pB] = b.name.split(' ');
-            if (nameA !== nameB) return nameA.localeCompare(nameB);
-            return parseInt(pA) - parseInt(pB);
-          });
+        console.log(results);
+        const yolo = (name: string) => {
+          const r = results[name];
+          const period = r.params.length as number;
+          const colors = name === 'SMA' ? SMA_COLORS : EMA_COLORS;
+          return {
+            name: `${name} ${period}`,
+            data: r.values!.filter((v) => v.value !== null),
+            color: colors[period] ?? '#2196F3',
+          };
+        };
 
-        setAllIndicators(parsed);
+        setAllIndicators(['SMA', 'EMA'].map(yolo));
       } else {
         setError('No data available for this symbol');
         setAllIndicators([]);
@@ -190,6 +183,7 @@ export default function TechnicalAnalysisPage() {
         setBbpData([]);
       }
     } catch (err: any) {
+      console.log(err);
       setError(err.message || 'Failed to load data');
     } finally {
       setLoading(false);

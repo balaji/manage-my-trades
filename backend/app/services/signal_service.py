@@ -30,8 +30,7 @@ class SignalService:
         self,
         strategy: Strategy,
         symbol: str,
-        start_date: date,
-        end_date: date,
+        bar_data: Optional[List[Dict[str, Any]]] = None,
     ) -> List[Signal]:
         """
         Generate trading signals for a strategy on a symbol.
@@ -39,31 +38,19 @@ class SignalService:
         Args:
             strategy: Trading strategy
             symbol: Stock/ETF symbol
-            start_date: Start date for signal generation
-            end_date: End date for signal generation
+            bar_data: Optional pre-fetched market data to use for signal generation
 
         Returns:
             List of generated signals
         """
         logger.info(f"Generating signals for strategy {strategy.id} on {symbol}")
 
-        # Get market data
-        bars = await self.market_data_service.get_bars(
-            symbols=[symbol],
-            start=start_date,
-            end=end_date,
-        )
-
-        if not bars or symbol not in bars:
+        if not bar_data:
             logger.warning(f"No market data found for {symbol}")
             return []
 
-        bar_data = bars[symbol]
-        if not bar_data:
-            return []
-
         # Calculate all indicators for the strategy
-        indicator_values = self._calculate_strategy_indicators(strategy, symbol, bars)
+        indicator_values = self._calculate_strategy_indicators(strategy, symbol, bar_data)
 
         # Generate signals based on strategy configuration
         signals = []
@@ -145,7 +132,9 @@ class SignalService:
 
         return list(signals), total
 
-    def _calculate_strategy_indicators(self, strategy: Strategy, symbol: str, bars) -> Dict[str, List[float]]:
+    def _calculate_strategy_indicators(
+        self, strategy: Strategy, symbol: str, bars_data: List[Dict[str, Any]]
+    ) -> Dict[str, List[float]]:
         """
         Calculate all indicators for a strategy.
 
@@ -164,7 +153,7 @@ class SignalService:
             try:
                 result = self.technical_analysis_service.calculate_indicators_with_bars(
                     symbol=symbol,
-                    bars_data=bars,
+                    bars_data=bars_data,
                     timeframe="1d",
                     indicators=[{"name": indicator_config.indicator_name, "params": indicator_config.parameters}],
                 )

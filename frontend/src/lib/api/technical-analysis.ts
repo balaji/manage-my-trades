@@ -25,7 +25,6 @@ export interface IndicatorValue {
 }
 
 export interface IndicatorResult {
-  name: string;
   params: Record<string, unknown>;
   /** Present for single-output indicators (SMA, EMA, RSI, ATR). */
   values?: IndicatorValue[];

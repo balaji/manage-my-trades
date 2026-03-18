@@ -137,7 +137,7 @@ class MetricsCalculator:
             return 0.0
 
         winning_trades = sum(1 for t in closed_trades if t.pnl > 0)
-        win_rate = (winning_trades / len(closed_trades)) * 100
+        win_rate = winning_trades / len(closed_trades)
 
         return win_rate
 

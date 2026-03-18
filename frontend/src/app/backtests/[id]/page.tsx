@@ -186,7 +186,7 @@ export default function BacktestDetailPage() {
               <MetricCard label="Total Trades" value={r.total_trades.toString()} />
               <MetricCard
                 label="Avg Trade Duration"
-                value={r.avg_trade_duration != null ? `${r.avg_trade_duration.toFixed(1)}d` : '—'}
+                value={r.avg_trade_duration != null ? `${(r.avg_trade_duration / 24).toFixed(1)}d` : '—'}
               />
             </div>
 

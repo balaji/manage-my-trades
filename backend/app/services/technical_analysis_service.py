@@ -53,7 +53,7 @@ class TechnicalAnalysisService:
                 use_cache=True,
             )
 
-            return self.calculate_indicators_with_bars(bars_data, symbol, timeframe, indicators)
+            return self.calculate_indicators_with_bars(bars_data[symbol], symbol, timeframe, indicators)
 
         except Exception as e:
             logger.error(f"Error calculating indicators: {e}")
@@ -61,19 +61,17 @@ class TechnicalAnalysisService:
 
     def calculate_indicators_with_bars(
         self,
-        bars_data: Dict[str, List[Dict[str, Any]]],
+        bars_data: List[Dict[str, Any]],
         symbol: str,
         timeframe: str,
         indicators: List[Dict[str, Any]],
     ) -> Dict[str, Any]:
         try:
-            if symbol not in bars_data or not bars_data[symbol]:
+            if not bars_data:
                 raise ValueError(f"No market data found for {symbol}")
 
-            bars = bars_data[symbol]
-
             # Convert to DataFrame
-            df = pd.DataFrame(bars)
+            df = pd.DataFrame(bars_data)
 
             # Calculate indicators
             calculator = IndicatorCalculator(df)

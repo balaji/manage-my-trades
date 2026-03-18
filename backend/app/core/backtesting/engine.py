@@ -1,6 +1,6 @@
 """Main backtesting engine for strategy simulation."""
 
-from typing import List, Dict, Tuple
+from typing import Any, List, Dict, Tuple
 from datetime import date
 import logging
 import pandas as pd
@@ -54,15 +54,20 @@ class BacktestEngine:
             BacktestResult with performance metrics
         """
         logger.info(f"Starting backtest {self.backtest.id} for strategy {self.strategy.id}")
-
+        market_data_service = MarketDataService(market_db)
+        bars = await market_data_service.get_bars(
+            symbols=self.backtest.symbols,
+            start=self.backtest.start_date,
+            end=self.backtest.end_date,
+        )
         # 1. Fetch historical market data for all symbols
-        market_data = await self._fetch_market_data(market_db)
+        market_data = await self._fetch_market_data(bars)
 
         if not market_data:
             raise ValueError("No market data available for backtest")
 
         # 2. Generate signals using existing SignalService
-        all_signals = await self._generate_signals(trade_db, market_db)
+        all_signals = await self._generate_signals(trade_db, market_db, bars)
 
         logger.info(f"Generated {len(all_signals)} total signals")
 
@@ -98,24 +103,17 @@ class BacktestEngine:
 
         return result
 
-    async def _fetch_market_data(self, market_db: AsyncSession) -> Dict[str, pd.DataFrame]:
+    async def _fetch_market_data(self, bars: Dict[str, List[Dict[str, Any]]]) -> Dict[str, pd.DataFrame]:
         """
         Fetch OHLCV data for all symbols using MarketDataService.
 
         Returns:
             Dict mapping symbol to DataFrame with OHLCV data
         """
-        market_data_service = MarketDataService(market_db)
         market_data = {}
 
         for symbol in self.backtest.symbols:
             try:
-                bars = await market_data_service.get_bars(
-                    symbols=[symbol],
-                    start=self.backtest.start_date,
-                    end=self.backtest.end_date,
-                )
-
                 if bars and symbol in bars:
                     # Convert to DataFrame
                     df = pd.DataFrame(bars[symbol])
@@ -130,7 +128,9 @@ class BacktestEngine:
 
         return market_data
 
-    async def _generate_signals(self, db: AsyncSession, market_db: AsyncSession) -> List[Signal]:
+    async def _generate_signals(
+        self, db: AsyncSession, market_db: AsyncSession, bars: Dict[str, List[Dict[str, Any]]]
+    ) -> List[Signal]:
         """
         Generate signals using SignalService for all symbols.
 
@@ -145,8 +145,7 @@ class BacktestEngine:
                 signals = await signal_service.generate_signals(
                     strategy=self.strategy,
                     symbol=symbol,
-                    start_date=self.backtest.start_date,
-                    end_date=self.backtest.end_date,
+                    bar_data=bars[symbol],
                 )
                 all_signals.extend(signals)
                 logger.info(f"Generated {len(signals)} signals for {symbol}")
