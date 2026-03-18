@@ -206,7 +206,7 @@ export default function BacktestDetailPage() {
                         })
                       }
                       tick={{ fontSize: 11 }}
-                      interval="preserveStartEnd"
+                      interval={Math.ceil(equityData.length / 8)}
                     />
                     <YAxis
                       tickFormatter={(v) => `$${(v as number).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
