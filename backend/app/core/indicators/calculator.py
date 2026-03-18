@@ -94,7 +94,7 @@ class IndicatorCalculator:
         return self.df["close"].ewm(span=length, adjust=False).mean()
 
     def _calculate_rsi(self, params: Dict[str, Any]) -> pd.Series:
-        """Calculate Relative Strength Index."""
+        """Calculate RSI using Wilder's smoothing (SMA init, then alpha=1/length)."""
         length = params.get("length", 14)
 
         # Calculate price changes
@@ -104,14 +104,26 @@ class IndicatorCalculator:
         gains = delta.where(delta > 0, 0.0)
         losses = -delta.where(delta < 0, 0.0)
 
-        # Calculate average gains and losses using EMA
-        avg_gains = gains.ewm(span=length, adjust=False).mean()
-        avg_losses = losses.ewm(span=length, adjust=False).mean()
+        n = len(gains)
+        avg_gains = np.full(n, np.nan)
+        avg_losses = np.full(n, np.nan)
 
-        # Calculate RS and RSI
-        rs = avg_gains / avg_losses
+        if n > length:
+            # First valid average: SMA of first `length` periods (iloc[1] skips the diff NaN)
+            avg_gains[length] = gains.iloc[1 : length + 1].mean()
+            avg_losses[length] = losses.iloc[1 : length + 1].mean()
+
+            # Wilder smoothing for all subsequent bars
+            alpha = 1.0 / length
+            for i in range(length + 1, n):
+                avg_gains[i] = alpha * gains.iloc[i] + (1 - alpha) * avg_gains[i - 1]
+                avg_losses[i] = alpha * losses.iloc[i] + (1 - alpha) * avg_losses[i - 1]
+
+        avg_gains_s = pd.Series(avg_gains, index=self.df.index)
+        avg_losses_s = pd.Series(avg_losses, index=self.df.index)
+
+        rs = avg_gains_s / avg_losses_s
         rsi = 100.0 - (100.0 / (1.0 + rs))
-
         return rsi
 
     def _calculate_macd(self, params: Dict[str, Any]) -> pd.DataFrame:

@@ -281,7 +281,7 @@ export default function BacktestDetailPage() {
                         {trade.pnl_pct != null ? (
                           <span className={trade.pnl_pct >= 0 ? 'text-green-600' : 'text-red-600'}>
                             {trade.pnl_pct >= 0 ? '+' : ''}
-                            {(trade.pnl_pct * 100).toFixed(2)}%
+                            {trade.pnl_pct.toFixed(2)}%
                           </span>
                         ) : (
                           '—'

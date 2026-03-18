@@ -30,6 +30,8 @@ class SignalService:
         self,
         strategy: Strategy,
         symbol: str,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
         bar_data: Optional[List[Dict[str, Any]]] = None,
     ) -> List[Signal]:
         """
@@ -38,6 +40,8 @@ class SignalService:
         Args:
             strategy: Trading strategy
             symbol: Stock/ETF symbol
+            start_date: Start date for signal generation (overridden if bar_data provided)
+            end_date: End date for signal generation (overridden if bar_data provided)
             bar_data: Optional pre-fetched market data to use for signal generation
 
         Returns:
@@ -45,20 +49,36 @@ class SignalService:
         """
         logger.info(f"Generating signals for strategy {strategy.id} on {symbol}")
 
+        # Fetch bar data if not provided
         if not bar_data:
-            logger.warning(f"No market data found for {symbol}")
-            return []
+            if not start_date or not end_date:
+                logger.warning(f"No market data or date range provided for {symbol}")
+                return []
+            bars_dict = await self.market_data_service.get_bars([symbol], start_date, end_date)
+            bar_data = bars_dict.get(symbol, [])
+            if not bar_data:
+                logger.warning(f"No market data found for {symbol}")
+                return []
 
         # Calculate all indicators for the strategy
         indicator_values = self._calculate_strategy_indicators(strategy, symbol, bar_data)
 
+        # Build timestamp->value maps for each indicator (handles NaN stripping correctly)
+        indicator_maps = {}
+        for indicator_name, values_list in indicator_values.items():
+            # Create timestamp->value map
+            if isinstance(values_list, dict):
+                # If it's already a dict (columns format), use as-is
+                indicator_maps[indicator_name] = values_list
+            else:
+                # If it's a list of {timestamp, value} dicts, build a map
+                indicator_maps[indicator_name] = {entry["timestamp"]: entry["value"] for entry in values_list}
+
         # Generate signals based on strategy configuration
         signals = []
-        for i, bar in enumerate(bar_data):
-            # Get indicator values at this point
-            current_indicators = {
-                name: values[i]["value"] if i < len(values) else None for name, values in indicator_values.items()
-            }
+        for bar in bar_data:
+            # Get indicator values at this point using timestamp lookup
+            current_indicators = {name: value_map.get(bar["timestamp"]) for name, value_map in indicator_maps.items()}
 
             # Evaluate entry/exit conditions
             signal_type, strength, metadata = self._evaluate_conditions(strategy, current_indicators, bar)
@@ -134,18 +154,17 @@ class SignalService:
 
     def _calculate_strategy_indicators(
         self, strategy: Strategy, symbol: str, bars_data: List[Dict[str, Any]]
-    ) -> Dict[str, List[float]]:
+    ) -> Dict[str, List[Dict[str, Any]]]:
         """
         Calculate all indicators for a strategy.
 
         Args:
             strategy: Trading strategy
             symbol: Stock/ETF symbol
-            start_date: Start date
-            end_date: End date
+            bars_data: Market data bars
 
         Returns:
-            Dictionary mapping indicator names to their values
+            Dictionary mapping indicator names to their timestamp-indexed values
         """
         indicator_values = {}
 
@@ -159,10 +178,18 @@ class SignalService:
                 )
 
                 indicators = result.get("indicators", {})
-                if indicator_config.indicator_name in indicators:
-                    indicator_values[indicator_config.indicator_name] = indicators[indicator_config.indicator_name][
-                        "values"
-                    ]
+
+                # Find the key matching this indicator (format: "RSI_<hash>", "SMA_<hash>", etc.)
+                prefix = indicator_config.indicator_name.upper() + "_"
+                matching_key = next((k for k in indicators if k.startswith(prefix)), None)
+
+                if matching_key:
+                    data = indicators[matching_key]
+                    # Extract values list or columns dict
+                    if "values" in data:
+                        indicator_values[indicator_config.indicator_name] = data["values"]
+                    elif "columns" in data:
+                        indicator_values[indicator_config.indicator_name] = data["columns"]
             except Exception as e:
                 logger.error(f"Failed to calculate {indicator_config.indicator_name}: {e}")
 

@@ -69,6 +69,13 @@ class TestEMA:
 
 
 class TestRSI:
+    def test_rsi_first_length_bars_are_nan(self, ohlcv_df):
+        """Verify that the first length bars (default 14) are NaN for warm-up."""
+        calc = IndicatorCalculator(ohlcv_df)
+        rsi = calc.calculate("rsi")
+        assert rsi.iloc[:14].isna().all()
+        assert rsi.iloc[14:].notna().any()
+
     def test_rsi_range_0_to_100(self, ohlcv_df):
         calc = IndicatorCalculator(ohlcv_df)
         rsi = calc.calculate("rsi")
@@ -277,3 +284,152 @@ class TestEdgeCases:
         sma_results = [r for k, r in result.items() if k.startswith("SMA_")]
         sma_lengths = sorted([r["params"]["length"] for r in sma_results])
         assert sma_lengths == [10, 20, 30]
+
+
+# ---------------------------------------------------------------------------
+# Signal generation flow (integration with TechnicalAnalysisService)
+# ---------------------------------------------------------------------------
+
+
+class TestSignalGenerationFlow:
+    """Test the signal generation flow including indicator calculation and bar alignment."""
+
+    def test_calculate_indicators_with_bars_returns_hash_keyed_results(self, ohlcv_df):
+        """Verify that calculate_multiple returns keys like 'RSI_<hash>' not just 'rsi'."""
+        from app.services.technical_analysis_service import TechnicalAnalysisService
+
+        # Create a mock market_db (we'll just pass None since TechnicalAnalysisService doesn't use it for calculate_indicators_with_bars)
+        service = TechnicalAnalysisService(None)
+        result = service.calculate_indicators_with_bars(
+            symbol="TEST",
+            bars_data=ohlcv_df.to_dict("records"),
+            timeframe="1d",
+            indicators=[{"name": "rsi", "params": {"length": 14}}],
+        )
+
+        indicators = result.get("indicators", {})
+        # Should have exactly one key starting with "RSI_"
+        rsi_keys = [k for k in indicators.keys() if k.startswith("RSI_")]
+        assert len(rsi_keys) == 1
+        # The key format is RSI_<hash> (8-char hash)
+        assert "_" in rsi_keys[0]
+
+    def test_calculate_indicators_with_bars_strips_nans(self, falling_ohlcv_df):
+        """Verify that indicator values strip NaN entries."""
+        from app.services.technical_analysis_service import TechnicalAnalysisService
+
+        service = TechnicalAnalysisService(None)
+        result = service.calculate_indicators_with_bars(
+            symbol="TEST",
+            bars_data=falling_ohlcv_df.to_dict("records"),
+            timeframe="1d",
+            indicators=[{"name": "rsi", "params": {"length": 14}}],
+        )
+
+        indicators = result.get("indicators", {})
+        rsi_key = [k for k in indicators.keys() if k.startswith("RSI_")][0]
+        values = indicators[rsi_key].get("values", [])
+
+        # Values should have fewer entries than bars due to NaN stripping
+        assert len(values) < len(falling_ohlcv_df)
+        # All values should have timestamp and value keys
+        for v in values:
+            assert "timestamp" in v
+            assert "value" in v
+
+    def test_indicator_timestamp_alignment(self, falling_ohlcv_df):
+        """Verify that indicator values can be correctly aligned with bars by timestamp."""
+        from app.services.technical_analysis_service import TechnicalAnalysisService
+
+        service = TechnicalAnalysisService(None)
+        bars_data = falling_ohlcv_df.to_dict("records")
+        result = service.calculate_indicators_with_bars(
+            symbol="TEST",
+            bars_data=bars_data,
+            timeframe="1d",
+            indicators=[{"name": "rsi", "params": {"length": 14}}],
+        )
+
+        indicators = result.get("indicators", {})
+        rsi_key = [k for k in indicators.keys() if k.startswith("RSI_")][0]
+        values = indicators[rsi_key].get("values", [])
+
+        # Create timestamp->value map
+        value_map = {entry["timestamp"]: entry["value"] for entry in values}
+
+        # All bar timestamps that have values should be in the map
+        for bar in bars_data:
+            ts = bar["timestamp"]
+            if ts in value_map:
+                # Should be able to retrieve it correctly
+                assert isinstance(value_map[ts], (int, float))
+                assert not pd.isna(value_map[ts])
+
+    def test_calculate_strategy_indicators_finds_hash_keyed_results(self, falling_ohlcv_df):
+        """Test that _calculate_strategy_indicators correctly maps hash-keyed results to indicator names."""
+        from unittest.mock import MagicMock
+        from app.services.signal_service import SignalService
+        from app.models.strategy import Strategy
+
+        # Create mock strategy with RSI indicator config
+        strategy = MagicMock(spec=Strategy)
+        strategy.indicators = []
+
+        # Create a mock indicator config
+        indicator_config = MagicMock()
+        indicator_config.indicator_name = "rsi"
+        indicator_config.parameters = {"length": 14}
+        strategy.indicators.append(indicator_config)
+
+        # Create signal service with mocked DBs
+        signal_service = SignalService(None, None)
+
+        # Convert falling OHLCV to bar data format
+        bars_data = falling_ohlcv_df.to_dict("records")
+
+        # Call _calculate_strategy_indicators
+        indicator_values = signal_service._calculate_strategy_indicators(strategy, "TEST", bars_data)
+
+        # Should have the "rsi" key (not RSI_<hash>)
+        assert "rsi" in indicator_values
+        # The values should be a list (or could be a dict with timestamp->value mapping)
+        assert len(indicator_values["rsi"]) > 0
+
+    def test_signal_generation_produces_signals_for_rsi_strategy(self, falling_ohlcv_df):
+        """Test that signal generation produces non-zero signals for RSI oversold condition."""
+        from unittest.mock import MagicMock, AsyncMock
+        from app.services.signal_service import SignalService
+        from app.models.strategy import Strategy
+
+        # Create mock strategy with RSI indicator
+        strategy = MagicMock(spec=Strategy)
+        strategy.id = 1
+        strategy.strategy_type = "technical"
+
+        # Create a mock indicator config
+        indicator_config = MagicMock()
+        indicator_config.indicator_name = "rsi"
+        indicator_config.parameters = {"length": 14}
+        strategy.indicators = [indicator_config]
+
+        # Set strategy config for entry/exit thresholds
+        strategy.config = {"entry_threshold": 30, "exit_threshold": 70}
+
+        # Create signal service with mocked DBs
+        db = MagicMock()
+        db.add = MagicMock()
+        db.commit = AsyncMock()
+
+        signal_service = SignalService(db, None)
+
+        # Convert falling OHLCV to bar data format (has oversold RSI values)
+        bars_data = falling_ohlcv_df.to_dict("records")
+
+        # Call generate_signals (note: this is async)
+        # We need to handle the async call differently
+        import asyncio
+
+        signals = asyncio.run(signal_service.generate_signals(strategy, "TEST", bar_data=bars_data))
+
+        # With a falling market (oversold RSI), should generate buy signals
+        assert len(signals) > 0

@@ -4,8 +4,6 @@ Unit tests for MetricsCalculator.
 Pure math tests — no DB, no network, no async.
 """
 
-import pytest
-from datetime import datetime
 from unittest.mock import MagicMock
 
 from app.core.backtesting.metrics import MetricsCalculator

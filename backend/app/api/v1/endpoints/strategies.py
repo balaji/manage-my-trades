@@ -289,7 +289,7 @@ async def generate_strategy_signals(
 
     signal_service = SignalService(db, market_db)
     try:
-        signals = await signal_service.generate_signals(strategy, symbol, start_date, end_date)
+        signals = await signal_service.generate_signals(strategy, symbol, start_date=start_date, end_date=end_date)
         return SignalListResponse(signals=signals, total=len(signals))
     except Exception as e:
         raise HTTPException(

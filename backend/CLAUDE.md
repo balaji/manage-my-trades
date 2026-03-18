@@ -24,3 +24,8 @@ Run tests locally: `cd backend && uv run pytest`
 ## Formatting & Linting
 Format Python files `uv tool run --directory backend ruff format {staged_files}`
 Lint with auto-fixes `uv tool run --directory backend ruff check --fix {staged_files}`
+
+# Project Domain
+This project deals with Algotrading using Technical Analysis using Indicators, so keep in context the following
+- Use precise definitions for strategies, signals, and indicators.
+- Check with the operator if they want you to implement by hand or use a third-party library
