@@ -242,5 +242,38 @@ class TestEdgeCases:
         assert isinstance(result, dict)
         assert len(result) == 2
         keys = list(result.keys())
-        assert any(k.startswith("sma_") for k in keys)
-        assert any(k.startswith("rsi_") for k in keys)
+        assert any(k.startswith("SMA_") for k in keys)
+        assert any(k.startswith("RSI_") for k in keys)
+        # Verify each result has a 'name' field
+        for r in result.values():
+            assert "name" in r
+            assert r["name"] in ["SMA", "RSI"]
+
+    def test_calculate_multiple_with_multiple_sma_lengths(self, ohlcv_df):
+        """Verify that multiple SMAs with different lengths produce distinct hash-based keys."""
+        calc = IndicatorCalculator(ohlcv_df)
+        indicators = [
+            {"name": "sma", "params": {"length": 10}},
+            {"name": "sma", "params": {"length": 20}},
+            {"name": "sma", "params": {"length": 30}},
+            {"name": "ema", "params": {"length": 10}},
+            {"name": "ema", "params": {"length": 20}},
+            {"name": "ema", "params": {"length": 30}},
+        ]
+        result = calc.calculate_multiple(indicators)
+        assert isinstance(result, dict)
+        assert len(result) == 6
+
+        # All keys should be distinct and start with SMA_ or EMA_
+        keys = list(result.keys())
+        sma_keys = [k for k in keys if k.startswith("SMA_")]
+        ema_keys = [k for k in keys if k.startswith("EMA_")]
+
+        assert len(sma_keys) == 3
+        assert len(ema_keys) == 3
+        assert len(set(keys)) == 6  # All keys are unique
+
+        # Verify params match
+        sma_results = [r for k, r in result.items() if k.startswith("SMA_")]
+        sma_lengths = sorted([r["params"]["length"] for r in sma_results])
+        assert sma_lengths == [10, 20, 30]

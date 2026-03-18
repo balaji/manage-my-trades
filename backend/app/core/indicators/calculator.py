@@ -240,9 +240,12 @@ class IndicatorCalculator:
 
             try:
                 result = self.calculate(name, params)
+                # Create unique key using hash to support multiple instances of the same indicator with different params
+                key = f"{name.upper()}_{self.create_hash(name, params)[:8]}"
                 # Convert to dict format
                 if isinstance(result, pd.Series):
-                    results[name] = {
+                    results[key] = {
+                        "name": name.upper(),
                         "values": [
                             {"timestamp": idx, "value": float(val)} for idx, val in result.items() if pd.notna(val)
                         ],
@@ -250,15 +253,15 @@ class IndicatorCalculator:
                     }
                 elif isinstance(result, pd.DataFrame):
                     # For multi-column indicators (MACD, BBands, Stoch)
-                    results[name] = {"params": params, "columns": {}}
+                    results[key] = {"name": name.upper(), "params": params, "columns": {}}
                     for col in result.columns:
-                        results[name]["columns"][col] = [
+                        results[key]["columns"][col] = [
                             {"timestamp": idx, "value": float(val)} for idx, val in result[col].items() if pd.notna(val)
                         ]
 
             except Exception as e:
                 logger.error(f"Error calculating {name}: {e}")
-                results[f"{name}_error"] = {"error": str(e)}
+                results[f"{name.upper()}_error"] = {"error": str(e)}
 
         return results
 

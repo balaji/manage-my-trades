@@ -117,11 +117,11 @@ export default function TechnicalAnalysisPage() {
         const results = indicatorResult.indicators;
 
         // RSI
-        const rsiResult = results['RSI'];
+        const rsiResult = Object.values(results).find((r) => (r as any).name === 'RSI');
         setRsiData(rsiResult?.values?.filter((v) => v.value !== null) ?? []);
 
         // Bollinger Bands (multi-column)
-        const bbResult = results['BBANDS'];
+        const bbResult = Object.values(results).find((r) => (r as any).name === 'BBANDS');
         if (bbResult?.columns) {
           const cols = bbResult.columns;
           const length = bbResult.params.length as number;
@@ -163,18 +163,20 @@ export default function TechnicalAnalysisPage() {
 
         // SMA / EMA
         console.log(results);
-        const yolo = (name: string) => {
-          const r = results[name];
-          const period = r.params.length as number;
-          const colors = name === 'SMA' ? SMA_COLORS : EMA_COLORS;
-          return {
-            name: `${name} ${period}`,
-            data: r.values!.filter((v) => v.value !== null),
-            color: colors[period] ?? '#2196F3',
-          };
-        };
+        const getByName = (name: string) =>
+          Object.entries(results)
+            .filter(([, r]) => (r as any).name === name)
+            .map(([, r]) => {
+              const period = r.params.length as number;
+              const colors = name === 'SMA' ? SMA_COLORS : EMA_COLORS;
+              return {
+                name: `${name} ${period}`,
+                data: r.values!.filter((v) => v.value !== null),
+                color: colors[period] ?? '#2196F3',
+              };
+            });
 
-        setAllIndicators(['SMA', 'EMA'].map(yolo));
+        setAllIndicators([...getByName('SMA'), ...getByName('EMA')]);
       } else {
         setError('No data available for this symbol');
         setAllIndicators([]);
