@@ -4,15 +4,19 @@ pre-commit:
       glob: "backend/**/*.py"
       root: "backend"
       run: uv run ruff format {staged_files}
+      stage_fixed: true
     ruff-check:
       glob: "backend/**/*.py"
       root: "backend"
       run: uv run ruff check --fix {staged_files}
+      stage_fixed: true
     prettier:
       glob: "frontend/**/*.{ts,tsx,js,jsx,json,css}"
       root: "frontend"
       run: npm run format {staged_files}
+      stage_fixed: true
     eslint:
       glob: "frontend/**/*.{ts,tsx,js,jsx}"
       root: "frontend"
       run: npm run lint {staged_files}
+      stage_fixed: true
