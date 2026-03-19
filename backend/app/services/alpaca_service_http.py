@@ -20,11 +20,11 @@ class AlpacaServiceHttp(AlpacaServiceBase):
     DATA_BASE_URL = "https://data.alpaca.markets"
     TRADING_BASE_URL = "https://paper-api.alpaca.markets"
 
-    def __init__(self):
+    def __init__(self, key_id: Optional[str] = None, secret_key: Optional[str] = None):
         settings = get_settings()
         self._auth_headers = {
-            "APCA-API-KEY-ID": settings.ALPACA_API_KEY,
-            "APCA-API-SECRET-KEY": settings.ALPACA_SECRET_KEY,
+            "APCA-API-KEY-ID": key_id or settings.ALPACA_API_KEY,
+            "APCA-API-SECRET-KEY": secret_key or settings.ALPACA_SECRET_KEY,
         }
         self._client = httpx.AsyncClient(headers=self._auth_headers, timeout=30.0)
 

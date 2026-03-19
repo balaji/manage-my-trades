@@ -152,14 +152,38 @@ export default function BacktestDetailPage() {
           </div>
         )}
 
-        {/* Strategy Link */}
-        <div className="mb-6">
+        {/* Strategy & Re-run Actions */}
+        <div className="mb-6 flex gap-3">
           <Link
             href={`/strategies/${backtest.strategy_id}`}
             className="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
           >
             View Strategy
           </Link>
+          <Link
+            href={`/strategies/${backtest.strategy_id}/edit`}
+            className="inline-block px-4 py-2 border border-blue-600 text-blue-600 rounded hover:bg-blue-50 transition-colors"
+          >
+            Edit Strategy
+          </Link>
+          <button
+            onClick={() => {
+              const params = new URLSearchParams({
+                strategyId: String(backtest.strategy_id),
+                symbols: backtest.symbols.join(','),
+                start_date: backtest.start_date,
+                end_date: backtest.end_date,
+                initial_capital: String(backtest.initial_capital),
+                timeframe: backtest.timeframe,
+                commission: String(backtest.commission),
+                slippage: String(backtest.slippage),
+              });
+              router.push(`/backtests/new?${params.toString()}`);
+            }}
+            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+          >
+            Re-run Backtest
+          </button>
         </div>
 
         {/* Metrics & Equity Curve */}
@@ -248,20 +272,20 @@ export default function BacktestDetailPage() {
         )}
 
         {/* Signals & Trades Tables - Side by Side */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           {/* Signals Section */}
           {signals.length > 0 && (
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-white rounded-lg shadow p-6 lg:col-span-1">
               <h2 className="text-xl font-semibold mb-4">Signals ({signals.length})</h2>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 border-b">
                     <tr>
                       <th className="text-left py-2 px-3 font-semibold text-gray-600">Symbol</th>
-                      <th className="text-left py-2 px-3 font-semibold text-gray-600">Signal Type</th>
+                      <th className="text-left py-2 px-3 font-semibold text-gray-600">Type</th>
                       <th className="text-left py-2 px-3 font-semibold text-gray-600">Timestamp</th>
                       <th className="text-right py-2 px-3 font-semibold text-gray-600">Price</th>
-                      <th className="text-right py-2 px-3 font-semibold text-gray-600">Strength</th>
+                      <th className="text-right py-2 px-3 font-semibold text-gray-600">Str</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -281,7 +305,13 @@ export default function BacktestDetailPage() {
                             {signal.signal_type}
                           </span>
                         </td>
-                        <td className="py-2 px-3 text-gray-600">{new Date(signal.timestamp).toLocaleDateString()}</td>
+                        <td className="py-2 px-3 text-gray-600">
+                          {new Date(signal.timestamp).toLocaleDateString('en-GB', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: '2-digit',
+                          })}
+                        </td>
                         <td className="py-2 px-3 text-right font-mono">${signal.price.toFixed(2)}</td>
                         <td className="py-2 px-3 text-right font-mono">
                           {signal.strength != null ? `${(signal.strength * 100).toFixed(0)}%` : '—'}
@@ -296,7 +326,7 @@ export default function BacktestDetailPage() {
 
           {/* Trades Table */}
           {trades.length > 0 && (
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-white rounded-lg shadow p-6 lg:col-span-2">
               <h2 className="text-xl font-semibold mb-4">Trades ({trades.length})</h2>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">

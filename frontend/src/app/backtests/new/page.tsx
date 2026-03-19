@@ -29,13 +29,13 @@ export default function NewBacktestPage() {
   const [form, setForm] = useState({
     strategy_id: prefillStrategyId ?? '',
     name: '',
-    symbols: 'SPY',
-    start_date: oneYearAgo.toISOString().split('T')[0],
-    end_date: today.toISOString().split('T')[0],
-    initial_capital: '10000',
-    timeframe: '1d',
-    commission: '0',
-    slippage: '0.001',
+    symbols: searchParams.get('symbols') || 'SPY',
+    start_date: searchParams.get('start_date') || oneYearAgo.toISOString().split('T')[0],
+    end_date: searchParams.get('end_date') || today.toISOString().split('T')[0],
+    initial_capital: searchParams.get('initial_capital') || '10000',
+    timeframe: searchParams.get('timeframe') || '1d',
+    commission: searchParams.get('commission') || '0',
+    slippage: searchParams.get('slippage') || '0.001',
   });
 
   useEffect(() => {

@@ -19,7 +19,15 @@
       "Bash(git checkout:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(gh pr:*)"
+      "Bash(gh pr:*)",
+      "Bash(find /Users/balaji/projects/manage-my-trades/frontend/src -path *strategies* -type f)",
+      "Bash(find /Users/balaji/projects/manage-my-trades/frontend/src -type f \\\\\\(-name *.tsx -o -name *.ts \\\\\\))",
+      "Bash(find /Users/balaji/projects/manage-my-trades/backend/alembic_trade_data/versions -name *.py -type f)",
+      "Bash(find /Users/balaji/projects/manage-my-trades/backend/app -name *.py -type f)",
+      "Bash(find /Users/balaji/projects/manage-my-trades/backend/app/api -name *.py -type f)",
+      "Bash(find /Users/balaji/projects/manage-my-trades -name *.md -type f)",
+      "Bash(ls:*)",
+      "Bash(git restore:*)"
     ]
   }
 }

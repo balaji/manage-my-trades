@@ -1,9 +1,6 @@
 'use client';
 
-/**
- * Strategy form component for creating and editing strategies.
- */
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StrategyCreate,
   StrategyType,
@@ -11,83 +8,111 @@ import {
   IndicatorUsage,
   getStrategyTypeLabel,
 } from '@/lib/types/strategy';
+import { getIndicators, IndicatorDefinition } from '@/lib/api/indicators';
 
 interface StrategyFormProps {
   onSubmit: (data: StrategyCreate) => Promise<void>;
+  onSaveAsNew?: (data: StrategyCreate) => Promise<void>;
   initialData?: Partial<StrategyCreate>;
   submitLabel?: string;
 }
 
-const AVAILABLE_INDICATORS = [
-  {
-    value: 'sma',
-    label: 'Simple Moving Average (SMA)',
-    defaultParams: { period: 20 },
-  },
-  {
-    value: 'ema',
-    label: 'Exponential Moving Average (EMA)',
-    defaultParams: { period: 20 },
-  },
-  {
-    value: 'rsi',
-    label: 'Relative Strength Index (RSI)',
-    defaultParams: { period: 14 },
-  },
-  {
-    value: 'macd',
-    label: 'MACD',
-    defaultParams: { fast: 12, slow: 26, signal: 9 },
-  },
-  {
-    value: 'bollinger_bands',
-    label: 'Bollinger Bands',
-    defaultParams: { period: 20, std: 2 },
-  },
-  {
-    value: 'stochastic',
-    label: 'Stochastic Oscillator',
-    defaultParams: { k_period: 14, d_period: 3 },
-  },
-  {
-    value: 'atr',
-    label: 'Average True Range (ATR)',
-    defaultParams: { period: 14 },
-  },
-];
-
-export function StrategyForm({ onSubmit, initialData, submitLabel = 'Create Strategy' }: StrategyFormProps) {
+export function StrategyForm({
+  onSubmit,
+  onSaveAsNew,
+  initialData,
+  submitLabel = 'Create Strategy',
+}: StrategyFormProps) {
   const [name, setName] = useState(initialData?.name || '');
   const [description, setDescription] = useState(initialData?.description || '');
   const [strategyType, setStrategyType] = useState<StrategyType>(initialData?.strategy_type || StrategyType.TECHNICAL);
   const [indicators, setIndicators] = useState<StrategyIndicatorConfig[]>(initialData?.indicators || []);
-  const [config, setConfig] = useState<Record<string, any>>(initialData?.config || {});
-  const [configJson, setConfigJson] = useState(JSON.stringify(initialData?.config || {}, null, 2));
+  const [entryThreshold, setEntryThreshold] = useState<number>(initialData?.config?.entry_threshold ?? 30);
+  const [exitThreshold, setExitThreshold] = useState<number>(initialData?.config?.exit_threshold ?? 70);
+  const initialPositionSizing = (initialData?.config?.position_sizing as Record<string, any>) || {};
+  const [positionSizingMethod, setPositionSizingMethod] = useState<string>(
+    initialPositionSizing.method || 'fixed_percentage'
+  );
+  const [positionSizingPercentage, setPositionSizingPercentage] = useState<number>(
+    (initialPositionSizing.percentage ?? 0.1) * 100
+  );
+  const [positionSizingAmount, setPositionSizingAmount] = useState<number>(initialPositionSizing.amount ?? 1000);
+  const [positionSizingNumPositions, setPositionSizingNumPositions] = useState<number>(
+    initialPositionSizing.num_positions ?? 5
+  );
+
+  const [advancedJson, setAdvancedJson] = useState(() => {
+    const cfg = { ...(initialData?.config || {}) };
+    delete cfg.entry_threshold;
+    delete cfg.exit_threshold;
+    delete cfg.position_sizing;
+    const keys = Object.keys(cfg);
+    return keys.length > 0 ? JSON.stringify(cfg, null, 2) : '';
+  });
+  const [showAdvanced, setShowAdvanced] = useState(() => {
+    const cfg = { ...(initialData?.config || {}) };
+    delete cfg.entry_threshold;
+    delete cfg.exit_threshold;
+    delete cfg.position_sizing;
+    return Object.keys(cfg).length > 0;
+  });
   const [submitting, setSubmitting] = useState(false);
+  const [savingAsNew, setSavingAsNew] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleAddIndicator = () => {
+  const [registry, setRegistry] = useState<IndicatorDefinition[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    getIndicators().then(setRegistry).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredIndicators = registry.filter(
+    (ind) =>
+      ind.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      ind.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleSelectIndicator = (ind: IndicatorDefinition) => {
+    const defaultParams: Record<string, any> = {};
+    ind.parameters.forEach((p) => {
+      defaultParams[p.name] = p.default;
+    });
     setIndicators([
       ...indicators,
       {
-        indicator_name: 'rsi',
-        parameters: { period: 14 },
+        indicator_name: ind.name,
+        parameters: defaultParams,
         usage: IndicatorUsage.ENTRY,
       },
     ]);
+    setSearchQuery('');
+    setShowDropdown(false);
   };
 
   const handleRemoveIndicator = (index: number) => {
     setIndicators(indicators.filter((_, i) => i !== index));
   };
 
-  const handleUpdateIndicator = (index: number, field: keyof StrategyIndicatorConfig, value: any) => {
+  const handleUpdateIndicatorUsage = (index: number, usage: IndicatorUsage) => {
     const updated = [...indicators];
-    updated[index] = { ...updated[index], [field]: value };
+    updated[index] = { ...updated[index], usage };
     setIndicators(updated);
   };
 
-  const handleUpdateIndicatorParam = (index: number, param: string, value: any) => {
+  const handleUpdateIndicatorParam = (index: number, param: string, value: number) => {
     const updated = [...indicators];
     updated[index] = {
       ...updated[index],
@@ -96,47 +121,86 @@ export function StrategyForm({ onSubmit, initialData, submitLabel = 'Create Stra
     setIndicators(updated);
   };
 
-  const handleConfigChange = (value: string) => {
-    setConfigJson(value);
-    try {
-      const parsed = JSON.parse(value);
-      setConfig(parsed);
-      setError(null);
-    } catch (err) {
-      setError('Invalid JSON configuration');
+  const getRegistryDef = (name: string) => registry.find((r) => r.name === name);
+
+  const buildConfig = (): Record<string, any> => {
+    const cfg: Record<string, any> = {};
+    if (strategyType === StrategyType.TECHNICAL) {
+      cfg.entry_threshold = entryThreshold;
+      cfg.exit_threshold = exitThreshold;
     }
+    const positionSizing: Record<string, any> = { method: positionSizingMethod };
+    if (positionSizingMethod === 'fixed_percentage') {
+      positionSizing.percentage = positionSizingPercentage / 100;
+    } else if (positionSizingMethod === 'fixed_amount') {
+      positionSizing.amount = positionSizingAmount;
+    } else if (positionSizingMethod === 'equal_weight') {
+      positionSizing.num_positions = positionSizingNumPositions;
+    }
+    cfg.position_sizing = positionSizing;
+    if (advancedJson.trim()) {
+      try {
+        Object.assign(cfg, JSON.parse(advancedJson));
+      } catch {
+        // will be caught in validation
+      }
+    }
+    return cfg;
+  };
+
+  const buildFormData = (): StrategyCreate => ({
+    name: name.trim(),
+    description: description.trim() || undefined,
+    strategy_type: strategyType,
+    config: buildConfig(),
+    indicators,
+  });
+
+  const validate = (): string | null => {
+    if (!name.trim()) return 'Strategy name is required';
+    if (advancedJson.trim()) {
+      try {
+        JSON.parse(advancedJson);
+      } catch {
+        return 'Invalid JSON in advanced configuration';
+      }
+    }
+    return null;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const err = validate();
+    if (err) {
+      setError(err);
+      return;
+    }
     setError(null);
-
-    if (!name.trim()) {
-      setError('Strategy name is required');
-      return;
-    }
-
-    try {
-      JSON.parse(configJson);
-    } catch (err) {
-      setError('Invalid JSON configuration');
-      return;
-    }
-
     setSubmitting(true);
-
     try {
-      await onSubmit({
-        name: name.trim(),
-        description: description.trim() || undefined,
-        strategy_type: strategyType,
-        config: JSON.parse(configJson),
-        indicators,
-      });
+      await onSubmit(buildFormData());
     } catch (err: any) {
       setError(err.message || 'Failed to submit strategy');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleSaveAsNew = async () => {
+    if (!onSaveAsNew) return;
+    const err = validate();
+    if (err) {
+      setError(err);
+      return;
+    }
+    setError(null);
+    setSavingAsNew(true);
+    try {
+      await onSaveAsNew(buildFormData());
+    } catch (err: any) {
+      setError(err.message || 'Failed to save as new strategy');
+    } finally {
+      setSavingAsNew(false);
     }
   };
 
@@ -190,63 +254,131 @@ export function StrategyForm({ onSubmit, initialData, submitLabel = 'Create Stra
 
       {/* Indicators */}
       <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">Indicators</h2>
+        <h2 className="text-xl font-semibold mb-4">Indicators</h2>
+
+        {/* Autocomplete search */}
+        <div className="flex gap-2 mb-4" ref={searchRef}>
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setShowDropdown(true);
+              }}
+              onFocus={() => setShowDropdown(true)}
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Type to search indicators..."
+            />
+            {showDropdown && searchQuery.length === 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                {registry.map((ind) => (
+                  <button
+                    key={ind.name}
+                    type="button"
+                    onClick={() => handleSelectIndicator(ind)}
+                    className="w-full text-left px-4 py-2 hover:bg-blue-50 border-b last:border-b-0"
+                  >
+                    <div className="font-medium text-sm">{ind.label}</div>
+                    <div className="text-xs text-gray-500">{ind.description}</div>
+                  </button>
+                ))}
+              </div>
+            )}
+            {showDropdown && searchQuery.length > 0 && filteredIndicators.length > 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                {filteredIndicators.map((ind) => (
+                  <button
+                    key={ind.name}
+                    type="button"
+                    onClick={() => handleSelectIndicator(ind)}
+                    className="w-full text-left px-4 py-2 hover:bg-blue-50 border-b last:border-b-0"
+                  >
+                    <div className="font-medium text-sm">{ind.label}</div>
+                    <div className="text-xs text-gray-500">{ind.description}</div>
+                  </button>
+                ))}
+              </div>
+            )}
+            {showDropdown && searchQuery.length > 0 && filteredIndicators.length === 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg p-3 text-sm text-gray-500">
+                No matching indicators
+              </div>
+            )}
+          </div>
           <button
             type="button"
-            onClick={handleAddIndicator}
-            className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+            onClick={() => setShowDropdown(!showDropdown)}
+            className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-lg font-bold"
+            title="Browse indicators"
           >
-            Add Indicator
+            +
           </button>
         </div>
 
         {indicators.length === 0 ? (
-          <p className="text-gray-500 text-center py-4">
-            No indicators added yet. Click &quot;Add Indicator&quot; to get started.
-          </p>
+          <p className="text-gray-500 text-center py-4">No indicators added yet. Search above to add one.</p>
         ) : (
           <div className="space-y-4">
-            {indicators.map((indicator, index) => (
-              <div key={index} className="border rounded-lg p-4">
-                <div className="flex justify-between items-start mb-3">
-                  <h3 className="font-semibold">Indicator {index + 1}</h3>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveIndicator(index)}
-                    className="text-red-600 hover:text-red-800 text-sm"
-                  >
-                    Remove
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Indicator Type</label>
-                    <select
-                      value={indicator.indicator_name}
-                      onChange={(e) => {
-                        const selected = AVAILABLE_INDICATORS.find((i) => i.value === e.target.value);
-                        handleUpdateIndicator(index, 'indicator_name', e.target.value);
-                        if (selected) {
-                          handleUpdateIndicator(index, 'parameters', selected.defaultParams);
-                        }
-                      }}
-                      className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500"
+            {indicators.map((indicator, index) => {
+              const def = getRegistryDef(indicator.indicator_name);
+              return (
+                <div key={index} className="border rounded-lg p-4">
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="font-semibold text-lg capitalize">{def?.label || indicator.indicator_name}</h3>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveIndicator(index)}
+                      className="text-red-600 hover:text-red-800 text-xl leading-none"
+                      title="Remove indicator"
                     >
-                      {AVAILABLE_INDICATORS.map((ind) => (
-                        <option key={ind.value} value={ind.value}>
-                          {ind.label}
-                        </option>
-                      ))}
-                    </select>
+                      &times;
+                    </button>
                   </div>
 
+                  {def ? (
+                    <div className="grid grid-cols-2 gap-4 mb-3">
+                      {def.parameters.map((param) => (
+                        <div key={param.name}>
+                          <label className="block text-sm font-medium mb-1">{param.label}</label>
+                          <input
+                            type="number"
+                            value={indicator.parameters[param.name] ?? param.default}
+                            onChange={(e) =>
+                              handleUpdateIndicatorParam(index, param.name, parseFloat(e.target.value) || 0)
+                            }
+                            className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">{param.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="mb-3">
+                      <label className="block text-sm font-medium mb-1">Parameters (JSON)</label>
+                      <textarea
+                        value={JSON.stringify(indicator.parameters, null, 2)}
+                        onChange={(e) => {
+                          try {
+                            const parsed = JSON.parse(e.target.value);
+                            const updated = [...indicators];
+                            updated[index] = { ...updated[index], parameters: parsed };
+                            setIndicators(updated);
+                          } catch {
+                            // keep editing
+                          }
+                        }}
+                        className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                        rows={3}
+                      />
+                    </div>
+                  )}
+
                   <div>
-                    <label className="block text-sm font-medium mb-2">Usage</label>
+                    <label className="block text-sm font-medium mb-1">Usage</label>
                     <select
                       value={indicator.usage}
-                      onChange={(e) => handleUpdateIndicator(index, 'usage', e.target.value as IndicatorUsage)}
+                      onChange={(e) => handleUpdateIndicatorUsage(index, e.target.value as IndicatorUsage)}
                       className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500"
                     >
                       <option value={IndicatorUsage.ENTRY}>Entry</option>
@@ -255,25 +387,8 @@ export function StrategyForm({ onSubmit, initialData, submitLabel = 'Create Stra
                     </select>
                   </div>
                 </div>
-
-                <div className="mt-3">
-                  <label className="block text-sm font-medium mb-2">Parameters (JSON)</label>
-                  <textarea
-                    value={JSON.stringify(indicator.parameters, null, 2)}
-                    onChange={(e) => {
-                      try {
-                        const parsed = JSON.parse(e.target.value);
-                        handleUpdateIndicator(index, 'parameters', parsed);
-                      } catch (err) {
-                        // Invalid JSON, keep editing
-                      }
-                    }}
-                    className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                    rows={3}
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -281,30 +396,140 @@ export function StrategyForm({ onSubmit, initialData, submitLabel = 'Create Stra
       {/* Configuration */}
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-xl font-semibold mb-4">Configuration</h2>
+
+        {strategyType === StrategyType.TECHNICAL && (
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Entry Threshold</label>
+              <input
+                type="number"
+                value={entryThreshold}
+                onChange={(e) => setEntryThreshold(parseFloat(e.target.value) || 0)}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Signal to buy when indicator drops below this value (e.g. RSI &lt; 30)
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Exit Threshold</label>
+              <input
+                type="number"
+                value={exitThreshold}
+                onChange={(e) => setExitThreshold(parseFloat(e.target.value) || 0)}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Signal to sell when indicator rises above this value (e.g. RSI &gt; 70)
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Position Sizing */}
+        <div className="mb-4">
+          <h3 className="text-sm font-semibold mb-3">Position Sizing</h3>
+          <div className="mb-3">
+            <label className="block text-sm font-medium mb-1">Method</label>
+            <select
+              value={positionSizingMethod}
+              onChange={(e) => setPositionSizingMethod(e.target.value)}
+              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="fixed_percentage">Fixed Percentage</option>
+              <option value="fixed_amount">Fixed Amount</option>
+              <option value="equal_weight">Equal Weight</option>
+            </select>
+          </div>
+          {positionSizingMethod === 'fixed_percentage' && (
+            <div>
+              <label className="block text-sm font-medium mb-1">Percentage of Portfolio (%)</label>
+              <input
+                type="number"
+                min={0.1}
+                max={100}
+                step={0.1}
+                value={positionSizingPercentage}
+                onChange={(e) => setPositionSizingPercentage(parseFloat(e.target.value) || 0)}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <p className="text-xs text-gray-500 mt-1">Allocate this % of portfolio equity per trade (default: 10%)</p>
+            </div>
+          )}
+          {positionSizingMethod === 'fixed_amount' && (
+            <div>
+              <label className="block text-sm font-medium mb-1">Amount ($)</label>
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={positionSizingAmount}
+                onChange={(e) => setPositionSizingAmount(parseFloat(e.target.value) || 0)}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <p className="text-xs text-gray-500 mt-1">Fixed dollar amount to allocate per trade</p>
+            </div>
+          )}
+          {positionSizingMethod === 'equal_weight' && (
+            <div>
+              <label className="block text-sm font-medium mb-1">Number of Positions</label>
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={positionSizingNumPositions}
+                onChange={(e) => setPositionSizingNumPositions(parseInt(e.target.value) || 1)}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <p className="text-xs text-gray-500 mt-1">Divide portfolio equally across this many positions</p>
+            </div>
+          )}
+        </div>
+
         <div>
-          <label className="block text-sm font-medium mb-2">Strategy Configuration (JSON)</label>
-          <textarea
-            value={configJson}
-            onChange={(e) => handleConfigChange(e.target.value)}
-            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-            rows={8}
-            placeholder='{\n  "entry_threshold": 30,\n  "exit_threshold": 70,\n  "symbols": ["SPY", "QQQ"]\n}'
-          />
-          <p className="text-sm text-gray-500 mt-2">
-            Add strategy-specific configuration like thresholds, symbols, position sizing, etc.
-          </p>
+          <button
+            type="button"
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="text-sm text-blue-600 hover:underline mb-2"
+          >
+            {showAdvanced ? 'Hide' : 'Show'} Advanced JSON
+          </button>
+          {showAdvanced && (
+            <div>
+              <textarea
+                value={advancedJson}
+                onChange={(e) => setAdvancedJson(e.target.value)}
+                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                rows={6}
+                placeholder='{"custom_field": "value"}'
+              />
+              <p className="text-sm text-gray-500 mt-1">
+                Additional strategy-specific configuration as JSON. Merged with the fields above.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Submit Button */}
+      {/* Submit Buttons */}
       <div className="flex gap-4">
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || savingAsNew}
           className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           {submitting ? 'Submitting...' : submitLabel}
         </button>
+        {onSaveAsNew && (
+          <button
+            type="button"
+            onClick={handleSaveAsNew}
+            disabled={submitting || savingAsNew}
+            className="px-6 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 disabled:border-gray-400 disabled:text-gray-400 disabled:cursor-not-allowed"
+          >
+            {savingAsNew ? 'Saving...' : 'Save as New'}
+          </button>
+        )}
       </div>
     </form>
   );
