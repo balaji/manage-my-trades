@@ -11,6 +11,8 @@ from app.schemas.backtest import (
     BacktestListResponse,
     BacktestResponse,
     BacktestTradesResponse,
+    SignalResponse,
+    BacktestSignalsResponse,
 )
 from app.services.backtest_service import BacktestService
 
@@ -151,6 +153,44 @@ async def get_backtest_trades(
     service = BacktestService(db, market_db)
     trades, total = await service.get_backtest_trades(backtest_id, skip, limit)
     return {"trades": trades, "total": total}
+
+
+@router.get("/{backtest_id}/signals", response_model=BacktestSignalsResponse)
+async def get_backtest_signals(
+    backtest_id: int,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    db: AsyncSession = Depends(get_db),
+    market_db: AsyncSession = Depends(get_market_db),
+):
+    """
+    Get all signals generated in a backtest.
+
+    Args:
+        backtest_id: ID of backtest
+        skip: Number of records to skip (pagination)
+        limit: Maximum number of records to return (pagination)
+
+    Returns:
+        List of signals with total count
+    """
+    service = BacktestService(db, market_db)
+    signals, total = await service.get_backtest_signals(backtest_id, skip, limit)
+    # Convert ORM objects to dictionaries, ensuring metadata_ is a proper dict
+    signal_responses = []
+    for signal in signals:
+        signal_dict = {
+            "id": signal.id,
+            "symbol": signal.symbol,
+            "signal_type": signal.signal_type,
+            "timestamp": signal.timestamp,
+            "price": signal.price,
+            "strength": signal.strength,
+            "indicators": signal.indicators if signal.indicators else None,
+            "metadata": signal.metadata_ if isinstance(signal.metadata_, dict) else (signal.metadata_ or {}),
+        }
+        signal_responses.append(SignalResponse(**signal_dict))
+    return {"signals": signal_responses, "total": total}
 
 
 @router.delete("/{backtest_id}", status_code=204)

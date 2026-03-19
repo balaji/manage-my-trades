@@ -23,7 +23,6 @@ class Strategy(Base, TimestampMixin):
     # Relationships
     indicators = relationship("StrategyIndicator", back_populates="strategy", cascade="all, delete-orphan")
     backtests = relationship("Backtest", back_populates="strategy")
-    signals = relationship("Signal", back_populates="strategy")
 
 
 class StrategyIndicator(Base, TimestampMixin):

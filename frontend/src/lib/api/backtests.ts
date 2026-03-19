@@ -4,6 +4,7 @@
 
 import { apiClient, handleApiError } from './client';
 import { Backtest, BacktestCreate, BacktestListResponse, BacktestTradesResponse } from '../types/backtest';
+import { BacktestSignalsResponse } from '../types/signal';
 
 const BACKTESTS_BASE = '/backtests';
 
@@ -61,6 +62,23 @@ export async function getBacktestTrades(
 ): Promise<BacktestTradesResponse> {
   try {
     const response = await apiClient.get<BacktestTradesResponse>(`${BACKTESTS_BASE}/${backtestId}/trades`, {
+      params: {
+        skip: params?.skip ?? 0,
+        limit: params?.limit ?? 100,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+
+export async function getBacktestSignals(
+  backtestId: number,
+  params?: { skip?: number; limit?: number }
+): Promise<BacktestSignalsResponse> {
+  try {
+    const response = await apiClient.get<BacktestSignalsResponse>(`${BACKTESTS_BASE}/${backtestId}/signals`, {
       params: {
         skip: params?.skip ?? 0,
         limit: params?.limit ?? 100,

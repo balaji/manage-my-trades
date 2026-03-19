@@ -175,7 +175,7 @@ class SignalResponse(BaseModel):
     """Response schema for trading signal."""
 
     id: int
-    strategy_id: int
+    backtest_result_id: int
     symbol: str
     signal_type: str
     timestamp: date
@@ -191,7 +191,7 @@ class SignalResponse(BaseModel):
         json_schema_extra = {
             "example": {
                 "id": 1,
-                "strategy_id": 1,
+                "backtest_result_id": 1,
                 "symbol": "SPY",
                 "signal_type": "buy",
                 "timestamp": "2024-01-15T14:30:00",

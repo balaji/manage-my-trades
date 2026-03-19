@@ -95,3 +95,4 @@ class BacktestResult(Base, TimestampMixin):
 
     # Relationships
     backtest = relationship("Backtest", back_populates="results")
+    signals = relationship("Signal", back_populates="backtest_result", cascade="all, delete-orphan")

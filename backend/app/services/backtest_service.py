@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.backtesting.engine import BacktestEngine
 from app.models.backtest import Backtest
+from app.models.signal import Signal
 from app.models.strategy import Strategy
 from app.models.trade import Trade
 from app.schemas.backtest import BacktestCreate
@@ -113,6 +114,12 @@ class BacktestService:
             # Save results
             result.backtest_id = backtest.id
             self.db.add(result)
+            await self.db.flush()  # Materialize result.id
+
+            # Save signals with backtest_result_id
+            for signal in engine.signals:
+                signal.backtest_result_id = result.id
+                self.db.add(signal)
 
             # Save trades
             for trade in engine.trades:
@@ -275,3 +282,39 @@ class BacktestService:
             return None
 
         return backtest.results.equity_curve
+
+    async def get_backtest_signals(self, backtest_id: int, skip: int = 0, limit: int = 100) -> Tuple[List[Signal], int]:
+        """
+        Get signals for a backtest.
+
+        Args:
+            backtest_id: ID of backtest
+            skip: Number of records to skip
+            limit: Maximum number of records to return
+
+        Returns:
+            Tuple of (signals list, total count)
+        """
+        # Get backtest to find its result id
+        backtest = await self.get_backtest(backtest_id)
+        if not backtest or not backtest.results:
+            return [], 0
+
+        # Get total count
+        count_query = select(func.count()).select_from(Signal).where(Signal.backtest_result_id == backtest.results.id)
+        total_result = await self.db.execute(count_query)
+        total = total_result.scalar_one()
+
+        # Get signals
+        query = (
+            select(Signal)
+            .where(Signal.backtest_result_id == backtest.results.id)
+            .order_by(Signal.timestamp.asc())
+            .offset(skip)
+            .limit(limit)
+        )
+
+        result = await self.db.execute(query)
+        signals = result.scalars().all()
+
+        return list(signals), total
