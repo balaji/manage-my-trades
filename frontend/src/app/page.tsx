@@ -8,9 +8,10 @@ export default function Home() {
         <p className="text-lg mb-4">Welcome to your algorithmic trading platform</p>
 
         <div className="grid grid-cols-2 gap-4 mt-8">
-          <div className="p-6 border rounded-lg">
+          <div className="p-6 border rounded-lg opacity-60 cursor-not-allowed">
             <h2 className="text-xl font-semibold mb-2">Dashboard</h2>
             <p className="text-sm text-gray-600">View portfolio and real-time data</p>
+            <p className="text-xs text-gray-400 mt-2">Coming soon</p>
           </div>
 
           <Link
@@ -43,9 +44,10 @@ export default function Home() {
             <p className="text-sm text-gray-600">Analyze charts and indicators</p>
           </a>
 
-          <div className="p-6 border rounded-lg">
+          <div className="p-6 border rounded-lg opacity-60 cursor-not-allowed">
             <h2 className="text-xl font-semibold mb-2">ML Models</h2>
             <p className="text-sm text-gray-600">Train and deploy ML models</p>
+            <p className="text-xs text-gray-400 mt-2">Coming soon</p>
           </div>
         </div>
       </div>

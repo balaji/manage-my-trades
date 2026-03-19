@@ -41,7 +41,7 @@ export default function NewBacktestPage() {
   useEffect(() => {
     const loadStrategies = async () => {
       try {
-        const data = await getStrategies({ limit: 100 });
+        const data = await getStrategies({ limit: 100, is_active: true });
         setStrategies(data.strategies);
         // Auto-set name based on pre-filled strategy
         if (prefillStrategyId && data.strategies.length > 0) {
@@ -166,7 +166,7 @@ export default function NewBacktestPage() {
               required
               type="text"
               value={form.symbols}
-              onChange={(e) => setForm({ ...form, symbols: e.target.value })}
+              onChange={(e) => setForm({ ...form, symbols: e.target.value.toUpperCase() })}
               className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="SPY, QQQ, IWM (comma-separated)"
             />

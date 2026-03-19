@@ -6,23 +6,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import {
-  getStrategy,
-  getStrategySignals,
-  activateStrategy,
-  deactivateStrategy,
-  deleteStrategy,
-} from '@/lib/api/strategies';
-import { apiClient } from '@/lib/api/client';
-import {
-  Strategy,
-  Signal,
-  StrategyType,
-  getStrategyTypeLabel,
-  getSignalTypeLabel,
-  getSignalTypeColor,
-  formatSignalStrength,
-} from '@/lib/types/strategy';
+import { getStrategy, activateStrategy, deactivateStrategy, deleteStrategy } from '@/lib/api/strategies';
+import { Strategy, StrategyType, getStrategyTypeLabel } from '@/lib/types/strategy';
 
 export default function StrategyDetailPage() {
   const params = useParams();
@@ -30,11 +15,8 @@ export default function StrategyDetailPage() {
   const strategyId = parseInt(params.id as string);
 
   const [strategy, setStrategy] = useState<Strategy | null>(null);
-  const [signals, setSignals] = useState<Signal[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingSignals, setLoadingSignals] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [generatingSignals, setGeneratingSignals] = useState(false);
 
   const loadStrategy = useCallback(async () => {
     setLoading(true);
@@ -50,23 +32,9 @@ export default function StrategyDetailPage() {
     }
   }, [strategyId]);
 
-  const loadSignals = useCallback(async () => {
-    setLoadingSignals(true);
-
-    try {
-      const response = await getStrategySignals(strategyId, { limit: 20 });
-      setSignals(response.signals);
-    } catch (err: any) {
-      console.error('Failed to load signals:', err);
-    } finally {
-      setLoadingSignals(false);
-    }
-  }, [strategyId]);
-
   useEffect(() => {
     loadStrategy();
-    loadSignals();
-  }, [loadStrategy, loadSignals]);
+  }, [loadStrategy]);
 
   const handleToggleActive = async () => {
     if (!strategy) return;
@@ -80,21 +48,6 @@ export default function StrategyDetailPage() {
       await loadStrategy();
     } catch (err: any) {
       alert(`Failed to ${strategy.is_active ? 'deactivate' : 'activate'} strategy: ${err.message}`);
-    }
-  };
-
-  const handleGenerateSignals = async () => {
-    if (!strategy) return;
-    const symbol = prompt('Enter symbol to generate signals for (e.g. SPY):', 'SPY');
-    if (!symbol) return;
-    setGeneratingSignals(true);
-    try {
-      await apiClient.post(`/strategies/${strategy.id}/signals?symbol=${encodeURIComponent(symbol.toUpperCase())}`);
-      await loadSignals();
-    } catch (err: any) {
-      alert(`Failed to generate signals: ${err.message}`);
-    } finally {
-      setGeneratingSignals(false);
     }
   };
 
@@ -240,51 +193,6 @@ export default function StrategyDetailPage() {
                 </div>
               )}
             </div>
-
-            {/* Recent Signals */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold mb-4">Recent Signals</h2>
-              {loadingSignals ? (
-                <p className="text-gray-500">Loading signals...</p>
-              ) : signals.length === 0 ? (
-                <p className="text-gray-500">No signals generated yet</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-2 px-4">Time</th>
-                        <th className="text-left py-2 px-4">Symbol</th>
-                        <th className="text-left py-2 px-4">Type</th>
-                        <th className="text-right py-2 px-4">Price</th>
-                        <th className="text-right py-2 px-4">Strength</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {signals.map((signal) => (
-                        <tr key={signal.id} className="border-b hover:bg-gray-50">
-                          <td className="py-2 px-4 text-sm">{new Date(signal.timestamp).toLocaleString()}</td>
-                          <td className="py-2 px-4 font-mono">{signal.symbol}</td>
-                          <td className="py-2 px-4">
-                            <span
-                              className={`px-2 py-1 text-xs font-semibold rounded`}
-                              style={{
-                                backgroundColor: `${getSignalTypeColor(signal.signal_type as any)}20`,
-                                color: getSignalTypeColor(signal.signal_type as any),
-                              }}
-                            >
-                              {getSignalTypeLabel(signal.signal_type as any)}
-                            </span>
-                          </td>
-                          <td className="py-2 px-4 text-right font-mono">${signal.price.toFixed(2)}</td>
-                          <td className="py-2 px-4 text-right">{formatSignalStrength(signal.strength)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
           </div>
 
           {/* Sidebar */}
@@ -296,10 +204,6 @@ export default function StrategyDetailPage() {
                 <div>
                   <div className="text-sm text-gray-600">Indicators</div>
                   <div className="text-2xl font-bold">{strategy.indicators.length}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-600">Recent Signals</div>
-                  <div className="text-2xl font-bold">{signals.length}</div>
                 </div>
                 <div>
                   <div className="text-sm text-gray-600">Created</div>
@@ -318,16 +222,10 @@ export default function StrategyDetailPage() {
               <div className="space-y-2">
                 <button
                   onClick={() => router.push(`/backtests/new?strategyId=${strategy.id}`)}
-                  className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  disabled={!strategy.is_active}
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   Run Backtest
-                </button>
-                <button
-                  onClick={handleGenerateSignals}
-                  disabled={generatingSignals}
-                  className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                >
-                  {generatingSignals ? 'Generating...' : 'Generate Signals'}
                 </button>
                 <button onClick={handleExportConfig} className="w-full px-4 py-2 border rounded hover:bg-gray-50">
                   Export Configuration

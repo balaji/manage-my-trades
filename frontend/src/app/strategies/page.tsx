@@ -65,7 +65,10 @@ export default function StrategiesPage() {
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
+        <Link href="/" className="text-blue-600 hover:underline text-sm">
+          ← Home
+        </Link>
+        <div className="flex justify-between items-center mb-8 mt-1">
           <h1 className="text-3xl font-bold">Trading Strategies</h1>
           <Link href="/strategies/new" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
             Create Strategy
@@ -125,13 +128,15 @@ export default function StrategiesPage() {
           ) : (
             <div className="divide-y">
               {strategies.map((strategy) => (
-                <div key={strategy.id} className="p-6 hover:bg-gray-50">
+                <Link
+                  key={strategy.id}
+                  href={`/strategies/${strategy.id}`}
+                  className="block p-6 hover:bg-gray-50 cursor-pointer"
+                >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <Link href={`/strategies/${strategy.id}`}>
-                          <h3 className="text-xl font-semibold hover:text-blue-600 cursor-pointer">{strategy.name}</h3>
-                        </Link>
+                        <h3 className="text-xl font-semibold">{strategy.name}</h3>
                         <span
                           className={`px-2 py-1 text-xs font-semibold rounded ${
                             strategy.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
@@ -149,32 +154,8 @@ export default function StrategiesPage() {
                         <span>Created: {new Date(strategy.created_at).toLocaleDateString()}</span>
                       </div>
                     </div>
-                    <div className="flex gap-2 ml-4">
-                      <button
-                        onClick={() => handleToggleActive(strategy)}
-                        className={`px-3 py-1 text-sm rounded ${
-                          strategy.is_active
-                            ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-                            : 'bg-green-100 text-green-800 hover:bg-green-200'
-                        }`}
-                      >
-                        {strategy.is_active ? 'Deactivate' : 'Activate'}
-                      </button>
-                      <Link
-                        href={`/strategies/${strategy.id}`}
-                        className="px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
-                      >
-                        View
-                      </Link>
-                      <button
-                        onClick={() => handleDelete(strategy)}
-                        className="px-3 py-1 text-sm bg-red-100 text-red-800 rounded hover:bg-red-200"
-                      >
-                        Delete
-                      </button>
-                    </div>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}

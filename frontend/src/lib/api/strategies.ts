@@ -3,15 +3,7 @@
  */
 
 import { apiClient, handleApiError } from './client';
-import {
-  Strategy,
-  StrategyCreate,
-  StrategyUpdate,
-  StrategyListResponse,
-  SignalListResponse,
-  GetStrategiesParams,
-  GetSignalsParams,
-} from '../types/strategy';
+import { Strategy, StrategyCreate, StrategyUpdate, StrategyListResponse, GetStrategiesParams } from '../types/strategy';
 
 const STRATEGIES_BASE = '/strategies';
 
@@ -99,27 +91,6 @@ export async function activateStrategy(strategyId: number): Promise<Strategy> {
 export async function deactivateStrategy(strategyId: number): Promise<Strategy> {
   try {
     const response = await apiClient.post<Strategy>(`${STRATEGIES_BASE}/${strategyId}/deactivate`);
-    return response.data;
-  } catch (error) {
-    return handleApiError(error);
-  }
-}
-
-/**
- * Get trading signals for a specific strategy.
- */
-export async function getStrategySignals(strategyId: number, params?: GetSignalsParams): Promise<SignalListResponse> {
-  try {
-    const response = await apiClient.get<SignalListResponse>(`${STRATEGIES_BASE}/${strategyId}/signals`, {
-      params: {
-        symbol: params?.symbol,
-        start_date: params?.start_date,
-        end_date: params?.end_date,
-        signal_type: params?.signal_type,
-        skip: params?.skip || 0,
-        limit: params?.limit || 100,
-      },
-    });
     return response.data;
   } catch (error) {
     return handleApiError(error);

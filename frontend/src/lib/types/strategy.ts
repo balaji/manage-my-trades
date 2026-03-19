@@ -72,7 +72,7 @@ export interface StrategyListResponse {
 
 export interface Signal {
   id: number;
-  strategy_id: number;
+  backtest_result_id: number;
   symbol: string;
   signal_type: string;
   timestamp: string;
@@ -94,15 +94,6 @@ export interface GetStrategiesParams {
   limit?: number;
   is_active?: boolean;
   strategy_type?: string;
-}
-
-export interface GetSignalsParams {
-  symbol?: string;
-  start_date?: string;
-  end_date?: string;
-  signal_type?: string;
-  skip?: number;
-  limit?: number;
 }
 
 /**

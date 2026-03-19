@@ -119,3 +119,25 @@ class BacktestTradesResponse(BaseModel):
 
     trades: List[TradeResponse]
     total: int
+
+
+class SignalResponse(BaseModel):
+    """Response schema for signal."""
+
+    id: int
+    symbol: str
+    signal_type: str
+    timestamp: datetime
+    price: float
+    strength: Optional[float] = None
+    indicators: Optional[Dict[str, Any]] = None
+    metadata_: Optional[Dict[str, Any]] = Field(None, alias="metadata")
+
+    model_config = {"from_attributes": True}
+
+
+class BacktestSignalsResponse(BaseModel):
+    """Response for backtest signals."""
+
+    signals: List[SignalResponse]
+    total: int

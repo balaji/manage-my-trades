@@ -6,7 +6,6 @@ import logging
 from datetime import date
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.signal import Signal
@@ -35,7 +34,7 @@ class SignalService:
         bar_data: Optional[List[Dict[str, Any]]] = None,
     ) -> List[Signal]:
         """
-        Generate trading signals for a strategy on a symbol.
+        Generate trading signals for a strategy on a symbol (in-memory only, no DB persistence).
 
         Args:
             strategy: Trading strategy
@@ -45,7 +44,7 @@ class SignalService:
             bar_data: Optional pre-fetched market data to use for signal generation
 
         Returns:
-            List of generated signals
+            List of generated signals (not persisted to DB)
         """
         logger.info(f"Generating signals for strategy {strategy.id} on {symbol}")
 
@@ -85,7 +84,6 @@ class SignalService:
 
             if signal_type and signal_type != "hold":
                 signal = Signal(
-                    strategy_id=strategy.id,
                     symbol=symbol,
                     signal_type=signal_type,
                     timestamp=bar["timestamp"],
@@ -95,62 +93,9 @@ class SignalService:
                     metadata_=metadata,
                 )
                 signals.append(signal)
-                self.db.add(signal)
 
-        if signals:
-            await self.db.commit()
-            logger.info(f"Generated {len(signals)} signals for {symbol}")
-
+        logger.info(f"Generated {len(signals)} signals for {symbol}")
         return signals
-
-    async def get_strategy_signals(
-        self,
-        strategy_id: int,
-        symbol: Optional[str] = None,
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None,
-        signal_type: Optional[str] = None,
-        skip: int = 0,
-        limit: int = 100,
-    ) -> tuple[List[Signal], int]:
-        """
-        Get signals for a strategy with optional filtering.
-
-        Args:
-            strategy_id: Strategy ID
-            symbol: Filter by symbol
-            start_date: Filter by start date
-            end_date: Filter by end date
-            signal_type: Filter by signal type (buy, sell, hold)
-            skip: Number of records to skip
-            limit: Maximum number of records to return
-
-        Returns:
-            Tuple of (list of signals, total count)
-        """
-        # Build query
-        query = select(Signal).where(Signal.strategy_id == strategy_id)
-
-        # Apply filters
-        if symbol:
-            query = query.where(Signal.symbol == symbol)
-        if start_date:
-            query = query.where(Signal.timestamp >= start_date)
-        if end_date:
-            query = query.where(Signal.timestamp <= end_date)
-        if signal_type:
-            query = query.where(Signal.signal_type == signal_type)
-
-        # Get total count
-        count_result = await self.db.execute(query)
-        total = len(count_result.scalars().all())
-
-        # Apply pagination and ordering
-        query = query.order_by(Signal.timestamp.desc()).offset(skip).limit(limit)
-        result = await self.db.execute(query)
-        signals = result.scalars().all()
-
-        return list(signals), total
 
     def _calculate_strategy_indicators(
         self, strategy: Strategy, symbol: str, bars_data: List[Dict[str, Any]]
@@ -299,24 +244,3 @@ class SignalService:
                     metadata["reason"] = "EMA below SMA (death cross)"
 
         return signal_type, strength, metadata
-
-    async def delete_strategy_signals(self, strategy_id: int) -> int:
-        """
-        Delete all signals for a strategy.
-
-        Args:
-            strategy_id: Strategy ID
-
-        Returns:
-            Number of signals deleted
-        """
-        result = await self.db.execute(select(Signal).where(Signal.strategy_id == strategy_id))
-        signals = result.scalars().all()
-        count = len(signals)
-
-        for signal in signals:
-            await self.db.delete(signal)
-
-        await self.db.commit()
-        logger.info(f"Deleted {count} signals for strategy {strategy_id}")
-        return count

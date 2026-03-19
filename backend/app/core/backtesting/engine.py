@@ -37,6 +37,7 @@ class BacktestEngine:
         self.executor = OrderExecutor(commission=backtest.commission, slippage=backtest.slippage)
         self.position_sizer = PositionSizer()
         self.trades: List[Trade] = []
+        self.signals: List[Signal] = []
         self.equity_curve: List[Tuple[date, float]] = []
 
         # Track open positions for signal matching
@@ -132,7 +133,7 @@ class BacktestEngine:
         self, db: AsyncSession, market_db: AsyncSession, bars: Dict[str, List[Dict[str, Any]]]
     ) -> List[Signal]:
         """
-        Generate signals using SignalService for all symbols.
+        Generate signals using SignalService for all symbols (in-memory, no DB persistence).
 
         Returns:
             List of all signals across all symbols
@@ -153,6 +154,8 @@ class BacktestEngine:
             except Exception as e:
                 logger.error(f"Error generating signals for {symbol}: {e}")
 
+        # Store signals in engine for later persistence
+        self.signals = all_signals
         return all_signals
 
     def _create_timeline(self, market_data: Dict[str, pd.DataFrame]) -> List[date]:

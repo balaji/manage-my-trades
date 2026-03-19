@@ -4,6 +4,7 @@
  * Technical Analysis page.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { IChartApi, LineStyle } from 'lightweight-charts';
 import { PriceChart } from '@/components/charts/PriceChart';
 import { OscillatorChart } from '@/components/charts/OscillatorChart';
@@ -242,7 +243,10 @@ export default function TechnicalAnalysisPage() {
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">Technical Analysis</h1>
+        <Link href="/" className="text-blue-600 hover:underline text-sm">
+          ← Home
+        </Link>
+        <h1 className="text-3xl font-bold mb-8 mt-1">Technical Analysis</h1>
 
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <div className="flex gap-4 mb-6">
