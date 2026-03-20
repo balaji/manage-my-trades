@@ -2,7 +2,7 @@
 Market data models.
 """
 
-from sqlalchemy import Column, Integer, String, Float, Date, DateTime, Index
+from sqlalchemy import Column, Integer, String, Float, Date, DateTime, Index, UniqueConstraint
 from app.db.session import MarketDataBase, Base
 
 
@@ -24,6 +24,12 @@ class MarketData(MarketDataBase):
     trade_count = Column(Integer, nullable=True)
 
     __table_args__ = (
+        UniqueConstraint(
+            "symbol",
+            "timeframe",
+            "trade_date",
+            name="uq_market_data_symbol_timeframe_trade_date",
+        ),
         Index(
             "ix_market_data_symbol_timeframe_trade_date",
             "symbol",

@@ -365,8 +365,11 @@ class AlpacaService(AlpacaServiceBase):
 _alpaca_service: Optional[AlpacaServiceBase] = None
 
 
-def get_alpaca_service() -> AlpacaServiceBase:
+def get_alpaca_service(key_id: Optional[str] = None, secret_key: Optional[str] = None) -> AlpacaServiceBase:
     """Get or create Alpaca service instance."""
+    if key_id and secret_key:
+        return AlpacaServiceHttp(key_id=key_id, secret_key=secret_key)
+
     global _alpaca_service
     if _alpaca_service is None:
         _alpaca_service = AlpacaServiceHttp()

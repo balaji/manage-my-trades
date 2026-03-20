@@ -227,6 +227,12 @@ export default function StrategyDetailPage() {
                 >
                   Run Backtest
                 </button>
+                <button
+                  onClick={() => router.push(`/strategies/${strategy.id}/edit`)}
+                  className="w-full px-4 py-2 border rounded hover:bg-gray-50"
+                >
+                  Edit Strategy
+                </button>
                 <button onClick={handleExportConfig} className="w-full px-4 py-2 border rounded hover:bg-gray-50">
                   Export Configuration
                 </button>
