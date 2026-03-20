@@ -26,26 +26,19 @@ interface PriceChartProps {
     lineWidth?: number;
   }[];
   height?: number;
-  showCloseLine?: boolean;
   onChartReady?: (chart: IChartApi) => void;
 }
 
-export function PriceChart({
-  data,
-  indicators = [],
-  height = 400,
-  showCloseLine = false,
-  onChartReady,
-}: PriceChartProps) {
+export function PriceChart({ data, indicators = [], height = 400, onChartReady }: PriceChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
-  const closeLineSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const indicatorSeriesRef = useRef<Map<string, ISeriesApi<'Line'>>>(new Map());
   const onChartReadyRef = useRef(onChartReady);
   useLayoutEffect(() => {
     onChartReadyRef.current = onChartReady;
   }, [onChartReady]);
+  const prevDataRef = useRef(data);
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
@@ -105,7 +98,6 @@ export function PriceChart({
       chart.remove();
       chartRef.current = null;
       candlestickSeriesRef.current = null;
-      closeLineSeriesRef.current = null;
       indicatorSeries.clear();
     };
   }, [height]);
@@ -131,35 +123,20 @@ export function PriceChart({
 
     candlestickSeriesRef.current.setData(candlestickData);
 
-    if (showCloseLine && chartRef.current) {
-      if (!closeLineSeriesRef.current) {
-        closeLineSeriesRef.current = chartRef.current.addLineSeries({
-          color: '#FF9800',
-          lineWidth: 1,
-          title: 'Close',
-          priceLineVisible: false,
-          lastValueVisible: false,
-        });
-      }
-      const closeMap = new Map<UTCTimestamp, LineData>();
-      data.forEach((bar) => {
-        const time = (new Date(bar.timestamp).getTime() / 1000) as UTCTimestamp;
-        closeMap.set(time, { time, value: bar.close });
-      });
-      const closeData: LineData[] = Array.from(closeMap.values()).sort(
-        (a, b) => (a.time as number) - (b.time as number)
-      );
-      closeLineSeriesRef.current.setData(closeData);
-    } else if (!showCloseLine && closeLineSeriesRef.current && chartRef.current) {
-      chartRef.current.removeSeries(closeLineSeriesRef.current);
-      closeLineSeriesRef.current = null;
-    }
+    const dataChanged = prevDataRef.current !== data;
+    const savedRange = !dataChanged ? chartRef.current?.timeScale().getVisibleLogicalRange() : null;
 
-    chartRef.current?.timeScale().fitContent();
-  }, [data, showCloseLine]);
+    if (dataChanged) {
+      prevDataRef.current = data;
+    } else if (savedRange) {
+      chartRef.current?.timeScale().setVisibleLogicalRange(savedRange);
+    }
+  }, [data]);
 
   useEffect(() => {
     if (!chartRef.current) return;
+
+    const savedRange = chartRef.current.timeScale().getVisibleLogicalRange();
 
     // Remove old indicator series
     indicatorSeriesRef.current.forEach((series) => {
@@ -190,6 +167,10 @@ export function PriceChart({
       lineSeries.setData(lineData);
       indicatorSeriesRef.current.set(indicator.name, lineSeries);
     });
+
+    if (savedRange) {
+      chartRef.current.timeScale().setVisibleLogicalRange(savedRange);
+    }
   }, [indicators]);
 
   return (

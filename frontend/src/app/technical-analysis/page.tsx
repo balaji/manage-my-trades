@@ -3,7 +3,7 @@
 /**
  * Technical Analysis page.
  */
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { IChartApi, LineStyle } from 'lightweight-charts';
 import { PriceChart } from '@/components/charts/PriceChart';
@@ -61,7 +61,6 @@ export default function TechnicalAnalysisPage() {
   const [bbpData, setBbpData] = useState<DataPoint[]>([]);
 
   const [rangeDays, setRangeDays] = useState(90);
-  const [showCloseLine, setShowCloseLine] = useState(false);
 
   // Chart sync
   const priceChartRef = useRef<IChartApi | null>(null);
@@ -233,12 +232,30 @@ export default function TechnicalAnalysisPage() {
     [syncTo]
   );
 
-  const smaGroup = allIndicators.filter((i) => i.name.startsWith('SMA'));
-  const emaGroup = allIndicators.filter((i) => i.name.startsWith('EMA'));
-  const activeIndicators = [
-    ...allIndicators.filter((i) => enabledIndicators.has(i.name)),
-    ...(showBBands ? bbandIndicators : []),
-  ];
+  // Fit price chart after all chart series and oscillator sync have settled.
+  // Two rAF frames: first lets lightweight-charts process pending operations,
+  // second ensures the sync callbacks (which also use rAF internally) have fired.
+  useEffect(() => {
+    if (chartData.length === 0) return;
+    let id1: number;
+    let id2: number;
+    id1 = requestAnimationFrame(() => {
+      id2 = requestAnimationFrame(() => {
+        priceChartRef.current?.timeScale().fitContent();
+      });
+    });
+    return () => {
+      cancelAnimationFrame(id1);
+      cancelAnimationFrame(id2);
+    };
+  }, [chartData]);
+
+  const smaGroup = useMemo(() => allIndicators.filter((i) => i.name.startsWith('SMA')), [allIndicators]);
+  const emaGroup = useMemo(() => allIndicators.filter((i) => i.name.startsWith('EMA')), [allIndicators]);
+  const activeIndicators = useMemo(
+    () => [...allIndicators.filter((i) => enabledIndicators.has(i.name)), ...(showBBands ? bbandIndicators : [])],
+    [allIndicators, enabledIndicators, showBBands, bbandIndicators]
+  );
 
   return (
     <div className="min-h-screen p-8">
@@ -279,15 +296,6 @@ export default function TechnicalAnalysisPage() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold">{symbol} - Daily Chart</h2>
                 <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={showCloseLine}
-                      onChange={(e) => setShowCloseLine(e.target.checked)}
-                      className="w-4 h-4 accent-orange-500"
-                    />
-                    Close line
-                  </label>
                   {RANGES.map(({ label, days }) => (
                     <button
                       key={days}
@@ -405,7 +413,6 @@ export default function TechnicalAnalysisPage() {
                 data={chartData}
                 indicators={activeIndicators}
                 height={500}
-                showCloseLine={showCloseLine}
                 onChartReady={handlePriceChartReady}
               />
 
