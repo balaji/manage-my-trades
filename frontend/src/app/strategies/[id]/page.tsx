@@ -57,12 +57,7 @@ export default function StrategyDetailPage() {
       name: strategy.name,
       description: strategy.description,
       strategy_type: strategy.strategy_type,
-      config: strategy.config,
-      indicators: strategy.indicators.map(({ indicator_name, parameters, usage }) => ({
-        indicator_name,
-        parameters,
-        usage,
-      })),
+      spec: strategy.spec,
     };
     const blob = new Blob([JSON.stringify(config, null, 2)], {
       type: 'application/json',
@@ -163,9 +158,9 @@ export default function StrategyDetailPage() {
           <div className="lg:col-span-2 space-y-6">
             {/* Strategy Configuration */}
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold mb-4">Configuration</h2>
+              <h2 className="text-xl font-semibold mb-4">Strategy Spec</h2>
               <pre className="bg-gray-50 p-4 rounded overflow-x-auto text-sm">
-                {JSON.stringify(strategy.config, null, 2)}
+                {JSON.stringify(strategy.spec, null, 2)}
               </pre>
             </div>
 

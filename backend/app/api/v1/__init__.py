@@ -23,6 +23,7 @@ async def api_root():
         "endpoints": {
             "market_data": "/market-data",
             "strategies": "/strategies",
+            "strategy_compile": "/strategies/compile",
             "backtests": "/backtests",
             "paper_trading": "/paper-trading",
             "technical_analysis": "/technical-analysis",

@@ -2,10 +2,13 @@
 Strategy schemas for API requests and responses.
 """
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Optional, List
 from datetime import datetime, date
 from enum import Enum
+
+from app.core.strategies.legacy import build_legacy_spec
+from app.core.strategies.spec import StrategySpec
 
 
 class StrategyType(str, Enum):
@@ -57,9 +60,10 @@ class StrategyCreate(BaseModel):
 
     name: str = Field(..., min_length=1, max_length=255, description="Unique strategy name")
     description: Optional[str] = Field(None, description="Strategy description")
-    strategy_type: StrategyType = Field(..., description="Type of strategy")
-    config: dict = Field(default_factory=dict, description="Strategy-specific configuration")
-    indicators: List[StrategyIndicatorConfig] = Field(default_factory=list, description="List of indicators to use")
+    strategy_type: StrategyType = Field(default=StrategyType.TECHNICAL, description="Type of strategy")
+    spec: Optional[StrategySpec] = Field(None, description="Canonical strategy specification")
+    config: dict = Field(default_factory=dict, description="Legacy strategy configuration")
+    indicators: List[StrategyIndicatorConfig] = Field(default_factory=list, description="Legacy indicator definitions")
 
     @field_validator("name")
     @classmethod
@@ -69,19 +73,51 @@ class StrategyCreate(BaseModel):
             raise ValueError("Strategy name cannot be empty")
         return v.strip()
 
+    @model_validator(mode="after")
+    def ensure_spec(self) -> "StrategyCreate":
+        if self.spec is None:
+            self.spec = build_legacy_spec(
+                name=self.name,
+                description=self.description,
+                config=self.config,
+                indicators=[indicator.model_dump() for indicator in self.indicators],
+            )
+        self.config = self.spec.model_dump(mode="json")
+        self.strategy_type = StrategyType.TECHNICAL
+        return self
+
     class Config:
         json_schema_extra = {
             "example": {
                 "name": "RSI Mean Reversion",
                 "description": "Buy when RSI < 30, sell when RSI > 70",
                 "strategy_type": "technical",
-                "config": {
-                    "symbols": ["SPY", "QQQ"],
-                    "entry_threshold": 30,
-                    "exit_threshold": 70,
-                    "position_size": 0.1,
+                "spec": {
+                    "kind": "technical",
+                    "metadata": {
+                        "name": "RSI Mean Reversion",
+                        "description": "Buy when RSI < 30, sell when RSI > 70",
+                    },
+                    "market": {"timeframe": "1d", "symbols": ["SPY", "QQQ"]},
+                    "indicators": [{"alias": "rsi_fast", "indicator": "rsi", "params": {"length": 14}}],
+                    "rules": {
+                        "entry": {
+                            "type": "comparison",
+                            "left": {"source": "indicator", "value": "rsi_fast"},
+                            "operator": "<",
+                            "right": {"source": "constant", "value": 30},
+                        },
+                        "exit": {
+                            "type": "comparison",
+                            "left": {"source": "indicator", "value": "rsi_fast"},
+                            "operator": ">",
+                            "right": {"source": "constant", "value": 70},
+                        },
+                        "filters": [],
+                    },
+                    "risk": {"position_sizing": {"method": "fixed_percentage", "percentage": 0.1}},
+                    "execution": {},
                 },
-                "indicators": [{"indicator_name": "rsi", "parameters": {"period": 14}, "usage": "entry"}],
             }
         }
 
@@ -93,15 +129,43 @@ class StrategyUpdate(BaseModel):
     description: Optional[str] = Field(None, description="Strategy description")
     strategy_type: Optional[StrategyType] = Field(None, description="Type of strategy")
     is_active: Optional[bool] = Field(None, description="Whether the strategy is active")
+    spec: Optional[StrategySpec] = Field(None, description="Canonical strategy specification")
     config: Optional[dict] = Field(None, description="Strategy-specific configuration")
     indicators: Optional[List[StrategyIndicatorConfig]] = Field(None, description="List of indicators to use")
+
+    @model_validator(mode="after")
+    def normalize_spec(self) -> "StrategyUpdate":
+        if self.spec is not None:
+            self.config = self.spec.model_dump(mode="json")
+            self.strategy_type = StrategyType.TECHNICAL
+        return self
 
     class Config:
         json_schema_extra = {
             "example": {
                 "name": "Updated RSI Strategy",
                 "is_active": True,
-                "config": {"entry_threshold": 35, "exit_threshold": 65},
+                "spec": {
+                    "kind": "technical",
+                    "metadata": {"name": "Updated RSI Strategy"},
+                    "market": {"timeframe": "1d", "symbols": ["SPY"]},
+                    "indicators": [{"alias": "rsi_fast", "indicator": "rsi", "params": {"length": 14}}],
+                    "rules": {
+                        "entry": {
+                            "type": "comparison",
+                            "left": {"source": "indicator", "value": "rsi_fast"},
+                            "operator": "<",
+                            "right": {"source": "constant", "value": 35},
+                        },
+                        "exit": {
+                            "type": "comparison",
+                            "left": {"source": "indicator", "value": "rsi_fast"},
+                            "operator": ">",
+                            "right": {"source": "constant", "value": 65},
+                        },
+                        "filters": [],
+                    },
+                },
             }
         }
 
@@ -129,6 +193,7 @@ class StrategyResponse(BaseModel):
     description: Optional[str]
     strategy_type: str
     is_active: bool
+    spec: StrategySpec
     config: dict
     indicators: List[StrategyIndicatorResponse]
     created_at: datetime
@@ -143,7 +208,30 @@ class StrategyResponse(BaseModel):
                 "description": "Buy when RSI < 30, sell when RSI > 70",
                 "strategy_type": "technical",
                 "is_active": True,
-                "config": {"symbols": ["SPY", "QQQ"], "entry_threshold": 30, "exit_threshold": 70},
+                "spec": {
+                    "kind": "technical",
+                    "metadata": {"name": "RSI Mean Reversion"},
+                    "market": {"timeframe": "1d", "symbols": ["SPY", "QQQ"]},
+                    "indicators": [{"alias": "rsi_fast", "indicator": "rsi", "params": {"length": 14}}],
+                    "rules": {
+                        "entry": {
+                            "type": "comparison",
+                            "left": {"source": "indicator", "value": "rsi_fast"},
+                            "operator": "<",
+                            "right": {"source": "constant", "value": 30},
+                        },
+                        "exit": {
+                            "type": "comparison",
+                            "left": {"source": "indicator", "value": "rsi_fast"},
+                            "operator": ">",
+                            "right": {"source": "constant", "value": 70},
+                        },
+                        "filters": [],
+                    },
+                    "risk": {"position_sizing": {"method": "fixed_percentage", "percentage": 0.1}},
+                    "execution": {},
+                },
+                "config": {},
                 "indicators": [
                     {
                         "id": 1,
@@ -213,3 +301,19 @@ class SignalListResponse(BaseModel):
 
     class Config:
         json_schema_extra = {"example": {"signals": [], "total": 0}}
+
+
+class StrategyCompileRequest(BaseModel):
+    """Natural-language compilation request."""
+
+    prompt: str = Field(..., min_length=1)
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+
+class StrategyCompileResponse(BaseModel):
+    """Compiled strategy preview response."""
+
+    normalized_spec: StrategySpec
+    summary: str
+    warnings: List[str] = Field(default_factory=list)

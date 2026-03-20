@@ -8,6 +8,7 @@ from sqlalchemy import select, delete
 from sqlalchemy.orm import selectinload
 import logging
 
+from app.core.strategies.legacy import build_legacy_spec, indicator_rows_from_spec
 from app.models.strategy import Strategy, StrategyIndicator
 from app.schemas.strategy import StrategyCreate, StrategyUpdate
 
@@ -43,20 +44,20 @@ class StrategyService:
         strategy = Strategy(
             name=strategy_data.name,
             description=strategy_data.description,
-            strategy_type=strategy_data.strategy_type.value,
+            strategy_type="technical",
             is_active=False,  # New strategies start inactive
-            config=strategy_data.config,
+            config=strategy_data.spec.model_dump(mode="json"),
         )
         self.db.add(strategy)
         await self.db.flush()  # Flush to get strategy ID
 
         # Create indicators
-        for indicator_config in strategy_data.indicators:
+        for indicator_config in indicator_rows_from_spec(strategy_data.spec):
             indicator = StrategyIndicator(
                 strategy_id=strategy.id,
-                indicator_name=indicator_config.indicator_name,
-                parameters=indicator_config.parameters,
-                usage=indicator_config.usage.value,
+                indicator_name=indicator_config["indicator_name"],
+                parameters=indicator_config["parameters"],
+                usage=indicator_config["usage"],
             )
             self.db.add(indicator)
 
@@ -162,25 +163,41 @@ class StrategyService:
         if strategy_data.description is not None:
             strategy.description = strategy_data.description
         if strategy_data.strategy_type:
-            strategy.strategy_type = strategy_data.strategy_type.value
+            strategy.strategy_type = "technical"
         if strategy_data.is_active is not None:
             strategy.is_active = strategy_data.is_active
-        if strategy_data.config is not None:
-            strategy.config = strategy_data.config
+        if strategy_data.spec is not None:
+            strategy.config = strategy_data.spec.model_dump(mode="json")
+        elif strategy_data.config is not None:
+            spec = build_legacy_spec(
+                name=strategy_data.name or strategy.name,
+                description=(
+                    strategy_data.description if strategy_data.description is not None else strategy.description
+                ),
+                config=strategy_data.config,
+                indicators=[indicator.model_dump() for indicator in (strategy_data.indicators or [])],
+            )
+            strategy.config = spec.model_dump(mode="json")
 
         # Update indicators if provided
-        if strategy_data.indicators is not None:
+        if strategy_data.indicators is not None or strategy_data.spec is not None or strategy_data.config is not None:
             # Delete existing indicators
             await self.db.execute(delete(StrategyIndicator).where(StrategyIndicator.strategy_id == strategy_id))
             await self.db.flush()
 
             # Create new indicators
-            for indicator_config in strategy_data.indicators:
+            spec = build_legacy_spec(
+                name=strategy.name,
+                description=strategy.description,
+                config=strategy.config,
+                indicators=[indicator.model_dump() for indicator in (strategy_data.indicators or [])],
+            )
+            for indicator_config in indicator_rows_from_spec(spec):
                 indicator = StrategyIndicator(
                     strategy_id=strategy_id,
-                    indicator_name=indicator_config.indicator_name,
-                    parameters=indicator_config.parameters,
-                    usage=indicator_config.usage.value,
+                    indicator_name=indicator_config["indicator_name"],
+                    parameters=indicator_config["parameters"],
+                    usage=indicator_config["usage"],
                 )
                 self.db.add(indicator)
 

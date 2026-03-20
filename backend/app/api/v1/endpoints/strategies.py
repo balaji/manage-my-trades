@@ -2,20 +2,84 @@
 Strategy API endpoints.
 """
 
+import httpx
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
 from app.db.session import get_db
 from app.services.strategy_service import StrategyService
+from app.services.strategy_compiler_service import StrategyCompilerService
 from app.schemas.strategy import (
+    StrategyCompileRequest,
+    StrategyCompileResponse,
     StrategyCreate,
     StrategyUpdate,
     StrategyResponse,
     StrategyListResponse,
 )
+from app.core.strategies.legacy import build_legacy_spec
+from app.models.strategy import Strategy
 
 router = APIRouter()
+
+
+def serialize_strategy(strategy: Strategy) -> StrategyResponse:
+    """Serialize a strategy ORM object into API response shape."""
+    spec = build_legacy_spec(
+        name=strategy.name,
+        description=strategy.description,
+        config=strategy.config,
+        indicators=[
+            {
+                "indicator_name": indicator.indicator_name,
+                "parameters": indicator.parameters,
+                "usage": indicator.usage,
+            }
+            for indicator in strategy.indicators
+        ],
+    )
+    return StrategyResponse(
+        id=strategy.id,
+        name=strategy.name,
+        description=strategy.description,
+        strategy_type=strategy.strategy_type,
+        is_active=strategy.is_active,
+        spec=spec,
+        config=spec.model_dump(mode="json"),
+        indicators=strategy.indicators,
+        created_at=strategy.created_at,
+        updated_at=strategy.updated_at,
+    )
+
+
+@router.post(
+    "/compile",
+    response_model=StrategyCompileResponse,
+    summary="Compile a natural-language strategy",
+    description="Convert a plain-English request into a validated technical strategy spec.",
+)
+async def compile_strategy(
+    compile_request: StrategyCompileRequest,
+):
+    """Compile a strategy prompt into a normalized spec for review."""
+    compiler = StrategyCompilerService()
+    try:
+        result = await compiler.compile(
+            prompt=compile_request.prompt,
+            name=compile_request.name,
+            description=compile_request.description,
+        )
+        return StrategyCompileResponse(**result)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Compiler request failed: {str(e)}")
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to compile strategy: {e}"
+        )
 
 
 @router.post(
@@ -43,7 +107,7 @@ async def create_strategy(
     service = StrategyService(db)
     try:
         strategy = await service.create_strategy(strategy_data)
-        return strategy
+        return serialize_strategy(strategy)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -86,7 +150,7 @@ async def list_strategies(
             is_active=is_active,
             strategy_type=strategy_type,
         )
-        return StrategyListResponse(strategies=strategies, total=total)
+        return StrategyListResponse(strategies=[serialize_strategy(strategy) for strategy in strategies], total=total)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -116,7 +180,7 @@ async def get_strategy(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Strategy with ID {strategy_id} not found",
         )
-    return strategy
+    return serialize_strategy(strategy)
 
 
 @router.put(
@@ -151,7 +215,7 @@ async def update_strategy(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Strategy with ID {strategy_id} not found",
             )
-        return strategy
+        return serialize_strategy(strategy)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -221,7 +285,7 @@ async def activate_strategy(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Strategy with ID {strategy_id} not found",
         )
-    return strategy
+    return serialize_strategy(strategy)
 
 
 @router.post(
@@ -251,4 +315,4 @@ async def deactivate_strategy(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Strategy with ID {strategy_id} not found",
         )
-    return strategy
+    return serialize_strategy(strategy)

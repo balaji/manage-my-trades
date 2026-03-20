@@ -26,7 +26,9 @@ export default function NewStrategyPage() {
             ← Back to Strategies
           </Link>
           <h1 className="text-3xl font-bold">Create New Strategy</h1>
-          <p className="text-gray-600 mt-2">Define your trading strategy with indicators and configuration.</p>
+          <p className="text-gray-600 mt-2">
+            Describe a strategy, compile it into a validated spec, then review the JSON before saving.
+          </p>
         </div>
 
         <StrategyForm onSubmit={handleSubmit} />

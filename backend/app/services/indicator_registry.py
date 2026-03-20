@@ -9,7 +9,7 @@ INDICATOR_REGISTRY = [
         "description": "Measures overbought/oversold conditions on a 0-100 scale",
         "parameters": [
             {
-                "name": "period",
+                "name": "length",
                 "label": "Period",
                 "description": "Number of bars for RSI calculation",
                 "type": "number",
@@ -51,7 +51,7 @@ INDICATOR_REGISTRY = [
         "description": "Average price over a fixed number of bars — trend direction",
         "parameters": [
             {
-                "name": "period",
+                "name": "length",
                 "label": "Period",
                 "description": "Number of bars for moving average",
                 "type": "number",
@@ -65,7 +65,7 @@ INDICATOR_REGISTRY = [
         "description": "Weighted moving average that reacts faster to recent prices",
         "parameters": [
             {
-                "name": "period",
+                "name": "length",
                 "label": "Period",
                 "description": "Number of bars for EMA calculation",
                 "type": "number",
@@ -79,7 +79,7 @@ INDICATOR_REGISTRY = [
         "description": "Volatility bands around a moving average — identifies overbought/oversold",
         "parameters": [
             {
-                "name": "period",
+                "name": "length",
                 "label": "Period",
                 "description": "Number of bars for the middle band (SMA)",
                 "type": "number",
@@ -100,14 +100,14 @@ INDICATOR_REGISTRY = [
         "description": "Compares closing price to price range over a period — momentum indicator",
         "parameters": [
             {
-                "name": "k_period",
+                "name": "k",
                 "label": "K Period",
                 "description": "Lookback period for %K line",
                 "type": "number",
                 "default": 14,
             },
             {
-                "name": "d_period",
+                "name": "d",
                 "label": "D Period",
                 "description": "Smoothing period for %D signal line",
                 "type": "number",
@@ -121,7 +121,7 @@ INDICATOR_REGISTRY = [
         "description": "Measures market volatility using the range of price bars",
         "parameters": [
             {
-                "name": "period",
+                "name": "length",
                 "label": "Period",
                 "description": "Number of bars for ATR calculation",
                 "type": "number",

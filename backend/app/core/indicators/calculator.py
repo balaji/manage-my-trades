@@ -60,6 +60,10 @@ class IndicatorCalculator:
             params = {}
 
         indicator_name = indicator_name.lower()
+        if indicator_name == "bollinger_bands":
+            indicator_name = "bbands"
+        elif indicator_name == "stochastic":
+            indicator_name = "stoch"
 
         try:
             if indicator_name == "sma":

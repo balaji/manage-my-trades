@@ -42,18 +42,24 @@ export interface Strategy {
   description: string | null;
   strategy_type: string;
   is_active: boolean;
+  spec: StrategySpec;
   config: Record<string, any>;
   indicators: StrategyIndicator[];
   created_at: string;
   updated_at: string;
 }
 
+export interface StrategySpec {
+  [key: string]: any;
+}
+
 export interface StrategyCreate {
   name: string;
   description?: string;
   strategy_type: StrategyType;
-  config: Record<string, any>;
-  indicators: StrategyIndicatorConfig[];
+  spec: StrategySpec;
+  config?: Record<string, any>;
+  indicators?: StrategyIndicatorConfig[];
 }
 
 export interface StrategyUpdate {
@@ -61,6 +67,7 @@ export interface StrategyUpdate {
   description?: string;
   strategy_type?: StrategyType;
   is_active?: boolean;
+  spec?: StrategySpec;
   config?: Record<string, any>;
   indicators?: StrategyIndicatorConfig[];
 }
@@ -94,6 +101,18 @@ export interface GetStrategiesParams {
   limit?: number;
   is_active?: boolean;
   strategy_type?: string;
+}
+
+export interface StrategyCompileRequest {
+  prompt: string;
+  name?: string;
+  description?: string;
+}
+
+export interface StrategyCompileResponse {
+  normalized_spec: StrategySpec;
+  summary: string;
+  warnings: string[];
 }
 
 /**

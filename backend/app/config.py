@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     ALPACA_API_KEY: str = ""
     ALPACA_SECRET_KEY: str = ""
     ALPACA_BASE_URL: str = ""
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4.1-mini"
+    OPENAI_BASE_URL: str = "https://api.openai.com/v1"
 
     # Trading Configuration
     DEFAULT_COMMISSION: float = 0.0  # Alpaca has no commission
