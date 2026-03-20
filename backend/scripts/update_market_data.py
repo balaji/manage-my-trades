@@ -47,11 +47,19 @@ async def get_market_data_pairs() -> list[tuple[str, str, date]]:
         return [(row[0], row[1], row[2]) for row in result.all()]
 
 
+def load_denylist(path: Path) -> set[str]:
+    if not path.exists():
+        return set()
+    return {line.strip() for line in path.read_text().splitlines() if line.strip()}
+
+
 async def update_market_data():
     """Fetch and bulk-insert new market data for all (symbol, timeframe) pairs."""
     alpaca = get_alpaca_service()
     failures = []
     total_inserted = 0
+
+    denylist = load_denylist(Path("alpaca_denylist.txt"))
 
     # Get all pairs with their latest date
     pairs = await get_market_data_pairs()
@@ -60,7 +68,8 @@ async def update_market_data():
         logger.info("No market data pairs found in database.")
         return
 
-    logger.info(f"Found {len(pairs)} (symbol, timeframe) pairs to update.")
+    pairs = [(s, t, d) for s, t, d in pairs if s not in denylist]
+    logger.info(f"Found {len(pairs)} (symbol, timeframe) pairs to update ({len(denylist)} denylisted).")
 
     yesterday = date.today() - timedelta(days=1)
 

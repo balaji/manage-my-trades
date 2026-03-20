@@ -33,6 +33,7 @@ export function PriceChart({ data, indicators = [], height = 400, onChartReady }
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const closeSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const indicatorSeriesRef = useRef<Map<string, ISeriesApi<'Line'>>>(new Map());
   const onChartReadyRef = useRef(onChartReady);
   useLayoutEffect(() => {
@@ -81,6 +82,17 @@ export function PriceChart({ data, indicators = [], height = 400, onChartReady }
 
     candlestickSeriesRef.current = candlestickSeries;
 
+    // Add close price line series
+    const closeSeries = chart.addLineSeries({
+      color: 'rgba(100, 100, 100, 0.5)',
+      lineWidth: 1 as LineWidth,
+      lineStyle: LineStyle.Solid,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+    });
+    closeSeriesRef.current = closeSeries;
+
     // Handle resize
     const handleResize = () => {
       if (chartContainerRef.current && chartRef.current) {
@@ -98,6 +110,7 @@ export function PriceChart({ data, indicators = [], height = 400, onChartReady }
       chart.remove();
       chartRef.current = null;
       candlestickSeriesRef.current = null;
+      closeSeriesRef.current = null;
       indicatorSeries.clear();
     };
   }, [height]);
@@ -122,6 +135,9 @@ export function PriceChart({ data, indicators = [], height = 400, onChartReady }
     );
 
     candlestickSeriesRef.current.setData(candlestickData);
+
+    const closeData: LineData[] = candlestickData.map((bar) => ({ time: bar.time, value: bar.close }));
+    closeSeriesRef.current?.setData(closeData);
 
     const dataChanged = prevDataRef.current !== data;
     const savedRange = !dataChanged ? chartRef.current?.timeScale().getVisibleLogicalRange() : null;
