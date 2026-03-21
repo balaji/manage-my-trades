@@ -340,9 +340,9 @@ class BacktestEngine:
             Number of shares to buy
         """
         # Get position sizing config from strategy
-        config = self.strategy.config or {}
-        position_sizing = config.get("position_sizing", {})
-        method = position_sizing.get("method", "fixed_percentage")
+        position_sizing_spec = self.strategy.config.risk.position_sizing
+        method = position_sizing_spec.method
+        position_sizing = position_sizing_spec.model_dump()
 
         # Get current equity
         current_prices = {symbol: price}

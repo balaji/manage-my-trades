@@ -60,7 +60,6 @@ class IndicatorCalculator:
             params = {}
 
         indicator_name = indicator_name.lower()
-
         try:
             if indicator_name == "sma":
                 return self._calculate_sma(params)
@@ -70,9 +69,9 @@ class IndicatorCalculator:
                 return self._calculate_rsi(params)
             elif indicator_name == "macd":
                 return self._calculate_macd(params)
-            elif indicator_name == "stoch":
+            elif indicator_name == "stochastic":
                 return self._calculate_stochastic(params)
-            elif indicator_name == "bbands":
+            elif indicator_name == "bollinger_bands":
                 return self._calculate_bollinger_bands(params)
             elif indicator_name == "atr":
                 return self._calculate_atr(params)
@@ -351,7 +350,7 @@ def get_supported_indicators() -> List[Dict[str, Any]]:
             ],
         },
         {
-            "name": "stoch",
+            "name": "stochastic",
             "display_name": "Stochastic Oscillator",
             "category": "momentum",
             "params": [
@@ -366,7 +365,7 @@ def get_supported_indicators() -> List[Dict[str, Any]]:
             ],
         },
         {
-            "name": "bbands",
+            "name": "bollinger_bands",
             "display_name": "Bollinger Bands",
             "category": "volatility",
             "params": [

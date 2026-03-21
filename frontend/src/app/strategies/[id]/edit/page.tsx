@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getStrategy, updateStrategy, createStrategy } from '@/lib/api/strategies';
-import { Strategy, StrategyCreate, StrategyType, IndicatorUsage } from '@/lib/types/strategy';
+import { Strategy, StrategyCreate, StrategyType } from '@/lib/types/strategy';
 import { StrategyForm } from '@/components/strategies/StrategyForm';
 
 export default function EditStrategyPage() {
@@ -38,8 +38,7 @@ export default function EditStrategyPage() {
       name: data.name,
       description: data.description,
       strategy_type: data.strategy_type,
-      config: data.config,
-      indicators: data.indicators,
+      spec: data.spec,
     });
     router.push(`/strategies/${strategyId}`);
   };
@@ -77,12 +76,7 @@ export default function EditStrategyPage() {
     name: strategy.name,
     description: strategy.description || '',
     strategy_type: strategy.strategy_type as StrategyType,
-    config: strategy.config,
-    indicators: strategy.indicators.map((ind) => ({
-      indicator_name: ind.indicator_name,
-      parameters: ind.parameters,
-      usage: ind.usage as IndicatorUsage,
-    })),
+    spec: strategy.spec,
   };
 
   return (

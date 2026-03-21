@@ -87,17 +87,21 @@ export default function TechnicalAnalysisPage() {
       startDate.setDate(startDate.getDate() - days);
       endDate.setDate(endDate.getDate() - 1);
 
+      const indicatorStartDate = new Date(startDate);
+      indicatorStartDate.setDate(indicatorStartDate.getDate() - 30);
+      const startDateStr = startDate.toISOString().split('T')[0];
+
       const [marketData, indicatorResult] = await Promise.all([
         marketDataApi.getBars({
           symbols: [symbol],
-          start_date: startDate.toISOString().split('T')[0],
+          start_date: startDateStr,
           end_date: endDate.toISOString().split('T')[0],
           timeframe: '1d',
         }),
         technicalAnalysisApi.calculateIndicators({
           symbol,
           timeframe: '1d',
-          start_date: startDate.toISOString().split('T')[0],
+          start_date: indicatorStartDate.toISOString().split('T')[0],
           end_date: endDate.toISOString().split('T')[0],
           indicators: [
             { name: 'SMA', params: { length: 10 } },
@@ -107,7 +111,7 @@ export default function TechnicalAnalysisPage() {
             { name: 'EMA', params: { length: 20 } },
             { name: 'EMA', params: { length: 30 } },
             { name: 'RSI', params: { length: 14 } },
-            { name: 'BBANDS', params: { length: 20, std: 2.0 } },
+            { name: 'BOLLINGER_BANDS', params: { length: 20, std: 2.0 } },
           ],
         }),
       ]);
@@ -116,19 +120,28 @@ export default function TechnicalAnalysisPage() {
         setChartData(marketData[0].bars);
         const results = indicatorResult.indicators;
 
+        // Filter all indicator values to the original date range (indicators were fetched
+        // with an earlier start date to warm up multi-period calculations like RSI/BB).
+        Object.values(results).forEach((r) => {
+          if (r.values) r.values = r.values.filter((v) => v.value !== null && v.timestamp >= startDateStr);
+          if (r.columns)
+            Object.keys(r.columns).forEach(
+              (k) => (r.columns![k] = r.columns![k].filter((v) => v.value !== null && v.timestamp >= startDateStr))
+            );
+        });
+
         // RSI
         const rsiResult = Object.values(results).find((r) => (r as any).name === 'RSI');
-        setRsiData(rsiResult?.values?.filter((v) => v.value !== null) ?? []);
+        setRsiData(rsiResult?.values ?? []);
 
         // Bollinger Bands (multi-column)
-        const bbResult = Object.values(results).find((r) => (r as any).name === 'BBANDS');
+        const bbResult = Object.values(results).find((r) => (r as any).name === 'BOLLINGER_BANDS');
         if (bbResult?.columns) {
           const cols = bbResult.columns;
           const length = bbResult.params.length as number;
           const std = bbResult.params.std as number;
 
-          const pick = (prefix: string): DataPoint[] =>
-            (cols[`${prefix}_${length}_${std}`] ?? []).filter((v) => v.value !== null);
+          const pick = (prefix: string): DataPoint[] => cols[`${prefix}_${length}_${std}`] ?? [];
 
           setBbandIndicators([
             {
@@ -154,11 +167,7 @@ export default function TechnicalAnalysisPage() {
             },
           ]);
 
-          setBbpData(
-            pick('BBP')
-              .filter((v) => v.value !== null)
-              .map((v) => ({ ...v, value: v.value * 100 }))
-          );
+          setBbpData(pick('BBP').map((v) => ({ ...v, value: v.value * 100 })));
         }
 
         // SMA / EMA
@@ -171,7 +180,7 @@ export default function TechnicalAnalysisPage() {
               const colors = name === 'SMA' ? SMA_COLORS : EMA_COLORS;
               return {
                 name: `${name} ${period}`,
-                data: r.values!.filter((v) => v.value !== null),
+                data: r.values ?? [],
                 color: colors[period] ?? '#2196F3',
               };
             });
@@ -250,8 +259,8 @@ export default function TechnicalAnalysisPage() {
     };
   }, [chartData]);
 
-  const smaGroup = useMemo(() => allIndicators.filter((i) => i.name.startsWith('SMA')), [allIndicators]);
-  const emaGroup = useMemo(() => allIndicators.filter((i) => i.name.startsWith('EMA')), [allIndicators]);
+  const smaGroup = allIndicators.filter((i) => i.name.startsWith('SMA'));
+  const emaGroup = allIndicators.filter((i) => i.name.startsWith('EMA'));
   const activeIndicators = useMemo(
     () => [...allIndicators.filter((i) => enabledIndicators.has(i.name)), ...(showBBands ? bbandIndicators : [])],
     [allIndicators, enabledIndicators, showBBands, bbandIndicators]

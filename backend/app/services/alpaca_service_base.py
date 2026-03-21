@@ -27,25 +27,3 @@ class AlpacaServiceBase(ABC):
     @abstractmethod
     async def search_symbols(self, query: str) -> List[Dict[str, str]]:
         """Search for symbols matching a query string."""
-
-    @abstractmethod
-    async def get_account(self) -> Dict[str, Any]:
-        """Get account information."""
-
-    @abstractmethod
-    async def get_positions(self) -> List[Dict[str, Any]]:
-        """Get all open positions."""
-
-    @abstractmethod
-    async def place_market_order(
-        self, symbol: str, quantity: float, side: str, time_in_force: str = "day"
-    ) -> Dict[str, Any]:
-        """Place a market order."""
-
-    @abstractmethod
-    async def get_orders(self, status: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Get orders, optionally filtered by status (open, closed, all)."""
-
-    @abstractmethod
-    async def cancel_order(self, order_id: str) -> bool:
-        """Cancel an order by ID. Returns True on success."""

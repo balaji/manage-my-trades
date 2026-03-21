@@ -18,7 +18,6 @@ class AlpacaServiceHttp(AlpacaServiceBase):
     """Service for interacting with Alpaca API via direct HTTP calls."""
 
     DATA_BASE_URL = "https://data.alpaca.markets"
-    TRADING_BASE_URL = "https://paper-api.alpaca.markets"
 
     def __init__(self, key_id: Optional[str] = None, secret_key: Optional[str] = None):
         settings = get_settings()
@@ -154,125 +153,6 @@ class AlpacaServiceHttp(AlpacaServiceBase):
         return [
             etf for etf in popular_etfs if query_lower in etf["symbol"].lower() or query_lower in etf["name"].lower()
         ]
-
-    async def get_account(self) -> Dict[str, Any]:
-        """Get account information."""
-        try:
-            response = await self._client.get(f"{self.TRADING_BASE_URL}/v2/account")
-            response.raise_for_status()
-            a = response.json()
-            return {
-                "account_number": a.get("account_number"),
-                "status": a.get("status"),
-                "currency": a.get("currency"),
-                "cash": float(a["cash"]),
-                "portfolio_value": float(a["portfolio_value"]),
-                "buying_power": float(a["buying_power"]),
-                "equity": float(a["equity"]),
-                "last_equity": float(a["last_equity"]),
-                "initial_margin": float(a["initial_margin"]) if a.get("initial_margin") else 0,
-                "maintenance_margin": float(a["maintenance_margin"]) if a.get("maintenance_margin") else 0,
-                "daytrade_count": a.get("daytrade_count"),
-                "pattern_day_trader": a.get("pattern_day_trader"),
-            }
-        except Exception as e:
-            logger.error(f"Error fetching account: {e}")
-            raise
-
-    async def get_positions(self) -> List[Dict[str, Any]]:
-        """Get all open positions."""
-        try:
-            response = await self._client.get(f"{self.TRADING_BASE_URL}/v2/positions")
-            response.raise_for_status()
-            positions = response.json()
-            return [
-                {
-                    "symbol": pos["symbol"],
-                    "quantity": float(pos["qty"]),
-                    "side": pos.get("side"),
-                    "market_value": float(pos["market_value"]),
-                    "cost_basis": float(pos["cost_basis"]),
-                    "unrealized_pl": float(pos["unrealized_pl"]),
-                    "unrealized_plpc": float(pos["unrealized_plpc"]),
-                    "current_price": float(pos["current_price"]),
-                    "avg_entry_price": float(pos["avg_entry_price"]),
-                }
-                for pos in positions
-            ]
-        except Exception as e:
-            logger.error(f"Error fetching positions: {e}")
-            raise
-
-    async def place_market_order(
-        self, symbol: str, quantity: float, side: str, time_in_force: str = "day"
-    ) -> Dict[str, Any]:
-        """Place a market order."""
-        try:
-            payload = {
-                "symbol": symbol,
-                "qty": str(quantity),
-                "side": side.lower(),
-                "type": "market",
-                "time_in_force": time_in_force.lower(),
-            }
-            response = await self._client.post(f"{self.TRADING_BASE_URL}/v2/orders", json=payload)
-            response.raise_for_status()
-            order = response.json()
-            return {
-                "id": order.get("id"),
-                "symbol": order.get("symbol"),
-                "quantity": float(order["qty"]) if order.get("qty") else None,
-                "side": order.get("side"),
-                "order_type": order.get("type"),
-                "time_in_force": order.get("time_in_force"),
-                "status": order.get("status"),
-                "filled_qty": float(order["filled_qty"]) if order.get("filled_qty") else 0,
-                "filled_avg_price": float(order["filled_avg_price"]) if order.get("filled_avg_price") else None,
-                "submitted_at": order.get("submitted_at"),
-            }
-        except Exception as e:
-            logger.error(f"Error placing market order: {e}")
-            raise
-
-    async def get_orders(self, status: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Get orders filtered by status."""
-        try:
-            params = {"status": status or "all"}
-            response = await self._client.get(f"{self.TRADING_BASE_URL}/v2/orders", params=params)
-            response.raise_for_status()
-            orders = response.json()
-            return [
-                {
-                    "id": order.get("id"),
-                    "symbol": order.get("symbol"),
-                    "quantity": float(order["qty"]) if order.get("qty") else None,
-                    "side": order.get("side"),
-                    "order_type": order.get("type"),
-                    "time_in_force": order.get("time_in_force"),
-                    "status": order.get("status"),
-                    "filled_qty": float(order["filled_qty"]) if order.get("filled_qty") else 0,
-                    "filled_avg_price": float(order["filled_avg_price"]) if order.get("filled_avg_price") else None,
-                    "submitted_at": order.get("submitted_at"),
-                    "filled_at": order.get("filled_at"),
-                    "canceled_at": order.get("canceled_at"),
-                    "failed_at": order.get("failed_at"),
-                }
-                for order in orders
-            ]
-        except Exception as e:
-            logger.error(f"Error fetching orders: {e}")
-            raise
-
-    async def cancel_order(self, order_id: str) -> bool:
-        """Cancel an order by ID. Returns True on success."""
-        try:
-            response = await self._client.delete(f"{self.TRADING_BASE_URL}/v2/orders/{order_id}")
-            response.raise_for_status()
-            logger.info(f"Cancelled order {order_id}")
-            return True
-        except Exception as e:
-            logger.error(f"Error cancelling order {order_id}: {e}")
-            raise
 
 
 # Singleton instance

@@ -1,135 +1,98 @@
-"""
-Unit tests for SignalService._evaluate_technical_strategy().
+"""Unit tests for the canonical strategy runtime."""
 
-Called directly — no DB, no async, no fixtures beyond simple dicts.
-"""
+from datetime import datetime, timedelta
 
-from app.services.signal_service import SignalService
-
-# We call the method as an unbound function to avoid needing a real DB session.
-_evaluate = SignalService._evaluate_technical_strategy
-
-# Minimal bar dict (unused by the technical evaluator but required by signature)
-BAR = {"open": 100.0, "high": 105.0, "low": 95.0, "close": 100.0, "volume": 1_000_000}
+from app.core.strategies.runtime import StrategyRuntime
+from app.core.strategies.spec import StrategySpec
 
 
-# ---------------------------------------------------------------------------
-# RSI branch
-# ---------------------------------------------------------------------------
+def _bars():
+    closes = [100, 98, 95, 92, 90, 93, 96, 101, 106, 111, 114, 112, 108, 103, 99, 96, 92, 88, 91, 95]
+    bars = []
+    start = datetime(2024, 1, 1)
+    for index, close in enumerate(closes):
+        bars.append(
+            {
+                "timestamp": start + timedelta(days=index),
+                "open": close - 1,
+                "high": close + 1,
+                "low": close - 2,
+                "close": close,
+                "volume": 1_000_000,
+                "symbol": "SPY",
+            }
+        )
+    return bars
 
 
-class TestRSIBranch:
-    def test_rsi_buy_signal(self):
-        signal_type, _, _ = _evaluate(None, {}, {"rsi": 25}, BAR)
-        assert signal_type == "buy"
+class TestStrategyRuntime:
+    def test_rsi_strategy_emits_buy_and_sell_signals(self):
+        spec = StrategySpec.model_validate(
+            {
+                "kind": "technical",
+                "metadata": {"name": "RSI Test"},
+                "market": {"timeframe": "1d", "symbols": ["SPY"]},
+                "indicators": [{"alias": "rsi_fast", "indicator": "rsi", "params": {"length": 3}}],
+                "rules": {
+                    "entry": {
+                        "type": "comparison",
+                        "left": {"source": "indicator", "value": "rsi_fast"},
+                        "operator": "<",
+                        "right": {"source": "constant", "value": 35},
+                    },
+                    "exit": {
+                        "type": "comparison",
+                        "left": {"source": "indicator", "value": "rsi_fast"},
+                        "operator": ">",
+                        "right": {"source": "constant", "value": 65},
+                    },
+                    "filters": [],
+                },
+                "risk": {"position_sizing": {"method": "fixed_percentage", "percentage": 0.1}},
+                "execution": {},
+            }
+        )
 
-    def test_rsi_sell_signal(self):
-        signal_type, _, _ = _evaluate(None, {}, {"rsi": 75}, BAR)
-        assert signal_type == "sell"
+        signals = StrategyRuntime(spec).generate_signals(_bars())
+        signal_types = {signal["signal_type"] for signal in signals}
 
-    def test_rsi_hold_signal(self):
-        signal_type, _, _ = _evaluate(None, {}, {"rsi": 50}, BAR)
-        assert signal_type is None
+        assert "buy" in signal_types
+        assert "sell" in signal_types
 
-    def test_rsi_boundary_at_entry(self):
-        # RSI == entry_threshold is NOT strictly less-than → no signal
-        signal_type, _, _ = _evaluate(None, {}, {"rsi": 30}, BAR)
-        assert signal_type is None
+    def test_filter_rule_blocks_signals_when_not_matched(self):
+        spec = StrategySpec.model_validate(
+            {
+                "kind": "technical",
+                "metadata": {"name": "Filtered RSI"},
+                "market": {"timeframe": "1d", "symbols": ["SPY"]},
+                "indicators": [{"alias": "rsi_fast", "indicator": "rsi", "params": {"length": 3}}],
+                "rules": {
+                    "entry": {
+                        "type": "comparison",
+                        "left": {"source": "indicator", "value": "rsi_fast"},
+                        "operator": "<",
+                        "right": {"source": "constant", "value": 35},
+                    },
+                    "exit": {
+                        "type": "comparison",
+                        "left": {"source": "indicator", "value": "rsi_fast"},
+                        "operator": ">",
+                        "right": {"source": "constant", "value": 65},
+                    },
+                    "filters": [
+                        {
+                            "type": "comparison",
+                            "left": {"source": "price", "value": "close"},
+                            "operator": ">",
+                            "right": {"source": "constant", "value": 500},
+                        }
+                    ],
+                },
+                "risk": {"position_sizing": {"method": "fixed_percentage", "percentage": 0.1}},
+                "execution": {},
+            }
+        )
 
-    def test_rsi_boundary_at_exit(self):
-        # RSI == exit_threshold is NOT strictly greater-than → no signal
-        signal_type, _, _ = _evaluate(None, {}, {"rsi": 70}, BAR)
-        assert signal_type is None
+        signals = StrategyRuntime(spec).generate_signals(_bars())
 
-    def test_rsi_buy_strength(self):
-        # strength = (entry - rsi) / entry = (30 - 20) / 30
-        _, strength, _ = _evaluate(None, {}, {"rsi": 20}, BAR)
-        assert abs(strength - (30 - 20) / 30) < 1e-9
-
-    def test_rsi_sell_strength(self):
-        # strength = (rsi - exit) / (100 - exit) = (80 - 70) / (100 - 70)
-        _, strength, _ = _evaluate(None, {}, {"rsi": 80}, BAR)
-        assert abs(strength - (80 - 70) / (100 - 70)) < 1e-9
-
-    def test_rsi_custom_thresholds(self):
-        config = {"entry_threshold": 40, "exit_threshold": 60}
-        signal_type, _, _ = _evaluate(None, config, {"rsi": 35}, BAR)
-        assert signal_type == "buy"
-
-    def test_rsi_metadata_reason(self):
-        _, _, metadata = _evaluate(None, {}, {"rsi": 25}, BAR)
-        assert "RSI" in metadata.get("reason", "")
-
-    def test_rsi_none_value(self):
-        signal_type, _, _ = _evaluate(None, {}, {"rsi": None}, BAR)
-        assert signal_type is None
-
-    def test_rsi_takes_precedence_over_macd(self):
-        # When rsi key is present and non-None, RSI branch fires
-        indicators = {"rsi": 25, "macd": {"histogram": -5}}
-        signal_type, _, metadata = _evaluate(None, {}, indicators, BAR)
-        assert signal_type == "buy"
-        assert "RSI" in metadata.get("reason", "")
-
-
-# ---------------------------------------------------------------------------
-# MACD branch
-# ---------------------------------------------------------------------------
-
-
-class TestMACDBranch:
-    def test_macd_buy_histogram_positive(self):
-        signal_type, _, _ = _evaluate(None, {}, {"macd": {"histogram": 0.5}}, BAR)
-        assert signal_type == "buy"
-
-    def test_macd_sell_histogram_negative(self):
-        signal_type, _, _ = _evaluate(None, {}, {"macd": {"histogram": -0.5}}, BAR)
-        assert signal_type == "sell"
-
-    def test_macd_hold_histogram_zero(self):
-        signal_type, _, _ = _evaluate(None, {}, {"macd": {"histogram": 0}}, BAR)
-        assert signal_type is None
-
-    def test_macd_strength_capped_at_1(self):
-        _, strength, _ = _evaluate(None, {}, {"macd": {"histogram": 100}}, BAR)
-        assert strength == 1.0
-
-    def test_macd_non_dict_value(self):
-        # MACD value is a scalar, not a dict → no signal
-        signal_type, _, _ = _evaluate(None, {}, {"macd": 1.5}, BAR)
-        assert signal_type is None
-
-
-# ---------------------------------------------------------------------------
-# SMA/EMA crossover branch
-# ---------------------------------------------------------------------------
-
-
-class TestSMAEMACrossover:
-    def test_ema_above_sma_golden_cross(self):
-        signal_type, _, _ = _evaluate(None, {}, {"sma": 100, "ema": 105}, BAR)
-        assert signal_type == "buy"
-
-    def test_ema_below_sma_death_cross(self):
-        signal_type, _, _ = _evaluate(None, {}, {"sma": 100, "ema": 95}, BAR)
-        assert signal_type == "sell"
-
-    def test_sma_ema_equal_no_signal(self):
-        signal_type, _, _ = _evaluate(None, {}, {"sma": 100, "ema": 100}, BAR)
-        assert signal_type is None
-
-    def test_sma_ema_strength(self):
-        # strength = abs(ema - sma) / sma = abs(110 - 100) / 100 = 0.1
-        _, strength, _ = _evaluate(None, {}, {"sma": 100, "ema": 110}, BAR)
-        assert abs(strength - 0.1) < 1e-9
-
-
-# ---------------------------------------------------------------------------
-# Edge cases
-# ---------------------------------------------------------------------------
-
-
-class TestEdgeCases:
-    def test_no_indicators_no_signal(self):
-        signal_type, _, _ = _evaluate(None, {}, {}, BAR)
-        assert signal_type is None
+        assert signals == []

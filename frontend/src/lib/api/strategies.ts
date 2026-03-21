@@ -3,7 +3,15 @@
  */
 
 import { apiClient, handleApiError } from './client';
-import { Strategy, StrategyCreate, StrategyUpdate, StrategyListResponse, GetStrategiesParams } from '../types/strategy';
+import {
+  Strategy,
+  StrategyCreate,
+  StrategyUpdate,
+  StrategyListResponse,
+  GetStrategiesParams,
+  StrategyCompileRequest,
+  StrategyCompileResponse,
+} from '../types/strategy';
 
 const STRATEGIES_BASE = '/strategies';
 
@@ -13,6 +21,18 @@ const STRATEGIES_BASE = '/strategies';
 export async function createStrategy(data: StrategyCreate): Promise<Strategy> {
   try {
     const response = await apiClient.post<Strategy>(STRATEGIES_BASE, data);
+    return response.data;
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+
+/**
+ * Compile a natural-language strategy request into a validated spec.
+ */
+export async function compileStrategy(data: StrategyCompileRequest): Promise<StrategyCompileResponse> {
+  try {
+    const response = await apiClient.post<StrategyCompileResponse>(`${STRATEGIES_BASE}/compile`, data);
     return response.data;
   } catch (error) {
     return handleApiError(error);
