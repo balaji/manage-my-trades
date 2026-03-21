@@ -14,13 +14,11 @@ export default function Home() {
             <p className="text-xs text-gray-400 mt-2">Coming soon</p>
           </div>
 
-          <Link
-            href="/strategies"
-            className="p-6 border rounded-lg hover:border-blue-500 hover:shadow-lg transition-all"
-          >
-            <h2 className="text-xl font-semibold mb-2">Strategies</h2>
-            <p className="text-sm text-gray-600">Create and manage trading strategies</p>
-          </Link>
+          <div className="p-6 border rounded-lg opacity-60 cursor-not-allowed">
+            <h2 className="text-xl font-semibold mb-2">Paper Trading</h2>
+            <p className="text-sm text-gray-600">Execute strategies with paper money</p>
+            <p className="text-xs text-gray-400 mt-2">Coming soon</p>
+          </div>
 
           <Link
             href="/backtests"
@@ -30,11 +28,13 @@ export default function Home() {
             <p className="text-sm text-gray-600">Test strategies on historical data</p>
           </Link>
 
-          <div className="p-6 border rounded-lg opacity-60 cursor-not-allowed">
-            <h2 className="text-xl font-semibold mb-2">Paper Trading</h2>
-            <p className="text-sm text-gray-600">Execute strategies with paper money</p>
-            <p className="text-xs text-gray-400 mt-2">Coming soon</p>
-          </div>
+          <Link
+            href="/strategies"
+            className="p-6 border rounded-lg hover:border-blue-500 hover:shadow-lg transition-all"
+          >
+            <h2 className="text-xl font-semibold mb-2">Strategies</h2>
+            <p className="text-sm text-gray-600">Create and manage trading strategies</p>
+          </Link>
 
           <a
             href="/technical-analysis"

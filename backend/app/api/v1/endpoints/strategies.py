@@ -19,7 +19,6 @@ from app.schemas.strategy import (
     StrategyResponse,
     StrategyListResponse,
 )
-from app.core.strategies.legacy import build_legacy_spec
 from app.models.strategy import Strategy
 
 router = APIRouter()
@@ -27,27 +26,14 @@ router = APIRouter()
 
 def serialize_strategy(strategy: Strategy) -> StrategyResponse:
     """Serialize a strategy ORM object into API response shape."""
-    spec = build_legacy_spec(
-        name=strategy.name,
-        description=strategy.description,
-        config=strategy.config,
-        indicators=[
-            {
-                "indicator_name": indicator.indicator_name,
-                "parameters": indicator.parameters,
-                "usage": indicator.usage,
-            }
-            for indicator in strategy.indicators
-        ],
-    )
     return StrategyResponse(
         id=strategy.id,
         name=strategy.name,
         description=strategy.description,
         strategy_type=strategy.strategy_type,
         is_active=strategy.is_active,
-        spec=spec,
-        config=spec.model_dump(mode="json"),
+        spec=strategy.config,
+        config=strategy.config.model_dump(mode="json"),
         indicators=strategy.indicators,
         created_at=strategy.created_at,
         updated_at=strategy.updated_at,

@@ -8,7 +8,6 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.strategies.legacy import build_legacy_spec
 from app.core.strategies.runtime import StrategyRuntime
 from app.models.signal import Signal
 from app.models.strategy import Strategy
@@ -59,20 +58,7 @@ class SignalService:
                 logger.warning(f"No market data found for {symbol}")
                 return []
 
-        spec = build_legacy_spec(
-            name=strategy.name,
-            description=strategy.description,
-            config=strategy.config,
-            indicators=[
-                {
-                    "indicator_name": indicator.indicator_name,
-                    "parameters": indicator.parameters,
-                    "usage": indicator.usage,
-                }
-                for indicator in strategy.indicators
-            ],
-        )
-        runtime = StrategyRuntime(spec)
+        runtime = StrategyRuntime(strategy.config)
         runtime_signals = runtime.generate_signals([{**bar, "symbol": symbol} for bar in bar_data])
         signals = [
             Signal(

@@ -31,10 +31,13 @@ def build_legacy_spec(
     *,
     name: str,
     description: str | None,
-    config: dict[str, Any] | None,
+    config: StrategySpec | dict[str, Any] | None,
     indicators: list[dict[str, Any]],
 ) -> StrategySpec:
     """Build a canonical strategy spec from the current legacy DB shape."""
+    if isinstance(config, StrategySpec):
+        return config
+
     config = config or {}
     indicators = indicators or []
 

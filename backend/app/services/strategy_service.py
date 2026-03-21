@@ -46,7 +46,7 @@ class StrategyService:
             description=strategy_data.description,
             strategy_type="technical",
             is_active=False,  # New strategies start inactive
-            config=strategy_data.spec.model_dump(mode="json"),
+            config=strategy_data.spec,
         )
         self.db.add(strategy)
         await self.db.flush()  # Flush to get strategy ID
@@ -167,7 +167,7 @@ class StrategyService:
         if strategy_data.is_active is not None:
             strategy.is_active = strategy_data.is_active
         if strategy_data.spec is not None:
-            strategy.config = strategy_data.spec.model_dump(mode="json")
+            strategy.config = strategy_data.spec
         elif strategy_data.config is not None:
             spec = build_legacy_spec(
                 name=strategy_data.name or strategy.name,
@@ -177,7 +177,7 @@ class StrategyService:
                 config=strategy_data.config,
                 indicators=[indicator.model_dump() for indicator in (strategy_data.indicators or [])],
             )
-            strategy.config = spec.model_dump(mode="json")
+            strategy.config = spec
 
         # Update indicators if provided
         if strategy_data.indicators is not None or strategy_data.spec is not None or strategy_data.config is not None:
@@ -185,14 +185,8 @@ class StrategyService:
             await self.db.execute(delete(StrategyIndicator).where(StrategyIndicator.strategy_id == strategy_id))
             await self.db.flush()
 
-            # Create new indicators
-            spec = build_legacy_spec(
-                name=strategy.name,
-                description=strategy.description,
-                config=strategy.config,
-                indicators=[indicator.model_dump() for indicator in (strategy_data.indicators or [])],
-            )
-            for indicator_config in indicator_rows_from_spec(spec):
+            # Create new indicators from the updated spec (already a StrategySpec on strategy.config)
+            for indicator_config in indicator_rows_from_spec(strategy.config):
                 indicator = StrategyIndicator(
                     strategy_id=strategy_id,
                     indicator_name=indicator_config["indicator_name"],
