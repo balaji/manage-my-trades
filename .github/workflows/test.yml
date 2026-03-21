@@ -7,20 +7,20 @@ jobs:
   backend-tests:
     runs-on: ubuntu-latest
 
-    # services:
-    #   postgres:
-    #     image: timescale/timescaledb:latest-pg17
-    #     env:
-    #       POSTGRES_USER: postgres
-    #       POSTGRES_PASSWORD: postgres
-    #       POSTGRES_DB: test_db
-    #     ports:
-    #       - 5432:5432
-    #     options: >-
-    #       --health-cmd pg_isready
-    #       --health-interval 10s
-    #       --health-timeout 5s
-          # --health-retries 5
+    services:
+      postgres:
+        image: timescale/timescaledb:latest-pg17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     defaults:
       run:
@@ -37,5 +37,5 @@ jobs:
 
       - name: Run tests
         run: uv run pytest
-        # env:
-        #   DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
+        env:
+          TRADE_DATA_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
