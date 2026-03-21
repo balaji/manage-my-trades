@@ -152,7 +152,7 @@ class TestMACD:
 
 class TestBollingerBands:
     def _calc(self, ohlcv_df):
-        return IndicatorCalculator(ohlcv_df).calculate("bbands")
+        return IndicatorCalculator(ohlcv_df).calculate("bollinger_bands")
 
     def test_bbands_returns_dataframe_5_columns(self, ohlcv_df):
         result = self._calc(ohlcv_df)
@@ -202,17 +202,17 @@ class TestATR:
 class TestStochastic:
     def test_stoch_returns_dataframe(self, ohlcv_df):
         calc = IndicatorCalculator(ohlcv_df)
-        result = calc.calculate("stoch")
+        result = calc.calculate("stochastic")
         assert isinstance(result, pd.DataFrame)
 
     def test_stoch_two_columns(self, ohlcv_df):
         calc = IndicatorCalculator(ohlcv_df)
-        result = calc.calculate("stoch")
+        result = calc.calculate("stochastic")
         assert len(result.columns) == 2
 
     def test_stoch_k_range_0_to_100(self, ohlcv_df):
         calc = IndicatorCalculator(ohlcv_df)
-        result = calc.calculate("stoch")
+        result = calc.calculate("stochastic")
         k_col = "STOCHk_14_3_3"
         valid = result[k_col].dropna()
         assert (valid >= 0).all() and (valid <= 100).all()
