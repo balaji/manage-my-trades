@@ -96,3 +96,132 @@ class TestStrategyRuntime:
         signals = StrategyRuntime(spec).generate_signals(_bars())
 
         assert signals == []
+
+    def test_all_entry_suppresses_buy_when_one_condition_never_met(self):
+        spec = StrategySpec.model_validate(
+            {
+                "kind": "technical",
+                "metadata": {"name": "All Entry Blocked"},
+                "market": {"timeframe": "1d", "symbols": ["SPY"]},
+                "indicators": [{"alias": "rsi_fast", "indicator": "rsi", "params": {"length": 3}}],
+                "rules": {
+                    "entry": {
+                        "type": "all",
+                        "conditions": [
+                            {
+                                "type": "comparison",
+                                "left": {"source": "indicator", "value": "rsi_fast"},
+                                "operator": "<",
+                                "right": {"source": "constant", "value": 35},
+                            },
+                            {
+                                "type": "comparison",
+                                "left": {"source": "price", "value": "close"},
+                                "operator": ">",
+                                "right": {"source": "constant", "value": 500},
+                            },
+                        ],
+                    },
+                    "exit": {
+                        "type": "comparison",
+                        "left": {"source": "indicator", "value": "rsi_fast"},
+                        "operator": ">",
+                        "right": {"source": "constant", "value": 65},
+                    },
+                    "filters": [],
+                },
+                "risk": {"position_sizing": {"method": "fixed_percentage", "percentage": 0.1}},
+                "execution": {},
+            }
+        )
+
+        signals = StrategyRuntime(spec).generate_signals(_bars())
+        buy_signals = [s for s in signals if s["signal_type"] == "buy"]
+
+        assert buy_signals == []
+
+    def test_any_entry_fires_when_at_least_one_condition_met(self):
+        spec = StrategySpec.model_validate(
+            {
+                "kind": "technical",
+                "metadata": {"name": "Any Entry"},
+                "market": {"timeframe": "1d", "symbols": ["SPY"]},
+                "indicators": [{"alias": "rsi_fast", "indicator": "rsi", "params": {"length": 3}}],
+                "rules": {
+                    "entry": {
+                        "type": "any",
+                        "conditions": [
+                            {
+                                "type": "comparison",
+                                "left": {"source": "indicator", "value": "rsi_fast"},
+                                "operator": "<",
+                                "right": {"source": "constant", "value": 35},
+                            },
+                            {
+                                "type": "comparison",
+                                "left": {"source": "price", "value": "close"},
+                                "operator": ">",
+                                "right": {"source": "constant", "value": 500},
+                            },
+                        ],
+                    },
+                    "exit": {
+                        "type": "comparison",
+                        "left": {"source": "indicator", "value": "rsi_fast"},
+                        "operator": ">",
+                        "right": {"source": "constant", "value": 65},
+                    },
+                    "filters": [],
+                },
+                "risk": {"position_sizing": {"method": "fixed_percentage", "percentage": 0.1}},
+                "execution": {},
+            }
+        )
+
+        signals = StrategyRuntime(spec).generate_signals(_bars())
+        buy_signals = [s for s in signals if s["signal_type"] == "buy"]
+
+        assert len(buy_signals) > 0
+
+    def test_all_entry_emits_buy_when_all_conditions_satisfied(self):
+        spec = StrategySpec.model_validate(
+            {
+                "kind": "technical",
+                "metadata": {"name": "All Entry Active"},
+                "market": {"timeframe": "1d", "symbols": ["SPY"]},
+                "indicators": [{"alias": "rsi_fast", "indicator": "rsi", "params": {"length": 3}}],
+                "rules": {
+                    "entry": {
+                        "type": "all",
+                        "conditions": [
+                            {
+                                "type": "comparison",
+                                "left": {"source": "indicator", "value": "rsi_fast"},
+                                "operator": "<",
+                                "right": {"source": "constant", "value": 35},
+                            },
+                            {
+                                "type": "comparison",
+                                "left": {"source": "price", "value": "close"},
+                                "operator": "<",
+                                "right": {"source": "constant", "value": 100},
+                            },
+                        ],
+                    },
+                    "exit": {
+                        "type": "comparison",
+                        "left": {"source": "indicator", "value": "rsi_fast"},
+                        "operator": ">",
+                        "right": {"source": "constant", "value": 65},
+                    },
+                    "filters": [],
+                },
+                "risk": {"position_sizing": {"method": "fixed_percentage", "percentage": 0.1}},
+                "execution": {},
+            }
+        )
+
+        signals = StrategyRuntime(spec).generate_signals(_bars())
+        buy_signals = [s for s in signals if s["signal_type"] == "buy"]
+
+        assert len(buy_signals) > 0
