@@ -111,7 +111,7 @@ export default function TechnicalAnalysisPage() {
             { name: 'EMA', params: { length: 20 } },
             { name: 'EMA', params: { length: 30 } },
             { name: 'RSI', params: { length: 14 } },
-            { name: 'BBANDS', params: { length: 20, std: 2.0 } },
+            { name: 'BOLLINGER_BANDS', params: { length: 20, std: 2.0 } },
           ],
         }),
       ]);
@@ -135,7 +135,7 @@ export default function TechnicalAnalysisPage() {
         setRsiData(rsiResult?.values ?? []);
 
         // Bollinger Bands (multi-column)
-        const bbResult = Object.values(results).find((r) => (r as any).name === 'BBANDS');
+        const bbResult = Object.values(results).find((r) => (r as any).name === 'BOLLINGER_BANDS');
         if (bbResult?.columns) {
           const cols = bbResult.columns;
           const length = bbResult.params.length as number;

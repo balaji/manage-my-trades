@@ -2,7 +2,6 @@
 
 import pytest
 
-from app.core.strategies.legacy import build_legacy_spec
 from app.core.strategies.spec import StrategySpec
 
 
@@ -33,17 +32,3 @@ def test_strategy_spec_rejects_unknown_alias_reference():
                 "execution": {},
             }
         )
-
-
-def test_build_legacy_spec_from_rsi_config():
-    spec = build_legacy_spec(
-        name="RSI Mean Reversion",
-        description="Buy oversold, sell overbought",
-        config={"entry_threshold": 30, "exit_threshold": 70},
-        indicators=[{"indicator_name": "rsi", "parameters": {"period": 14}, "usage": "entry"}],
-    )
-
-    assert spec.metadata.name == "RSI Mean Reversion"
-    assert spec.indicators[0].indicator == "rsi"
-    assert spec.rules.entry.operator == "<"
-    assert spec.rules.exit.operator == ">"

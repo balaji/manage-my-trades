@@ -77,10 +77,7 @@ class StrategyCreate(BaseModel):
     def ensure_spec(self) -> "StrategyCreate":
         if self.spec is None:
             self.spec = build_legacy_spec(
-                name=self.name,
-                description=self.description,
                 config=self.config,
-                indicators=[indicator.model_dump() for indicator in self.indicators],
             )
         self.config = self.spec.model_dump(mode="json")
         self.strategy_type = StrategyType.TECHNICAL

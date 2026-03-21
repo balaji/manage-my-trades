@@ -19,34 +19,6 @@ SUPPORTED_INDICATORS = {
 COMPARISON_OPERATORS = {"<", "<=", ">", ">=", "=="}
 
 
-def normalize_indicator_name(name: str) -> str:
-    """Normalize indicator names across legacy and spec representations."""
-    normalized = name.strip().lower()
-    aliases = {
-        "bbands": "bollinger_bands",
-        "bollinger": "bollinger_bands",
-        "stoch": "stochastic",
-    }
-    return aliases.get(normalized, normalized)
-
-
-def normalize_indicator_params(indicator: str, params: dict[str, Any]) -> dict[str, Any]:
-    """Normalize parameter names to calculator-friendly keys."""
-    normalized = dict(params)
-    indicator = normalize_indicator_name(indicator)
-
-    if "period" in normalized and "length" not in normalized:
-        normalized["length"] = normalized.pop("period")
-
-    if indicator == "stochastic":
-        if "k_period" in normalized and "k" not in normalized:
-            normalized["k"] = normalized.pop("k_period")
-        if "d_period" in normalized and "d" not in normalized:
-            normalized["d"] = normalized.pop("d_period")
-
-    return normalized
-
-
 class StrategyMetadata(BaseModel):
     """Human-facing strategy metadata."""
 
@@ -71,8 +43,6 @@ class IndicatorDefinition(BaseModel):
 
     @model_validator(mode="after")
     def validate_indicator(self) -> "IndicatorDefinition":
-        self.indicator = normalize_indicator_name(self.indicator)
-        self.params = normalize_indicator_params(self.indicator, self.params)
         if self.indicator not in SUPPORTED_INDICATORS:
             raise ValueError(f"Unsupported indicator '{self.indicator}'")
         return self
