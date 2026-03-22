@@ -113,6 +113,7 @@ export interface StrategyCompileResponse {
   normalized_spec: StrategySpec;
   summary: string;
   warnings: string[];
+  prompt_warnings: string[];
 }
 
 /**

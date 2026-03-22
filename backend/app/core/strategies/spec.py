@@ -16,7 +16,9 @@ SUPPORTED_INDICATORS = {
     "atr": {"fields": []},
 }
 
+PRICE_FIELDS = {"open", "high", "low", "close", "volume"}
 COMPARISON_OPERATORS = {"<", "<=", ">", ">=", "=="}
+CROSS_OPERATORS = {"crosses_above", "crosses_below"}
 
 
 class StrategyMetadata(BaseModel):
@@ -31,7 +33,6 @@ class StrategyMarket(BaseModel):
     """Market defaults for strategy execution."""
 
     timeframe: str = "1d"
-    symbols: list[str] = Field(default_factory=list)
 
 
 class IndicatorDefinition(BaseModel):
@@ -48,31 +49,54 @@ class IndicatorDefinition(BaseModel):
         return self
 
 
-class ValueRef(BaseModel):
-    """Reference to an indicator, price field, or constant value."""
+class IndicatorExpr(BaseModel):
+    """Reference to an indicator output."""
 
-    source: Literal["indicator", "price", "constant"]
-    value: Union[str, float, int]
+    type: Literal["indicator"]
+    alias: str = Field(..., min_length=1)
     field: Optional[str] = None
 
-    @model_validator(mode="after")
-    def validate_ref(self) -> "ValueRef":
-        if self.source == "indicator" and not isinstance(self.value, str):
-            raise ValueError("Indicator references must use a string alias")
-        if self.source == "price" and self.value not in {"open", "high", "low", "close", "volume"}:
-            raise ValueError("Price references must use open/high/low/close/volume")
-        if self.source == "constant" and not isinstance(self.value, (int, float)):
-            raise ValueError("Constant references must use a numeric value")
-        return self
+
+class PriceExpr(BaseModel):
+    """Reference to a price or volume field."""
+
+    type: Literal["price"]
+    field: Literal["open", "high", "low", "close", "volume"]
 
 
-class ComparisonRule(BaseModel):
-    """Binary comparison rule."""
+class ConstantExpr(BaseModel):
+    """Numeric constant in a strategy expression."""
 
-    type: Literal["comparison"]
-    left: ValueRef
+    type: Literal["constant"]
+    value: float | int
+
+
+class PrevExpr(BaseModel):
+    """One-bar lookback of another scalar expression."""
+
+    type: Literal["prev"]
+    expr: "ExpressionNode"
+
+
+ExpressionNode = Annotated[Union[IndicatorExpr, PriceExpr, ConstantExpr, PrevExpr], Field(discriminator="type")]
+
+
+class CompareRule(BaseModel):
+    """Binary scalar comparison rule."""
+
+    type: Literal["compare"]
+    left: ExpressionNode
     operator: Literal["<", "<=", ">", ">=", "=="]
-    right: ValueRef
+    right: ExpressionNode
+
+
+class CrossRule(BaseModel):
+    """Crossover/crossunder event rule."""
+
+    type: Literal["cross"]
+    left: ExpressionNode
+    operator: Literal["crosses_above", "crosses_below"]
+    right: ExpressionNode
 
 
 class LogicalRule(BaseModel):
@@ -95,7 +119,7 @@ class NotRule(BaseModel):
     condition: "RuleNode"
 
 
-RuleNode = Annotated[Union[ComparisonRule, LogicalRule, NotRule], Field(discriminator="type")]
+RuleNode = Annotated[Union[CompareRule, CrossRule, LogicalRule, NotRule], Field(discriminator="type")]
 
 
 class StrategyRules(BaseModel):
@@ -118,6 +142,9 @@ class PositionSizingSpec(BaseModel):
     def validate_method_config(self) -> "PositionSizingSpec":
         if self.method == "fixed_percentage" and self.percentage is None:
             self.percentage = 0.1
+        # Normalize percentage expressed as whole number (e.g. 10.0 → 0.1)
+        if self.percentage is not None and self.percentage > 1.0:
+            self.percentage = self.percentage / 100.0
         if self.method == "fixed_amount" and self.amount is None:
             self.amount = 1000.0
         if self.method == "equal_weight" and self.num_positions is None:
@@ -164,25 +191,54 @@ class StrategySpec(BaseModel):
 
         alias_map = {indicator.alias: indicator.indicator for indicator in self.indicators}
 
-        def _walk_rule(rule: RuleNode):
-            if isinstance(rule, ComparisonRule):
-                for ref in (rule.left, rule.right):
-                    if ref.source != "indicator":
-                        continue
-                    indicator_name = alias_map.get(ref.value)
-                    if indicator_name is None:
-                        raise ValueError(f"Unknown indicator alias '{ref.value}'")
-                    valid_fields = SUPPORTED_INDICATORS[indicator_name]["fields"]
-                    if valid_fields and ref.field not in valid_fields:
-                        raise ValueError(
-                            f"Indicator '{ref.value}' requires one of fields {valid_fields}, got '{ref.field}'"
-                        )
-                    if not valid_fields and ref.field is not None:
-                        raise ValueError(f"Indicator '{ref.value}' does not support nested fields")
-            elif isinstance(rule, LogicalRule):
+        def _validate_expr(expr: ExpressionNode) -> None:
+            if isinstance(expr, IndicatorExpr):
+                indicator_name = alias_map.get(expr.alias)
+                if indicator_name is None:
+                    raise ValueError(f"Unknown indicator alias '{expr.alias}'")
+
+                valid_fields = SUPPORTED_INDICATORS[indicator_name]["fields"]
+                if valid_fields and expr.field not in valid_fields:
+                    raise ValueError(
+                        f"Indicator '{expr.alias}' requires one of fields {valid_fields}, got '{expr.field}'"
+                    )
+                if not valid_fields and expr.field is not None:
+                    raise ValueError(f"Indicator '{expr.alias}' does not support nested fields")
+                return
+
+            if isinstance(expr, PriceExpr):
+                if expr.field not in PRICE_FIELDS:
+                    raise ValueError("Price references must use open/high/low/close/volume")
+                return
+
+            if isinstance(expr, ConstantExpr):
+                if not isinstance(expr.value, (int, float)):
+                    raise ValueError("Constant expressions must use a numeric value")
+                return
+
+            if isinstance(expr, PrevExpr):
+                if isinstance(expr.expr, PrevExpr):
+                    raise ValueError("Nested prev() expressions are not supported")
+                _validate_expr(expr.expr)
+                return
+
+        def _walk_rule(rule: RuleNode) -> None:
+            if isinstance(rule, CompareRule):
+                _validate_expr(rule.left)
+                _validate_expr(rule.right)
+                return
+
+            if isinstance(rule, CrossRule):
+                _validate_expr(rule.left)
+                _validate_expr(rule.right)
+                return
+
+            if isinstance(rule, LogicalRule):
                 for child in rule.conditions:
                     _walk_rule(child)
-            elif isinstance(rule, NotRule):
+                return
+
+            if isinstance(rule, NotRule):
                 _walk_rule(rule.condition)
 
         _walk_rule(self.rules.entry)
@@ -196,3 +252,4 @@ class StrategySpec(BaseModel):
 StrategyRules.model_rebuild()
 LogicalRule.model_rebuild()
 NotRule.model_rebuild()
+PrevExpr.model_rebuild()

@@ -29,7 +29,7 @@ export default function NewBacktestPage() {
   const [form, setForm] = useState({
     strategy_id: prefillStrategyId ?? '',
     name: '',
-    symbols: searchParams.get('symbols') || 'SPY',
+    symbols: searchParams.get('symbols') || '',
     start_date: searchParams.get('start_date') || oneYearAgo.toISOString().split('T')[0],
     end_date: searchParams.get('end_date') || today.toISOString().split('T')[0],
     initial_capital: searchParams.get('initial_capital') || '10000',

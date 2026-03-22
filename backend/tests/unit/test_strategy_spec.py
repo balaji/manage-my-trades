@@ -2,7 +2,8 @@
 
 import pytest
 
-from app.core.strategies.spec import LogicalRule, StrategySpec
+from app.core.strategies.legacy import indicator_rows_from_spec
+from app.core.strategies.spec import CrossRule, LogicalRule, PrevExpr, StrategySpec
 
 
 def _base_spec(entry_rule: dict, exit_rule: dict | None = None, indicators: list | None = None) -> dict:
@@ -12,17 +13,17 @@ def _base_spec(entry_rule: dict, exit_rule: dict | None = None, indicators: list
         "market": {"timeframe": "1d", "symbols": ["SPY"]},
         "indicators": indicators
         or [
-            {"alias": "rsi", "indicator": "rsi", "params": {"length": 14}},
-            {"alias": "sma", "indicator": "sma", "params": {"length": 50}},
+            {"alias": "fast_ma", "indicator": "ema", "params": {"length": 20}},
+            {"alias": "slow_ma", "indicator": "sma", "params": {"length": 50}},
         ],
         "rules": {
             "entry": entry_rule,
             "exit": exit_rule
             or {
-                "type": "comparison",
-                "left": {"source": "indicator", "value": "rsi"},
-                "operator": ">",
-                "right": {"source": "constant", "value": 70},
+                "type": "cross",
+                "left": {"type": "indicator", "alias": "fast_ma"},
+                "operator": "crosses_below",
+                "right": {"type": "indicator", "alias": "slow_ma"},
             },
             "filters": [],
         },
@@ -38,16 +39,16 @@ def test_logical_rule_all_requires_every_condition():
                 "type": "all",
                 "conditions": [
                     {
-                        "type": "comparison",
-                        "left": {"source": "indicator", "value": "rsi"},
+                        "type": "compare",
+                        "left": {"type": "price", "field": "close"},
                         "operator": "<",
-                        "right": {"source": "constant", "value": 30},
+                        "right": {"type": "indicator", "alias": "slow_ma"},
                     },
                     {
-                        "type": "comparison",
-                        "left": {"source": "price", "value": "close"},
-                        "operator": "<",
-                        "right": {"source": "indicator", "value": "sma"},
+                        "type": "cross",
+                        "left": {"type": "indicator", "alias": "fast_ma"},
+                        "operator": "crosses_above",
+                        "right": {"type": "indicator", "alias": "slow_ma"},
                     },
                 ],
             }
@@ -65,28 +66,28 @@ def test_logical_rule_any_requires_one_condition():
                 "type": "any",
                 "conditions": [
                     {
-                        "type": "comparison",
-                        "left": {"source": "indicator", "value": "rsi"},
-                        "operator": "<",
-                        "right": {"source": "constant", "value": 30},
+                        "type": "compare",
+                        "left": {"type": "indicator", "alias": "fast_ma"},
+                        "operator": ">",
+                        "right": {"type": "constant", "value": 0},
                     },
                     {
-                        "type": "comparison",
-                        "left": {"source": "indicator", "value": "bb", "field": "lower"},
+                        "type": "compare",
+                        "left": {"type": "indicator", "alias": "macd_fast", "field": "macd"},
                         "operator": ">",
-                        "right": {"source": "price", "value": "close"},
+                        "right": {"type": "indicator", "alias": "macd_fast", "field": "signal"},
                     },
                 ],
             },
             indicators=[
-                {"alias": "rsi", "indicator": "rsi", "params": {"length": 14}},
-                {"alias": "bb", "indicator": "bollinger_bands", "params": {"length": 20}},
+                {"alias": "fast_ma", "indicator": "ema", "params": {"length": 20}},
+                {"alias": "macd_fast", "indicator": "macd", "params": {"fast": 12, "slow": 26, "signal": 9}},
             ],
             exit_rule={
-                "type": "comparison",
-                "left": {"source": "indicator", "value": "rsi"},
-                "operator": ">",
-                "right": {"source": "constant", "value": 70},
+                "type": "compare",
+                "left": {"type": "indicator", "alias": "fast_ma"},
+                "operator": "<",
+                "right": {"type": "constant", "value": 0},
             },
         )
     )
@@ -95,79 +96,112 @@ def test_logical_rule_any_requires_one_condition():
     assert len(spec.rules.entry.conditions) == 2
 
 
-def test_logical_rule_nesting():
+def test_cross_rule_supports_indicator_fields():
     spec = StrategySpec.model_validate(
         _base_spec(
             entry_rule={
-                "type": "all",
-                "conditions": [
-                    {
-                        "type": "any",
-                        "conditions": [
-                            {
-                                "type": "comparison",
-                                "left": {"source": "indicator", "value": "rsi"},
-                                "operator": "<",
-                                "right": {"source": "constant", "value": 30},
-                            },
-                            {
-                                "type": "comparison",
-                                "left": {"source": "indicator", "value": "rsi"},
-                                "operator": "<",
-                                "right": {"source": "constant", "value": 25},
-                            },
-                        ],
-                    },
-                    {
-                        "type": "comparison",
-                        "left": {"source": "price", "value": "close"},
-                        "operator": "<",
-                        "right": {"source": "indicator", "value": "sma"},
-                    },
-                ],
+                "type": "cross",
+                "left": {"type": "indicator", "alias": "macd_fast", "field": "macd"},
+                "operator": "crosses_above",
+                "right": {"type": "indicator", "alias": "macd_fast", "field": "signal"},
+            },
+            indicators=[
+                {"alias": "macd_fast", "indicator": "macd", "params": {"fast": 12, "slow": 26, "signal": 9}},
+                {"alias": "slow_ma", "indicator": "sma", "params": {"length": 50}},
+            ],
+            exit_rule={
+                "type": "cross",
+                "left": {"type": "indicator", "alias": "macd_fast", "field": "macd"},
+                "operator": "crosses_below",
+                "right": {"type": "indicator", "alias": "macd_fast", "field": "signal"},
+            },
+        )
+    )
+    assert isinstance(spec.rules.entry, CrossRule)
+    assert spec.rules.entry.left.field == "macd"
+    assert spec.rules.entry.right.field == "signal"
+
+
+def test_prev_expression_is_supported():
+    spec = StrategySpec.model_validate(
+        _base_spec(
+            entry_rule={
+                "type": "compare",
+                "left": {"type": "indicator", "alias": "fast_ma"},
+                "operator": ">",
+                "right": {"type": "prev", "expr": {"type": "indicator", "alias": "slow_ma"}},
             }
         )
     )
-    assert isinstance(spec.rules.entry, LogicalRule)
-    assert spec.rules.entry.type == "all"
-    inner = spec.rules.entry.conditions[0]
-    assert isinstance(inner, LogicalRule)
-    assert inner.type == "any"
+    assert isinstance(spec.rules.entry.right, PrevExpr)
 
 
 def test_logical_rule_rejects_empty_conditions():
     with pytest.raises(ValueError, match="require at least one condition"):
-        StrategySpec.model_validate(
-            _base_spec(
-                entry_rule={"type": "all", "conditions": []},
-            )
-        )
+        StrategySpec.model_validate(_base_spec(entry_rule={"type": "all", "conditions": []}))
 
 
 def test_strategy_spec_rejects_unknown_alias_reference():
     with pytest.raises(ValueError, match="Unknown indicator alias"):
         StrategySpec.model_validate(
-            {
-                "kind": "technical",
-                "metadata": {"name": "Broken"},
-                "market": {"timeframe": "1d", "symbols": ["SPY"]},
-                "indicators": [{"alias": "rsi_fast", "indicator": "rsi", "params": {"length": 14}}],
-                "rules": {
-                    "entry": {
-                        "type": "comparison",
-                        "left": {"source": "indicator", "value": "missing_alias"},
-                        "operator": "<",
-                        "right": {"source": "constant", "value": 30},
-                    },
-                    "exit": {
-                        "type": "comparison",
-                        "left": {"source": "indicator", "value": "rsi_fast"},
-                        "operator": ">",
-                        "right": {"source": "constant", "value": 70},
-                    },
-                    "filters": [],
+            _base_spec(
+                entry_rule={
+                    "type": "compare",
+                    "left": {"type": "indicator", "alias": "missing_alias"},
+                    "operator": "<",
+                    "right": {"type": "constant", "value": 30},
+                }
+            )
+        )
+
+
+def test_strategy_spec_rejects_missing_indicator_field():
+    with pytest.raises(ValueError, match="requires one of fields"):
+        StrategySpec.model_validate(
+            _base_spec(
+                entry_rule={
+                    "type": "compare",
+                    "left": {"type": "indicator", "alias": "macd_fast"},
+                    "operator": ">",
+                    "right": {"type": "constant", "value": 0},
                 },
-                "risk": {"position_sizing": {"method": "fixed_percentage", "percentage": 0.1}},
-                "execution": {},
+                indicators=[
+                    {"alias": "macd_fast", "indicator": "macd", "params": {"fast": 12, "slow": 26, "signal": 9}},
+                    {"alias": "slow_ma", "indicator": "sma", "params": {"length": 50}},
+                ],
+            )
+        )
+
+
+def test_strategy_spec_rejects_nested_prev():
+    with pytest.raises(ValueError, match="Nested prev\\(\\) expressions are not supported"):
+        StrategySpec.model_validate(
+            _base_spec(
+                entry_rule={
+                    "type": "compare",
+                    "left": {
+                        "type": "prev",
+                        "expr": {"type": "prev", "expr": {"type": "indicator", "alias": "fast_ma"}},
+                    },
+                    "operator": ">",
+                    "right": {"type": "indicator", "alias": "slow_ma"},
+                }
+            )
+        )
+
+
+def test_indicator_rows_from_spec_extracts_cross_rule_aliases():
+    spec = StrategySpec.model_validate(
+        _base_spec(
+            entry_rule={
+                "type": "cross",
+                "left": {"type": "indicator", "alias": "fast_ma"},
+                "operator": "crosses_above",
+                "right": {"type": "indicator", "alias": "slow_ma"},
             }
         )
+    )
+
+    rows = indicator_rows_from_spec(spec)
+
+    assert {row["indicator_name"] for row in rows} == {"ema", "sma"}

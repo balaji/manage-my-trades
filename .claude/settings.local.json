@@ -9,29 +9,21 @@
       "Bash(npx tsc:*)",
       "Bash(cd:*)",
       "Bash(uv run:*)",
-      "mcp__playwright__browser_navigate",
       "Bash(docker compose:*)",
-      "Bash(curl -s 'http://localhost:8000/api/v1/backtests/27/signals?limit=1')",
       "Bash(python3 -m json.tool)",
-      "Bash(curl -s 'http://localhost:8000/api/v1/backtests/27')",
-      "Bash(python3 -c \"import sys, json; d = json.load\\(sys.stdin\\); print\\(f''''Status: {d[\"\"status\"\"]}''''\\); print\\(f''''Trades in results: {\"\"trades\"\" in str\\(d.get\\(\"\"results\"\", {}\\)\\)}''''\\)\")",
-      "Bash(curl -s 'http://localhost:8000/api/v1/backtests/27/trades?limit=1')",
       "Bash(git checkout:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(gh pr:*)",
-      "Bash(find /Users/balaji/projects/manage-my-trades/frontend/src -path *strategies* -type f)",
-      "Bash(find /Users/balaji/projects/manage-my-trades/frontend/src -type f \\\\\\(-name *.tsx -o -name *.ts \\\\\\))",
-      "Bash(find /Users/balaji/projects/manage-my-trades/backend/alembic_trade_data/versions -name *.py -type f)",
-      "Bash(find /Users/balaji/projects/manage-my-trades/backend/app -name *.py -type f)",
-      "Bash(find /Users/balaji/projects/manage-my-trades/backend/app/api -name *.py -type f)",
-      "Bash(find /Users/balaji/projects/manage-my-trades -name *.md -type f)",
+      "Bash(find /Users/balaji/projects/manage-my-trades:*)",
       "Bash(ls:*)",
       "Bash(git restore:*)",
+      "mcp__playwright__browser_navigate",
       "mcp__playwright__browser_click",
       "mcp__playwright__browser_wait_for",
       "mcp__playwright__browser_take_screenshot",
-      "mcp__playwright__browser_snapshot"
+      "mcp__playwright__browser_snapshot",
+      "Bash(gh run:*)"
     ]
   }
 }

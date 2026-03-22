@@ -25,6 +25,7 @@ export function StrategyForm({
     JSON.stringify(initialData?.spec || buildEmptySpec(initialData?.name, initialData?.description), null, 2)
   );
   const [compileSummary, setCompileSummary] = useState<string | null>(null);
+  const [promptWarnings, setPromptWarnings] = useState<string[]>([]);
   const [compileWarnings, setCompileWarnings] = useState<string[]>([]);
   const [compiling, setCompiling] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -71,6 +72,7 @@ export function StrategyForm({
       });
       setSpecJson(JSON.stringify(response.normalized_spec, null, 2));
       setCompileSummary(response.summary);
+      setPromptWarnings(response.prompt_warnings || []);
       setCompileWarnings(response.warnings);
       if (!name.trim() && response.normalized_spec?.metadata?.name) {
         setName(response.normalized_spec.metadata.name);
@@ -79,6 +81,8 @@ export function StrategyForm({
         setDescription(response.normalized_spec.metadata.description);
       }
     } catch (err: any) {
+      setPromptWarnings([]);
+      setCompileWarnings([]);
       setError(err.message || 'Failed to compile strategy');
     } finally {
       setCompiling(false);
@@ -196,6 +200,17 @@ export function StrategyForm({
             <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-900">{compileSummary}</div>
           )}
 
+          {promptWarnings.length > 0 && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+              <div className="mb-2 font-medium text-amber-900">Prompt Warnings</div>
+              <ul className="list-disc space-y-1 pl-5 text-sm text-amber-800">
+                {promptWarnings.map((warning) => (
+                  <li key={warning}>{warning}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {compileWarnings.length > 0 && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
               <div className="mb-2 font-medium text-amber-900">Warnings</div>
@@ -262,16 +277,16 @@ function buildEmptySpec(name?: string, description?: string): StrategySpec {
     indicators: [],
     rules: {
       entry: {
-        type: 'comparison',
-        left: { source: 'price', value: 'close' },
+        type: 'compare',
+        left: { type: 'price', field: 'close' },
         operator: '>',
-        right: { source: 'constant', value: 0 },
+        right: { type: 'constant', value: 0 },
       },
       exit: {
-        type: 'comparison',
-        left: { source: 'price', value: 'close' },
+        type: 'compare',
+        left: { type: 'price', field: 'close' },
         operator: '<',
-        right: { source: 'constant', value: 0 },
+        right: { type: 'constant', value: 0 },
       },
       filters: [],
     },
