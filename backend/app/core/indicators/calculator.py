@@ -59,7 +59,7 @@ class IndicatorCalculator:
         if params is None:
             params = {}
 
-        indicator_name = self._normalize_indicator_name(indicator_name)
+        indicator_name = indicator_name.lower()
         try:
             if indicator_name == "sma":
                 return self._calculate_sma(params)
@@ -81,17 +81,6 @@ class IndicatorCalculator:
         except Exception as e:
             logger.error(f"Error calculating {indicator_name}: {e}")
             raise
-
-    @staticmethod
-    def _normalize_indicator_name(indicator_name: str) -> str:
-        """Map common aliases to the canonical indicator implementation name."""
-        normalized = indicator_name.lower()
-        aliases = {
-            "bbands": "bollinger_bands",
-            "bollingerbands": "bollinger_bands",
-            "stoch": "stochastic",
-        }
-        return aliases.get(normalized, normalized)
 
     def _calculate_sma(self, params: Dict[str, Any]) -> pd.Series:
         """Calculate Simple Moving Average."""
