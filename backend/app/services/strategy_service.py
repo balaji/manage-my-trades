@@ -169,14 +169,7 @@ class StrategyService:
         if strategy_data.spec is not None:
             strategy.config = strategy_data.spec
         elif strategy_data.config is not None:
-            spec = build_legacy_spec(
-                name=strategy_data.name or strategy.name,
-                description=(
-                    strategy_data.description if strategy_data.description is not None else strategy.description
-                ),
-                config=strategy_data.config,
-                indicators=[indicator.model_dump() for indicator in (strategy_data.indicators or [])],
-            )
+            spec = build_legacy_spec(config=strategy_data.config)
             strategy.config = spec
 
         # Update indicators if provided

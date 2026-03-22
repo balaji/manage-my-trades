@@ -3,13 +3,15 @@
 /**
  * Backtest results page.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { getBacktest, getBacktestTrades, getBacktestSignals, deleteBacktest } from '@/lib/api/backtests';
 import { Backtest, BacktestTrade } from '@/lib/types/backtest';
 import { Signal } from '@/lib/types/signal';
+import { marketDataApi } from '@/lib/api/market-data';
+import { MarketDataResponse } from '@/lib/types/market-data';
 
 function MetricCard({
   label,
@@ -56,6 +58,7 @@ export default function BacktestDetailPage() {
   const [backtest, setBacktest] = useState<Backtest | null>(null);
   const [trades, setTrades] = useState<BacktestTrade[]>([]);
   const [signals, setSignals] = useState<Signal[]>([]);
+  const [priceData, setPriceData] = useState<MarketDataResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,6 +75,15 @@ export default function BacktestDetailPage() {
         setBacktest(bt);
         setTrades(tradesData.trades);
         setSignals(signalsData.signals);
+        if (bt.status === 'completed') {
+          const bars = await marketDataApi.getBars({
+            symbols: bt.symbols,
+            start_date: bt.start_date,
+            end_date: bt.end_date,
+            timeframe: bt.timeframe,
+          });
+          setPriceData(bars);
+        }
       } catch (err: any) {
         setError(err.message || 'Failed to load backtest');
       } finally {
@@ -91,6 +103,24 @@ export default function BacktestDetailPage() {
       alert(`Failed to delete: ${err.message}`);
     }
   };
+
+  const SYMBOL_COLORS = ['#2563eb', '#16a34a', '#dc2626', '#d97706', '#7c3aed', '#0891b2'];
+
+  // Build price chart data: one row per date, normalized close price (% return from first bar)
+  const priceChartData = useMemo(() => {
+    if (!priceData.length) return [];
+    const map = new Map<string, Record<string, number | string>>();
+    for (const { symbol, bars } of priceData) {
+      if (!bars.length) continue;
+      const base = bars[0].close;
+      for (const bar of bars) {
+        const date = bar.timestamp.split('T')[0];
+        if (!map.has(date)) map.set(date, { date });
+        map.get(date)![symbol] = ((bar.close - base) / base) * 100;
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => (a.date as string).localeCompare(b.date as string));
+  }, [priceData]);
 
   if (loading) {
     return (
@@ -271,6 +301,44 @@ export default function BacktestDetailPage() {
           </div>
         )}
 
+        {/* Price History Chart */}
+        {priceChartData.length > 0 && (
+          <div className="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 className="text-xl font-semibold mb-4">Price History</h2>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={priceChartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={(d) => new Date(d).toLocaleDateString(undefined, { month: 'short', year: '2-digit' })}
+                  tick={{ fontSize: 11 }}
+                  interval={Math.ceil(priceChartData.length / 8)}
+                />
+                <YAxis
+                  tickFormatter={(v) => `${(v as number) >= 0 ? '+' : ''}${(v as number).toFixed(1)}%`}
+                  tick={{ fontSize: 11 }}
+                  width={64}
+                />
+                <Tooltip
+                  formatter={(v, name) => [`${(v as number) >= 0 ? '+' : ''}${(v as number).toFixed(2)}%`, name]}
+                  labelFormatter={(l) => new Date(l as string).toLocaleDateString()}
+                />
+                <Legend />
+                {priceData.map(({ symbol }, i) => (
+                  <Line
+                    key={symbol}
+                    type="monotone"
+                    dataKey={symbol}
+                    stroke={SYMBOL_COLORS[i % SYMBOL_COLORS.length]}
+                    dot={false}
+                    strokeWidth={2}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
         {/* Signals & Trades Tables - Side by Side */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           {/* Signals Section */}
@@ -285,7 +353,6 @@ export default function BacktestDetailPage() {
                       <th className="text-left py-2 px-3 font-semibold text-gray-600">Type</th>
                       <th className="text-left py-2 px-3 font-semibold text-gray-600">Timestamp</th>
                       <th className="text-right py-2 px-3 font-semibold text-gray-600">Price</th>
-                      <th className="text-right py-2 px-3 font-semibold text-gray-600">Str</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -313,9 +380,6 @@ export default function BacktestDetailPage() {
                           })}
                         </td>
                         <td className="py-2 px-3 text-right font-mono">${signal.price.toFixed(2)}</td>
-                        <td className="py-2 px-3 text-right font-mono">
-                          {signal.strength != null ? `${(signal.strength * 100).toFixed(0)}%` : '—'}
-                        </td>
                       </tr>
                     ))}
                   </tbody>

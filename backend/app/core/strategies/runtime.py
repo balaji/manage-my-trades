@@ -8,7 +8,18 @@ from typing import Any, Optional
 import pandas as pd
 
 from app.core.indicators.calculator import IndicatorCalculator
-from app.core.strategies.spec import ComparisonRule, LogicalRule, NotRule, RuleNode, StrategySpec
+from app.core.strategies.spec import (
+    CompareRule,
+    ConstantExpr,
+    CrossRule,
+    IndicatorExpr,
+    LogicalRule,
+    NotRule,
+    PrevExpr,
+    PriceExpr,
+    RuleNode,
+    StrategySpec,
+)
 
 
 @dataclass
@@ -22,22 +33,25 @@ class StrategyRuntime:
         if not bars:
             return []
 
-        indicator_values = self._calculate_indicators(bars)
+        df = pd.DataFrame(bars)
+        if df.empty:
+            return []
+
+        indicator_values = self._calculate_indicators(df)
         signals: list[dict[str, Any]] = []
 
-        for bar in bars:
-            timestamp = bar["timestamp"]
-            current_indicators = {alias: values.get(timestamp) for alias, values in indicator_values.items()}
+        for index, bar in enumerate(bars):
+            current_indicators = self._snapshot_indicators(index, indicator_values)
 
-            if not all(self._evaluate_rule(rule, bar, current_indicators) for rule in self.spec.rules.filters):
+            if not all(self._evaluate_rule(rule, df, index, indicator_values) for rule in self.spec.rules.filters):
                 continue
 
             signal_type: Optional[str] = None
             reason = None
-            if self._evaluate_rule(self.spec.rules.exit, bar, current_indicators):
+            if self._evaluate_rule(self.spec.rules.exit, df, index, indicator_values):
                 signal_type = "sell"
                 reason = "Exit rule matched"
-            elif self._evaluate_rule(self.spec.rules.entry, bar, current_indicators):
+            elif self._evaluate_rule(self.spec.rules.entry, df, index, indicator_values):
                 signal_type = "buy"
                 reason = "Entry rule matched"
 
@@ -48,7 +62,7 @@ class StrategyRuntime:
                 {
                     "symbol": bar.get("symbol"),
                     "signal_type": signal_type,
-                    "timestamp": timestamp,
+                    "timestamp": bar["timestamp"],
                     "price": float(bar["close"]),
                     "strength": 1.0,
                     "indicators": current_indicators,
@@ -58,24 +72,21 @@ class StrategyRuntime:
 
         return signals
 
-    def _calculate_indicators(self, bars: list[dict[str, Any]]) -> dict[str, dict[Any, Any]]:
-        """Calculate all configured indicators keyed by alias and timestamp."""
-        df = pd.DataFrame(bars)
+    def _calculate_indicators(self, df: pd.DataFrame) -> dict[str, pd.Series | pd.DataFrame]:
+        """Calculate all configured indicators keyed by alias."""
         calculator = IndicatorCalculator(df)
-        indicator_data: dict[str, dict[Any, Any]] = {}
+        indicator_data: dict[str, pd.Series | pd.DataFrame] = {}
 
         for indicator in self.spec.indicators:
             result = calculator.calculate(indicator.indicator, indicator.params)
             if isinstance(result, pd.Series):
-                indicator_data[indicator.alias] = {
-                    idx: float(value) for idx, value in result.items() if pd.notna(value)
-                }
+                indicator_data[indicator.alias] = result
             else:
                 indicator_data[indicator.alias] = self._normalize_dataframe_indicator(indicator.indicator, result)
 
         return indicator_data
 
-    def _normalize_dataframe_indicator(self, indicator_name: str, result: pd.DataFrame) -> dict[Any, dict[str, float]]:
+    def _normalize_dataframe_indicator(self, indicator_name: str, result: pd.DataFrame) -> pd.DataFrame:
         """Normalize multi-column indicator outputs to stable field names."""
         if indicator_name == "macd":
             field_map = {
@@ -99,20 +110,19 @@ class StrategyRuntime:
         else:
             field_map = {column: column for column in result.columns}
 
-        values: dict[Any, dict[str, float]] = {}
-        for idx, row in result.iterrows():
-            normalized_row = {
-                field_map[column]: float(row[column]) for column in result.columns if pd.notna(row[column])
-            }
-            if normalized_row:
-                values[idx] = normalized_row
-        return values
+        return result.rename(columns=field_map)
 
-    def _evaluate_rule(self, rule: RuleNode, bar: dict[str, Any], indicators: dict[str, Any]) -> bool:
-        """Evaluate a rule tree for a single bar."""
-        if isinstance(rule, ComparisonRule):
-            left = self._resolve_value(rule.left, bar, indicators)
-            right = self._resolve_value(rule.right, bar, indicators)
+    def _evaluate_rule(
+        self,
+        rule: RuleNode,
+        bars: pd.DataFrame,
+        index: int,
+        indicators: dict[str, pd.Series | pd.DataFrame],
+    ) -> bool:
+        """Evaluate a rule tree for a single bar index."""
+        if isinstance(rule, CompareRule):
+            left = self._resolve_expr(rule.left, bars, index, indicators)
+            right = self._resolve_expr(rule.right, bars, index, indicators)
             if left is None or right is None:
                 return False
             if rule.operator == "<":
@@ -125,29 +135,73 @@ class StrategyRuntime:
                 return left >= right
             return left == right
 
+        if isinstance(rule, CrossRule):
+            left = self._resolve_expr(rule.left, bars, index, indicators)
+            right = self._resolve_expr(rule.right, bars, index, indicators)
+            prev_left = self._resolve_expr(PrevExpr(type="prev", expr=rule.left), bars, index, indicators)
+            prev_right = self._resolve_expr(PrevExpr(type="prev", expr=rule.right), bars, index, indicators)
+            if left is None or right is None or prev_left is None or prev_right is None:
+                return False
+            if rule.operator == "crosses_above":
+                return left > right and prev_left <= prev_right
+            return left < right and prev_left >= prev_right
+
         if isinstance(rule, LogicalRule):
-            evaluations = [self._evaluate_rule(child, bar, indicators) for child in rule.conditions]
+            evaluations = [self._evaluate_rule(child, bars, index, indicators) for child in rule.conditions]
             return all(evaluations) if rule.type == "all" else any(evaluations)
 
         if isinstance(rule, NotRule):
-            return not self._evaluate_rule(rule.condition, bar, indicators)
+            return not self._evaluate_rule(rule.condition, bars, index, indicators)
 
         return False
 
     @staticmethod
-    def _resolve_value(ref: Any, bar: dict[str, Any], indicators: dict[str, Any]) -> Optional[float]:
-        """Resolve a rule value reference to a numeric value."""
-        if ref.source == "constant":
-            return float(ref.value)
-        if ref.source == "price":
-            value = bar.get(str(ref.value))
-            return None if value is None else float(value)
-        indicator_value = indicators.get(str(ref.value))
-        if indicator_value is None:
-            return None
-        if isinstance(indicator_value, dict):
-            if ref.field is None:
+    def _resolve_expr(
+        expr: Any,
+        bars: pd.DataFrame,
+        index: int,
+        indicators: dict[str, pd.Series | pd.DataFrame],
+    ) -> Optional[float]:
+        """Resolve a scalar expression for a given bar index."""
+        if isinstance(expr, ConstantExpr):
+            return float(expr.value)
+
+        if isinstance(expr, PriceExpr):
+            value = bars.iloc[index][expr.field]
+            return None if pd.isna(value) else float(value)
+
+        if isinstance(expr, IndicatorExpr):
+            series_or_frame = indicators.get(expr.alias)
+            if series_or_frame is None:
                 return None
-            nested = indicator_value.get(ref.field)
-            return None if nested is None else float(nested)
-        return float(indicator_value)
+            if isinstance(series_or_frame, pd.DataFrame):
+                if expr.field is None:
+                    return None
+                value = series_or_frame.iloc[index][expr.field]
+                return None if pd.isna(value) else float(value)
+            value = series_or_frame.iloc[index]
+            return None if pd.isna(value) else float(value)
+
+        if isinstance(expr, PrevExpr):
+            if index == 0:
+                return None
+            return StrategyRuntime._resolve_expr(expr.expr, bars, index - 1, indicators)
+
+        return None
+
+    def _snapshot_indicators(
+        self,
+        index: int,
+        indicators: dict[str, pd.Series | pd.DataFrame],
+    ) -> dict[str, Any]:
+        """Capture current indicator values for signal payloads."""
+        snapshot: dict[str, Any] = {}
+        for alias, series_or_frame in indicators.items():
+            if isinstance(series_or_frame, pd.DataFrame):
+                row = series_or_frame.iloc[index]
+                current = {column: float(value) for column, value in row.items() if pd.notna(value)}
+                snapshot[alias] = current or None
+            else:
+                value = series_or_frame.iloc[index]
+                snapshot[alias] = None if pd.isna(value) else float(value)
+        return snapshot

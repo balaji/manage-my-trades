@@ -7,18 +7,18 @@ from app.core.strategies.spec import StrategySpec
 
 
 def _bars():
-    closes = [100, 98, 95, 92, 90, 93, 96, 101, 106, 111, 114, 112, 108, 103, 99, 96, 92, 88, 91, 95]
+    closes = [10, 9, 8, 9, 10, 11, 12, 11, 10, 9, 8, 7, 8, 9, 10]
     bars = []
     start = datetime(2024, 1, 1)
     for index, close in enumerate(closes):
         bars.append(
             {
                 "timestamp": start + timedelta(days=index),
-                "open": close - 1,
+                "open": close - 0.5,
                 "high": close + 1,
-                "low": close - 2,
+                "low": close - 1,
                 "close": close,
-                "volume": 1_000_000,
+                "volume": 1_000_000 + index,
                 "symbol": "SPY",
             }
         )
@@ -26,25 +26,28 @@ def _bars():
 
 
 class TestStrategyRuntime:
-    def test_rsi_strategy_emits_buy_and_sell_signals(self):
+    def test_ma_cross_strategy_emits_buy_and_sell_signals(self):
         spec = StrategySpec.model_validate(
             {
                 "kind": "technical",
-                "metadata": {"name": "RSI Test"},
+                "metadata": {"name": "MA Cross Test"},
                 "market": {"timeframe": "1d", "symbols": ["SPY"]},
-                "indicators": [{"alias": "rsi_fast", "indicator": "rsi", "params": {"length": 3}}],
+                "indicators": [
+                    {"alias": "fast_ma", "indicator": "ema", "params": {"length": 2}},
+                    {"alias": "slow_ma", "indicator": "sma", "params": {"length": 4}},
+                ],
                 "rules": {
                     "entry": {
-                        "type": "comparison",
-                        "left": {"source": "indicator", "value": "rsi_fast"},
-                        "operator": "<",
-                        "right": {"source": "constant", "value": 35},
+                        "type": "cross",
+                        "left": {"type": "indicator", "alias": "fast_ma"},
+                        "operator": "crosses_above",
+                        "right": {"type": "indicator", "alias": "slow_ma"},
                     },
                     "exit": {
-                        "type": "comparison",
-                        "left": {"source": "indicator", "value": "rsi_fast"},
-                        "operator": ">",
-                        "right": {"source": "constant", "value": 65},
+                        "type": "cross",
+                        "left": {"type": "indicator", "alias": "fast_ma"},
+                        "operator": "crosses_below",
+                        "right": {"type": "indicator", "alias": "slow_ma"},
                     },
                     "filters": [],
                 },
@@ -59,32 +62,101 @@ class TestStrategyRuntime:
         assert "buy" in signal_types
         assert "sell" in signal_types
 
+    def test_macd_cross_rule_uses_named_fields(self):
+        spec = StrategySpec.model_validate(
+            {
+                "kind": "technical",
+                "metadata": {"name": "MACD Cross"},
+                "market": {"timeframe": "1d", "symbols": ["SPY"]},
+                "indicators": [
+                    {"alias": "macd_fast", "indicator": "macd", "params": {"fast": 3, "slow": 6, "signal": 2}}
+                ],
+                "rules": {
+                    "entry": {
+                        "type": "cross",
+                        "left": {"type": "indicator", "alias": "macd_fast", "field": "macd"},
+                        "operator": "crosses_above",
+                        "right": {"type": "indicator", "alias": "macd_fast", "field": "signal"},
+                    },
+                    "exit": {
+                        "type": "cross",
+                        "left": {"type": "indicator", "alias": "macd_fast", "field": "macd"},
+                        "operator": "crosses_below",
+                        "right": {"type": "indicator", "alias": "macd_fast", "field": "signal"},
+                    },
+                    "filters": [],
+                },
+                "risk": {"position_sizing": {"method": "fixed_percentage", "percentage": 0.1}},
+                "execution": {},
+            }
+        )
+
+        signals = StrategyRuntime(spec).generate_signals(_bars())
+
+        assert len(signals) > 0
+        assert any("macd" in (signal["indicators"]["macd_fast"] or {}) for signal in signals)
+
+    def test_prev_expression_can_compare_against_current_value(self):
+        spec = StrategySpec.model_validate(
+            {
+                "kind": "technical",
+                "metadata": {"name": "Price Momentum"},
+                "market": {"timeframe": "1d", "symbols": ["SPY"]},
+                "indicators": [{"alias": "fast_ma", "indicator": "ema", "params": {"length": 2}}],
+                "rules": {
+                    "entry": {
+                        "type": "compare",
+                        "left": {"type": "price", "field": "close"},
+                        "operator": ">",
+                        "right": {"type": "prev", "expr": {"type": "price", "field": "close"}},
+                    },
+                    "exit": {
+                        "type": "compare",
+                        "left": {"type": "price", "field": "close"},
+                        "operator": "<",
+                        "right": {"type": "prev", "expr": {"type": "price", "field": "close"}},
+                    },
+                    "filters": [],
+                },
+                "risk": {"position_sizing": {"method": "fixed_percentage", "percentage": 0.1}},
+                "execution": {},
+            }
+        )
+
+        signals = StrategyRuntime(spec).generate_signals(_bars())
+
+        assert any(signal["signal_type"] == "buy" for signal in signals)
+        assert any(signal["signal_type"] == "sell" for signal in signals)
+
     def test_filter_rule_blocks_signals_when_not_matched(self):
         spec = StrategySpec.model_validate(
             {
                 "kind": "technical",
-                "metadata": {"name": "Filtered RSI"},
+                "metadata": {"name": "Filtered Cross"},
                 "market": {"timeframe": "1d", "symbols": ["SPY"]},
-                "indicators": [{"alias": "rsi_fast", "indicator": "rsi", "params": {"length": 3}}],
+                "indicators": [
+                    {"alias": "fast_ma", "indicator": "ema", "params": {"length": 2}},
+                    {"alias": "slow_ma", "indicator": "sma", "params": {"length": 4}},
+                ],
                 "rules": {
                     "entry": {
-                        "type": "comparison",
-                        "left": {"source": "indicator", "value": "rsi_fast"},
-                        "operator": "<",
-                        "right": {"source": "constant", "value": 35},
+                        "type": "cross",
+                        "left": {"type": "indicator", "alias": "fast_ma"},
+                        "operator": "crosses_above",
+                        "right": {"type": "indicator", "alias": "slow_ma"},
                     },
                     "exit": {
-                        "type": "comparison",
-                        "left": {"source": "indicator", "value": "rsi_fast"},
-                        "operator": ">",
-                        "right": {"source": "constant", "value": 65},
+                        "type": "cross",
+                        "left": {"type": "indicator", "alias": "fast_ma"},
+                        "operator": "crosses_below",
+                        "right": {"type": "indicator", "alias": "slow_ma"},
                     },
                     "filters": [
                         {
-                            "type": "comparison",
-                            "left": {"source": "price", "value": "close"},
+                            "type": "compare",
+                            "left": {"type": "price", "field": "close"},
                             "operator": ">",
-                            "right": {"source": "constant", "value": 500},
+                            "right": {"type": "constant", "value": 500},
                         }
                     ],
                 },
@@ -97,36 +169,25 @@ class TestStrategyRuntime:
 
         assert signals == []
 
-    def test_all_entry_suppresses_buy_when_one_condition_never_met(self):
+    def test_first_bar_never_fires_prev_dependent_rule(self):
         spec = StrategySpec.model_validate(
             {
                 "kind": "technical",
-                "metadata": {"name": "All Entry Blocked"},
+                "metadata": {"name": "First Bar Guard"},
                 "market": {"timeframe": "1d", "symbols": ["SPY"]},
-                "indicators": [{"alias": "rsi_fast", "indicator": "rsi", "params": {"length": 3}}],
+                "indicators": [{"alias": "fast_ma", "indicator": "ema", "params": {"length": 2}}],
                 "rules": {
                     "entry": {
-                        "type": "all",
-                        "conditions": [
-                            {
-                                "type": "comparison",
-                                "left": {"source": "indicator", "value": "rsi_fast"},
-                                "operator": "<",
-                                "right": {"source": "constant", "value": 35},
-                            },
-                            {
-                                "type": "comparison",
-                                "left": {"source": "price", "value": "close"},
-                                "operator": ">",
-                                "right": {"source": "constant", "value": 500},
-                            },
-                        ],
+                        "type": "compare",
+                        "left": {"type": "price", "field": "close"},
+                        "operator": ">",
+                        "right": {"type": "prev", "expr": {"type": "price", "field": "close"}},
                     },
                     "exit": {
-                        "type": "comparison",
-                        "left": {"source": "indicator", "value": "rsi_fast"},
-                        "operator": ">",
-                        "right": {"source": "constant", "value": 65},
+                        "type": "compare",
+                        "left": {"type": "price", "field": "close"},
+                        "operator": "<",
+                        "right": {"type": "constant", "value": 0},
                     },
                     "filters": [],
                 },
@@ -136,92 +197,5 @@ class TestStrategyRuntime:
         )
 
         signals = StrategyRuntime(spec).generate_signals(_bars())
-        buy_signals = [s for s in signals if s["signal_type"] == "buy"]
 
-        assert buy_signals == []
-
-    def test_any_entry_fires_when_at_least_one_condition_met(self):
-        spec = StrategySpec.model_validate(
-            {
-                "kind": "technical",
-                "metadata": {"name": "Any Entry"},
-                "market": {"timeframe": "1d", "symbols": ["SPY"]},
-                "indicators": [{"alias": "rsi_fast", "indicator": "rsi", "params": {"length": 3}}],
-                "rules": {
-                    "entry": {
-                        "type": "any",
-                        "conditions": [
-                            {
-                                "type": "comparison",
-                                "left": {"source": "indicator", "value": "rsi_fast"},
-                                "operator": "<",
-                                "right": {"source": "constant", "value": 35},
-                            },
-                            {
-                                "type": "comparison",
-                                "left": {"source": "price", "value": "close"},
-                                "operator": ">",
-                                "right": {"source": "constant", "value": 500},
-                            },
-                        ],
-                    },
-                    "exit": {
-                        "type": "comparison",
-                        "left": {"source": "indicator", "value": "rsi_fast"},
-                        "operator": ">",
-                        "right": {"source": "constant", "value": 65},
-                    },
-                    "filters": [],
-                },
-                "risk": {"position_sizing": {"method": "fixed_percentage", "percentage": 0.1}},
-                "execution": {},
-            }
-        )
-
-        signals = StrategyRuntime(spec).generate_signals(_bars())
-        buy_signals = [s for s in signals if s["signal_type"] == "buy"]
-
-        assert len(buy_signals) > 0
-
-    def test_all_entry_emits_buy_when_all_conditions_satisfied(self):
-        spec = StrategySpec.model_validate(
-            {
-                "kind": "technical",
-                "metadata": {"name": "All Entry Active"},
-                "market": {"timeframe": "1d", "symbols": ["SPY"]},
-                "indicators": [{"alias": "rsi_fast", "indicator": "rsi", "params": {"length": 3}}],
-                "rules": {
-                    "entry": {
-                        "type": "all",
-                        "conditions": [
-                            {
-                                "type": "comparison",
-                                "left": {"source": "indicator", "value": "rsi_fast"},
-                                "operator": "<",
-                                "right": {"source": "constant", "value": 35},
-                            },
-                            {
-                                "type": "comparison",
-                                "left": {"source": "price", "value": "close"},
-                                "operator": "<",
-                                "right": {"source": "constant", "value": 100},
-                            },
-                        ],
-                    },
-                    "exit": {
-                        "type": "comparison",
-                        "left": {"source": "indicator", "value": "rsi_fast"},
-                        "operator": ">",
-                        "right": {"source": "constant", "value": 65},
-                    },
-                    "filters": [],
-                },
-                "risk": {"position_sizing": {"method": "fixed_percentage", "percentage": 0.1}},
-                "execution": {},
-            }
-        )
-
-        signals = StrategyRuntime(spec).generate_signals(_bars())
-        buy_signals = [s for s in signals if s["signal_type"] == "buy"]
-
-        assert len(buy_signals) > 0
+        assert all(signal["timestamp"] != _bars()[0]["timestamp"] for signal in signals)

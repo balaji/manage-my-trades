@@ -4,7 +4,15 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.core.strategies.spec import StrategySpec
+from app.core.strategies.spec import (
+    CompareRule,
+    CrossRule,
+    IndicatorExpr,
+    LogicalRule,
+    NotRule,
+    PrevExpr,
+    StrategySpec,
+)
 
 
 def build_legacy_spec(
@@ -55,11 +63,10 @@ def _extract_rule_aliases(rule: Any) -> set[str]:
     """Collect indicator aliases used by a rule node."""
     if isinstance(rule, dict):
         rule_type = rule.get("type")
-        if rule_type == "comparison":
+        if rule_type in {"compare", "cross"}:
             aliases = set()
-            for ref in (rule.get("left"), rule.get("right")):
-                if ref and ref.get("source") == "indicator":
-                    aliases.add(ref["value"])
+            for expr in (rule.get("left"), rule.get("right")):
+                aliases.update(_extract_expr_aliases(expr))
             return aliases
         if rule_type in {"all", "any"}:
             aliases = set()
@@ -70,17 +77,36 @@ def _extract_rule_aliases(rule: Any) -> set[str]:
             return _extract_rule_aliases(rule.get("condition"))
 
     rule_type = getattr(rule, "type", None)
-    if rule_type == "comparison":
+    if isinstance(rule, (CompareRule, CrossRule)) or rule_type in {"compare", "cross"}:
         aliases = set()
-        for ref in (rule.left, rule.right):
-            if ref.source == "indicator":
-                aliases.add(str(ref.value))
+        for expr in (rule.left, rule.right):
+            aliases.update(_extract_expr_aliases(expr))
         return aliases
-    if rule_type in {"all", "any"}:
+    if isinstance(rule, LogicalRule) or rule_type in {"all", "any"}:
         aliases = set()
         for child in rule.conditions:
             aliases.update(_extract_rule_aliases(child))
         return aliases
-    if rule_type == "not":
+    if isinstance(rule, NotRule) or rule_type == "not":
         return _extract_rule_aliases(rule.condition)
+    return set()
+
+
+def _extract_expr_aliases(expr: Any) -> set[str]:
+    """Collect indicator aliases referenced by an expression node."""
+    if expr is None:
+        return set()
+
+    if isinstance(expr, dict):
+        expr_type = expr.get("type")
+        if expr_type == "indicator":
+            return {expr["alias"]}
+        if expr_type == "prev":
+            return _extract_expr_aliases(expr.get("expr"))
+        return set()
+
+    if isinstance(expr, IndicatorExpr):
+        return {expr.alias}
+    if isinstance(expr, PrevExpr):
+        return _extract_expr_aliases(expr.expr)
     return set()

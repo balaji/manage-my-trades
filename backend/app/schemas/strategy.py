@@ -95,20 +95,20 @@ class StrategyCreate(BaseModel):
                         "name": "RSI Mean Reversion",
                         "description": "Buy when RSI < 30, sell when RSI > 70",
                     },
-                    "market": {"timeframe": "1d", "symbols": ["SPY", "QQQ"]},
+                    "market": {"timeframe": "1d"},
                     "indicators": [{"alias": "rsi_fast", "indicator": "rsi", "params": {"length": 14}}],
                     "rules": {
                         "entry": {
-                            "type": "comparison",
-                            "left": {"source": "indicator", "value": "rsi_fast"},
+                            "type": "compare",
+                            "left": {"type": "indicator", "alias": "rsi_fast"},
                             "operator": "<",
-                            "right": {"source": "constant", "value": 30},
+                            "right": {"type": "constant", "value": 30},
                         },
                         "exit": {
-                            "type": "comparison",
-                            "left": {"source": "indicator", "value": "rsi_fast"},
+                            "type": "compare",
+                            "left": {"type": "indicator", "alias": "rsi_fast"},
                             "operator": ">",
-                            "right": {"source": "constant", "value": 70},
+                            "right": {"type": "constant", "value": 70},
                         },
                         "filters": [],
                     },
@@ -145,20 +145,20 @@ class StrategyUpdate(BaseModel):
                 "spec": {
                     "kind": "technical",
                     "metadata": {"name": "Updated RSI Strategy"},
-                    "market": {"timeframe": "1d", "symbols": ["SPY"]},
+                    "market": {"timeframe": "1d"},
                     "indicators": [{"alias": "rsi_fast", "indicator": "rsi", "params": {"length": 14}}],
                     "rules": {
                         "entry": {
-                            "type": "comparison",
-                            "left": {"source": "indicator", "value": "rsi_fast"},
+                            "type": "compare",
+                            "left": {"type": "indicator", "alias": "rsi_fast"},
                             "operator": "<",
-                            "right": {"source": "constant", "value": 35},
+                            "right": {"type": "constant", "value": 35},
                         },
                         "exit": {
-                            "type": "comparison",
-                            "left": {"source": "indicator", "value": "rsi_fast"},
+                            "type": "compare",
+                            "left": {"type": "indicator", "alias": "rsi_fast"},
                             "operator": ">",
-                            "right": {"source": "constant", "value": 65},
+                            "right": {"type": "constant", "value": 65},
                         },
                         "filters": [],
                     },
@@ -208,20 +208,20 @@ class StrategyResponse(BaseModel):
                 "spec": {
                     "kind": "technical",
                     "metadata": {"name": "RSI Mean Reversion"},
-                    "market": {"timeframe": "1d", "symbols": ["SPY", "QQQ"]},
+                    "market": {"timeframe": "1d"},
                     "indicators": [{"alias": "rsi_fast", "indicator": "rsi", "params": {"length": 14}}],
                     "rules": {
                         "entry": {
-                            "type": "comparison",
-                            "left": {"source": "indicator", "value": "rsi_fast"},
+                            "type": "compare",
+                            "left": {"type": "indicator", "alias": "rsi_fast"},
                             "operator": "<",
-                            "right": {"source": "constant", "value": 30},
+                            "right": {"type": "constant", "value": 30},
                         },
                         "exit": {
-                            "type": "comparison",
-                            "left": {"source": "indicator", "value": "rsi_fast"},
+                            "type": "compare",
+                            "left": {"type": "indicator", "alias": "rsi_fast"},
                             "operator": ">",
-                            "right": {"source": "constant", "value": 70},
+                            "right": {"type": "constant", "value": 70},
                         },
                         "filters": [],
                     },
@@ -314,3 +314,4 @@ class StrategyCompileResponse(BaseModel):
     normalized_spec: StrategySpec
     summary: str
     warnings: List[str] = Field(default_factory=list)
+    prompt_warnings: List[str] = Field(default_factory=list)
