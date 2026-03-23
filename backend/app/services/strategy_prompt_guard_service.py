@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from html import unescape
 from typing import Literal
 
+from app.services.indicator_registry import get_all_indicators
 
 Decision = Literal["accept", "accept_with_warnings", "reject"]
 
@@ -47,7 +48,7 @@ TRADING_NOUNS = {
     "timeframe",
 }
 
-STRATEGY_TERMS = {
+BASE_STRATEGY_TERMS = {
     "when",
     "if",
     "cross",
@@ -62,7 +63,6 @@ STRATEGY_TERMS = {
     "macd",
     "bollinger",
     "stochastic",
-    "atr",
     "daily",
     "hourly",
     "minute",
@@ -139,7 +139,8 @@ class StrategyPromptGuardService:
         ]
         repeated_word_share = self._repeated_word_share(words)
         has_trading_noun = any(term in words for term in TRADING_NOUNS)
-        has_strategy_term = any(term in words for term in STRATEGY_TERMS)
+        strategy_terms = BASE_STRATEGY_TERMS | {indicator["name"].lower() for indicator in get_all_indicators()}
+        has_strategy_term = any(term in words for term in strategy_terms)
         profanity_hits = sorted({word for word in words if word in PROFANITY_TERMS})
 
         metrics: dict[str, int | float | bool] = {

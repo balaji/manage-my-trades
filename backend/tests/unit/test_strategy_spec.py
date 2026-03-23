@@ -13,8 +13,8 @@ def _base_spec(entry_rule: dict, exit_rule: dict | None = None, indicators: list
         "market": {"timeframe": "1d", "symbols": ["SPY"]},
         "indicators": indicators
         or [
-            {"alias": "fast_ma", "indicator": "ema", "params": {"length": 20}},
-            {"alias": "slow_ma", "indicator": "sma", "params": {"length": 50}},
+            {"alias": "fast_ma", "indicator": "EMA", "params": {"timeperiod": 20}},
+            {"alias": "slow_ma", "indicator": "SMA", "params": {"timeperiod": 50}},
         ],
         "rules": {
             "entry": entry_rule,
@@ -75,13 +75,17 @@ def test_logical_rule_any_requires_one_condition():
                         "type": "compare",
                         "left": {"type": "indicator", "alias": "macd_fast", "field": "macd"},
                         "operator": ">",
-                        "right": {"type": "indicator", "alias": "macd_fast", "field": "signal"},
+                        "right": {"type": "indicator", "alias": "macd_fast", "field": "macdsignal"},
                     },
                 ],
             },
             indicators=[
-                {"alias": "fast_ma", "indicator": "ema", "params": {"length": 20}},
-                {"alias": "macd_fast", "indicator": "macd", "params": {"fast": 12, "slow": 26, "signal": 9}},
+                {"alias": "fast_ma", "indicator": "EMA", "params": {"timeperiod": 20}},
+                {
+                    "alias": "macd_fast",
+                    "indicator": "MACD",
+                    "params": {"fastperiod": 12, "slowperiod": 26, "signalperiod": 9},
+                },
             ],
             exit_rule={
                 "type": "compare",
@@ -103,23 +107,27 @@ def test_cross_rule_supports_indicator_fields():
                 "type": "cross",
                 "left": {"type": "indicator", "alias": "macd_fast", "field": "macd"},
                 "operator": "crosses_above",
-                "right": {"type": "indicator", "alias": "macd_fast", "field": "signal"},
+                "right": {"type": "indicator", "alias": "macd_fast", "field": "macdsignal"},
             },
             indicators=[
-                {"alias": "macd_fast", "indicator": "macd", "params": {"fast": 12, "slow": 26, "signal": 9}},
-                {"alias": "slow_ma", "indicator": "sma", "params": {"length": 50}},
+                {
+                    "alias": "macd_fast",
+                    "indicator": "MACD",
+                    "params": {"fastperiod": 12, "slowperiod": 26, "signalperiod": 9},
+                },
+                {"alias": "slow_ma", "indicator": "SMA", "params": {"timeperiod": 50}},
             ],
             exit_rule={
                 "type": "cross",
                 "left": {"type": "indicator", "alias": "macd_fast", "field": "macd"},
                 "operator": "crosses_below",
-                "right": {"type": "indicator", "alias": "macd_fast", "field": "signal"},
+                "right": {"type": "indicator", "alias": "macd_fast", "field": "macdsignal"},
             },
         )
     )
     assert isinstance(spec.rules.entry, CrossRule)
     assert spec.rules.entry.left.field == "macd"
-    assert spec.rules.entry.right.field == "signal"
+    assert spec.rules.entry.right.field == "macdsignal"
 
 
 def test_prev_expression_is_supported():
@@ -166,8 +174,12 @@ def test_strategy_spec_rejects_missing_indicator_field():
                     "right": {"type": "constant", "value": 0},
                 },
                 indicators=[
-                    {"alias": "macd_fast", "indicator": "macd", "params": {"fast": 12, "slow": 26, "signal": 9}},
-                    {"alias": "slow_ma", "indicator": "sma", "params": {"length": 50}},
+                    {
+                        "alias": "macd_fast",
+                        "indicator": "MACD",
+                        "params": {"fastperiod": 12, "slowperiod": 26, "signalperiod": 9},
+                    },
+                    {"alias": "slow_ma", "indicator": "SMA", "params": {"timeperiod": 50}},
                 ],
             )
         )
@@ -204,4 +216,4 @@ def test_indicator_rows_from_spec_extracts_cross_rule_aliases():
 
     rows = indicator_rows_from_spec(spec)
 
-    assert {row["indicator_name"] for row in rows} == {"ema", "sma"}
+    assert {row["indicator_name"] for row in rows} == {"EMA", "SMA"}

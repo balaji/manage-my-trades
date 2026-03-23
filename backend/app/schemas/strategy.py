@@ -9,6 +9,7 @@ from enum import Enum
 
 from app.core.strategies.legacy import build_legacy_spec
 from app.core.strategies.spec import StrategySpec
+from app.services.indicator_registry import get_indicator_map
 
 
 class StrategyType(str, Enum):
@@ -46,13 +47,14 @@ class StrategyIndicatorConfig(BaseModel):
     @classmethod
     def validate_indicator_name(cls, v: str) -> str:
         """Validate indicator name."""
-        valid_indicators = ["sma", "ema", "rsi", "macd", "bollinger_bands", "stochastic", "atr"]
-        if v.lower() not in valid_indicators:
+        indicator_name = v.upper()
+        valid_indicators = sorted(get_indicator_map().keys())
+        if indicator_name not in valid_indicators:
             raise ValueError(f"Invalid indicator name. Must be one of: {', '.join(valid_indicators)}")
-        return v.lower()
+        return indicator_name
 
     class Config:
-        json_schema_extra = {"example": {"indicator_name": "rsi", "parameters": {"period": 14}, "usage": "entry"}}
+        json_schema_extra = {"example": {"indicator_name": "RSI", "parameters": {"timeperiod": 14}, "usage": "entry"}}
 
 
 class StrategyCreate(BaseModel):
@@ -96,7 +98,7 @@ class StrategyCreate(BaseModel):
                         "description": "Buy when RSI < 30, sell when RSI > 70",
                     },
                     "market": {"timeframe": "1d"},
-                    "indicators": [{"alias": "rsi_fast", "indicator": "rsi", "params": {"length": 14}}],
+                    "indicators": [{"alias": "rsi_fast", "indicator": "RSI", "params": {"timeperiod": 14}}],
                     "rules": {
                         "entry": {
                             "type": "compare",
@@ -146,7 +148,7 @@ class StrategyUpdate(BaseModel):
                     "kind": "technical",
                     "metadata": {"name": "Updated RSI Strategy"},
                     "market": {"timeframe": "1d"},
-                    "indicators": [{"alias": "rsi_fast", "indicator": "rsi", "params": {"length": 14}}],
+                    "indicators": [{"alias": "rsi_fast", "indicator": "RSI", "params": {"timeperiod": 14}}],
                     "rules": {
                         "entry": {
                             "type": "compare",
@@ -209,7 +211,7 @@ class StrategyResponse(BaseModel):
                     "kind": "technical",
                     "metadata": {"name": "RSI Mean Reversion"},
                     "market": {"timeframe": "1d"},
-                    "indicators": [{"alias": "rsi_fast", "indicator": "rsi", "params": {"length": 14}}],
+                    "indicators": [{"alias": "rsi_fast", "indicator": "RSI", "params": {"timeperiod": 14}}],
                     "rules": {
                         "entry": {
                             "type": "compare",
@@ -233,8 +235,8 @@ class StrategyResponse(BaseModel):
                     {
                         "id": 1,
                         "strategy_id": 1,
-                        "indicator_name": "rsi",
-                        "parameters": {"period": 14},
+                        "indicator_name": "RSI",
+                        "parameters": {"timeperiod": 14},
                         "usage": "entry",
                         "created_at": "2024-01-15T10:00:00",
                         "updated_at": "2024-01-15T10:00:00",

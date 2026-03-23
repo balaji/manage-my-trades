@@ -79,38 +79,9 @@ class StrategyRuntime:
 
         for indicator in self.spec.indicators:
             result = calculator.calculate(indicator.indicator, indicator.params)
-            if isinstance(result, pd.Series):
-                indicator_data[indicator.alias] = result
-            else:
-                indicator_data[indicator.alias] = self._normalize_dataframe_indicator(indicator.indicator, result)
+            indicator_data[indicator.alias] = result
 
         return indicator_data
-
-    def _normalize_dataframe_indicator(self, indicator_name: str, result: pd.DataFrame) -> pd.DataFrame:
-        """Normalize multi-column indicator outputs to stable field names."""
-        if indicator_name == "macd":
-            field_map = {
-                result.columns[0]: "macd",
-                result.columns[1]: "histogram",
-                result.columns[2]: "signal",
-            }
-        elif indicator_name == "bollinger_bands":
-            field_map = {
-                result.columns[0]: "lower",
-                result.columns[1]: "middle",
-                result.columns[2]: "upper",
-                result.columns[3]: "bandwidth",
-                result.columns[4]: "percent_b",
-            }
-        elif indicator_name == "stochastic":
-            field_map = {
-                result.columns[0]: "k",
-                result.columns[1]: "d",
-            }
-        else:
-            field_map = {column: column for column in result.columns}
-
-        return result.rename(columns=field_map)
 
     def _evaluate_rule(
         self,

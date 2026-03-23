@@ -1,6 +1,4 @@
-"""
-Technical analysis API endpoints.
-"""
+"""Technical analysis API endpoints."""
 
 from typing import Dict, Any
 from fastapi import APIRouter, Depends, HTTPException
@@ -8,16 +6,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_market_db
 from app.services.technical_analysis_service import TechnicalAnalysisService
-from app.schemas.technical_analysis import (
-    IndicatorRequest,
-    SupportedIndicatorsResponse,
-)
+from app.schemas.technical_analysis import IndicatorRequest, IndicatorResponse, SupportedIndicatorsResponse
 
 router = APIRouter()
 
 
 @router.post(
     "/calculate",
+    response_model=IndicatorResponse,
     summary="Calculate Technical Indicators",
     responses={
         200: {
@@ -27,15 +23,15 @@ router = APIRouter()
                     "example": {
                         "symbol": "SPY",
                         "timeframe": "1d",
-                        "data": [
+                        "indicators": [
                             {
-                                "timestamp": "2024-01-01T00:00:00Z",
-                                "close": 450.5,
-                                "sma_20": 448.2,
-                                "rsi_14": 55.3,
-                                "macd": 1.2,
-                                "macd_signal": 0.8,
-                                "macd_histogram": 0.4,
+                                "name": "SMA",
+                                "params": {"timeperiod": 20},
+                                "outputs": {
+                                    "real": [
+                                        {"timestamp": "2024-01-01T00:00:00", "value": 448.2},
+                                    ]
+                                },
                             }
                         ],
                     }
@@ -63,12 +59,9 @@ async def calculate_indicators(
     - **indicators**: List of indicators with their parameters
 
     **Supported Indicators:**
-    - **SMA** - Simple Moving Average
-    - **EMA** - Exponential Moving Average
-    - **RSI** - Relative Strength Index
-    - **MACD** - Moving Average Convergence Divergence
-    - **Bollinger Bands** - Volatility bands
-    - And many more (use `/indicators` endpoint to see all)
+    - Uses TA-Lib-native function names such as `SMA`, `EMA`, `RSI`, `MACD`, `BBANDS`
+    - Parameter names must match TA-Lib exactly, such as `timeperiod`, `fastperiod`, `slowperiod`
+    - Output fields are returned exactly as TA-Lib names them
 
     **Example Request:**
     ```json
@@ -78,9 +71,9 @@ async def calculate_indicators(
         "start_date": "2024-01-01T00:00:00Z",
         "end_date": "2024-12-31T00:00:00Z",
         "indicators": [
-            {"name": "sma", "params": {"length": 20}},
-            {"name": "rsi", "params": {"length": 14}},
-            {"name": "macd", "params": {"fast": 12, "slow": 26, "signal": 9}}
+            {"name": "SMA", "params": {"timeperiod": 20}},
+            {"name": "RSI", "params": {"timeperiod": 14}},
+            {"name": "MACD", "params": {"fastperiod": 12, "slowperiod": 26, "signalperiod": 9}}
         ]
     }
     ```
@@ -118,14 +111,18 @@ async def calculate_indicators(
                     "example": {
                         "indicators": [
                             {
-                                "name": "sma",
-                                "description": "Simple Moving Average",
-                                "params": {"length": 20},
+                                "name": "SMA",
+                                "display_name": "Simple Moving Average",
+                                "inputs": ["close"],
+                                "parameters": [{"name": "timeperiod", "default": 30}],
+                                "output_names": ["real"],
                             },
                             {
-                                "name": "rsi",
-                                "description": "Relative Strength Index",
-                                "params": {"length": 14},
+                                "name": "MACD",
+                                "display_name": "Moving Average Convergence/Divergence",
+                                "inputs": ["close"],
+                                "parameters": [{"name": "fastperiod", "default": 12}],
+                                "output_names": ["macd", "macdsignal", "macdhist"],
                             },
                         ]
                     }

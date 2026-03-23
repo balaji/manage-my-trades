@@ -24,6 +24,7 @@ dependencies = [
     "pytz>=2025.2",
     "scikit-learn>=1.8.0",
     "sqlalchemy>=2.0.46",
+    "TA-Lib>=0.6.7",
     "uvicorn[standard]>=0.40.0",
     "websockets>=16.0",
 ]

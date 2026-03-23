@@ -104,83 +104,77 @@ export default function TechnicalAnalysisPage() {
           start_date: indicatorStartDate.toISOString().split('T')[0],
           end_date: endDate.toISOString().split('T')[0],
           indicators: [
-            { name: 'SMA', params: { length: 10 } },
-            { name: 'SMA', params: { length: 20 } },
-            { name: 'SMA', params: { length: 30 } },
-            { name: 'EMA', params: { length: 10 } },
-            { name: 'EMA', params: { length: 20 } },
-            { name: 'EMA', params: { length: 30 } },
-            { name: 'RSI', params: { length: 14 } },
-            { name: 'BOLLINGER_BANDS', params: { length: 20, std: 2.0 } },
+            { name: 'SMA', params: { timeperiod: 10 } },
+            { name: 'SMA', params: { timeperiod: 20 } },
+            { name: 'SMA', params: { timeperiod: 30 } },
+            { name: 'EMA', params: { timeperiod: 10 } },
+            { name: 'EMA', params: { timeperiod: 20 } },
+            { name: 'EMA', params: { timeperiod: 30 } },
+            { name: 'RSI', params: { timeperiod: 14 } },
+            { name: 'BBANDS', params: { timeperiod: 20, nbdevup: 2, nbdevdn: 2 } },
           ],
         }),
       ]);
 
       if (marketData.length > 0 && marketData[0].bars.length > 0) {
         setChartData(marketData[0].bars);
-        const results = indicatorResult.indicators;
+        const results = indicatorResult.indicators.map((indicator) => ({
+          ...indicator,
+          outputs: Object.fromEntries(
+            Object.entries(indicator.outputs).map(([outputName, values]) => [
+              outputName,
+              values.filter((value) => value.timestamp >= startDateStr),
+            ])
+          ),
+        }));
 
-        // Filter all indicator values to the original date range (indicators were fetched
-        // with an earlier start date to warm up multi-period calculations like RSI/BB).
-        Object.values(results).forEach((r) => {
-          if (r.values) r.values = r.values.filter((v) => v.value !== null && v.timestamp >= startDateStr);
-          if (r.columns)
-            Object.keys(r.columns).forEach(
-              (k) => (r.columns![k] = r.columns![k].filter((v) => v.value !== null && v.timestamp >= startDateStr))
-            );
-        });
+        const rsiResult = results.find((result) => result.name === 'RSI');
+        setRsiData(rsiResult?.outputs.real ?? []);
 
-        // RSI
-        const rsiResult = Object.values(results).find((r) => (r as any).name === 'RSI');
-        setRsiData(rsiResult?.values ?? []);
-
-        // Bollinger Bands (multi-column)
-        const bbResult = Object.values(results).find((r) => (r as any).name === 'BOLLINGER_BANDS');
-        if (bbResult?.columns) {
-          const cols = bbResult.columns;
-          const length = bbResult.params.length as number;
-          const std = bbResult.params.std as number;
-
-          const pick = (prefix: string): DataPoint[] => cols[`${prefix}_${length}_${std}`] ?? [];
+        const bbResult = results.find((result) => result.name === 'BBANDS');
+        if (bbResult?.outputs) {
+          const outputs = bbResult.outputs;
+          const pick = (key: string): DataPoint[] => outputs[key] ?? [];
 
           setBbandIndicators([
             {
               name: 'BB Upper',
-              data: pick('BBU'),
+              data: pick('upperband'),
               color: BBAND_COLOR,
               lineStyle: LineStyle.Dashed,
               lineWidth: 1,
             },
             {
               name: 'BB Middle',
-              data: pick('BBM'),
+              data: pick('middleband'),
               color: BBAND_COLOR,
               lineStyle: LineStyle.Solid,
               lineWidth: 1,
             },
             {
               name: 'BB Lower',
-              data: pick('BBL'),
+              data: pick('lowerband'),
               color: BBAND_COLOR,
               lineStyle: LineStyle.Dashed,
               lineWidth: 1,
             },
           ]);
 
-          setBbpData(pick('BBP').map((v) => ({ ...v, value: v.value * 100 })));
+          setBbpData([]);
+        } else {
+          setBbandIndicators([]);
+          setBbpData([]);
         }
 
-        // SMA / EMA
-        console.log(results);
         const getByName = (name: string) =>
-          Object.entries(results)
-            .filter(([, r]) => (r as any).name === name)
-            .map(([, r]) => {
-              const period = r.params.length as number;
+          results
+            .filter((result) => result.name === name)
+            .map((result) => {
+              const period = result.params.timeperiod as number;
               const colors = name === 'SMA' ? SMA_COLORS : EMA_COLORS;
               return {
                 name: `${name} ${period}`,
-                data: r.values ?? [],
+                data: result.outputs.real ?? [],
                 color: colors[period] ?? '#2196F3',
               };
             });
@@ -194,7 +188,6 @@ export default function TechnicalAnalysisPage() {
         setBbpData([]);
       }
     } catch (err: any) {
-      console.log(err);
       setError(err.message || 'Failed to load data');
     } finally {
       setLoading(false);

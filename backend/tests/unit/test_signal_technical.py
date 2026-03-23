@@ -33,8 +33,8 @@ class TestStrategyRuntime:
                 "metadata": {"name": "MA Cross Test"},
                 "market": {"timeframe": "1d", "symbols": ["SPY"]},
                 "indicators": [
-                    {"alias": "fast_ma", "indicator": "ema", "params": {"length": 2}},
-                    {"alias": "slow_ma", "indicator": "sma", "params": {"length": 4}},
+                    {"alias": "fast_ma", "indicator": "EMA", "params": {"timeperiod": 2}},
+                    {"alias": "slow_ma", "indicator": "SMA", "params": {"timeperiod": 4}},
                 ],
                 "rules": {
                     "entry": {
@@ -69,20 +69,24 @@ class TestStrategyRuntime:
                 "metadata": {"name": "MACD Cross"},
                 "market": {"timeframe": "1d", "symbols": ["SPY"]},
                 "indicators": [
-                    {"alias": "macd_fast", "indicator": "macd", "params": {"fast": 3, "slow": 6, "signal": 2}}
+                    {
+                        "alias": "macd_fast",
+                        "indicator": "MACD",
+                        "params": {"fastperiod": 3, "slowperiod": 6, "signalperiod": 2},
+                    }
                 ],
                 "rules": {
                     "entry": {
                         "type": "cross",
                         "left": {"type": "indicator", "alias": "macd_fast", "field": "macd"},
                         "operator": "crosses_above",
-                        "right": {"type": "indicator", "alias": "macd_fast", "field": "signal"},
+                        "right": {"type": "indicator", "alias": "macd_fast", "field": "macdsignal"},
                     },
                     "exit": {
                         "type": "cross",
                         "left": {"type": "indicator", "alias": "macd_fast", "field": "macd"},
                         "operator": "crosses_below",
-                        "right": {"type": "indicator", "alias": "macd_fast", "field": "signal"},
+                        "right": {"type": "indicator", "alias": "macd_fast", "field": "macdsignal"},
                     },
                     "filters": [],
                 },
@@ -102,7 +106,7 @@ class TestStrategyRuntime:
                 "kind": "technical",
                 "metadata": {"name": "Price Momentum"},
                 "market": {"timeframe": "1d", "symbols": ["SPY"]},
-                "indicators": [{"alias": "fast_ma", "indicator": "ema", "params": {"length": 2}}],
+                "indicators": [{"alias": "fast_ma", "indicator": "EMA", "params": {"timeperiod": 2}}],
                 "rules": {
                     "entry": {
                         "type": "compare",
@@ -135,8 +139,8 @@ class TestStrategyRuntime:
                 "metadata": {"name": "Filtered Cross"},
                 "market": {"timeframe": "1d", "symbols": ["SPY"]},
                 "indicators": [
-                    {"alias": "fast_ma", "indicator": "ema", "params": {"length": 2}},
-                    {"alias": "slow_ma", "indicator": "sma", "params": {"length": 4}},
+                    {"alias": "fast_ma", "indicator": "EMA", "params": {"timeperiod": 2}},
+                    {"alias": "slow_ma", "indicator": "SMA", "params": {"timeperiod": 4}},
                 ],
                 "rules": {
                     "entry": {
@@ -175,7 +179,7 @@ class TestStrategyRuntime:
                 "kind": "technical",
                 "metadata": {"name": "First Bar Guard"},
                 "market": {"timeframe": "1d", "symbols": ["SPY"]},
-                "indicators": [{"alias": "fast_ma", "indicator": "ema", "params": {"length": 2}}],
+                "indicators": [{"alias": "fast_ma", "indicator": "EMA", "params": {"timeperiod": 2}}],
                 "rules": {
                     "entry": {
                         "type": "compare",

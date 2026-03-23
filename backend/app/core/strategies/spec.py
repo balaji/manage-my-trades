@@ -6,15 +6,7 @@ from typing import Annotated, Any, Literal, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-SUPPORTED_INDICATORS = {
-    "sma": {"fields": []},
-    "ema": {"fields": []},
-    "rsi": {"fields": []},
-    "macd": {"fields": ["macd", "signal", "histogram"]},
-    "bollinger_bands": {"fields": ["lower", "middle", "upper", "bandwidth", "percent_b"]},
-    "stochastic": {"fields": ["k", "d"]},
-    "atr": {"fields": []},
-}
+from app.services.indicator_registry import get_indicator_map
 
 PRICE_FIELDS = {"open", "high", "low", "close", "volume"}
 COMPARISON_OPERATORS = {"<", "<=", ">", ">=", "=="}
@@ -44,7 +36,7 @@ class IndicatorDefinition(BaseModel):
 
     @model_validator(mode="after")
     def validate_indicator(self) -> "IndicatorDefinition":
-        if self.indicator not in SUPPORTED_INDICATORS:
+        if self.indicator not in get_indicator_map():
             raise ValueError(f"Unsupported indicator '{self.indicator}'")
         return self
 
@@ -197,7 +189,7 @@ class StrategySpec(BaseModel):
                 if indicator_name is None:
                     raise ValueError(f"Unknown indicator alias '{expr.alias}'")
 
-                valid_fields = SUPPORTED_INDICATORS[indicator_name]["fields"]
+                valid_fields = get_indicator_map()[indicator_name]["fields"]
                 if valid_fields and expr.field not in valid_fields:
                     raise ValueError(
                         f"Indicator '{expr.alias}' requires one of fields {valid_fields}, got '{expr.field}'"

@@ -1,9 +1,8 @@
-"""
-Technical analysis schemas.
-"""
+"""Technical analysis schemas."""
 
-from datetime import date
-from typing import List, Dict, Any
+from datetime import date, datetime
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -14,7 +13,7 @@ class IndicatorRequest(BaseModel):
     timeframe: str = Field(default="1d", description="Timeframe (1m, 5m, 15m, 1h, 1d)")
     start_date: date = Field(..., description="Start date")
     end_date: date = Field(..., description="End date")
-    indicators: List[Dict[str, Any]] = Field(
+    indicators: list[dict[str, Any]] = Field(
         ...,
         description="List of indicators to calculate. Each should have 'name' and optional 'params'",
     )
@@ -23,7 +22,7 @@ class IndicatorRequest(BaseModel):
 class IndicatorValue(BaseModel):
     """Single indicator value at a timestamp."""
 
-    timestamp: date
+    timestamp: datetime
     value: float
 
 
@@ -31,8 +30,8 @@ class IndicatorResult(BaseModel):
     """Result for a single indicator."""
 
     name: str
-    params: Dict[str, Any]
-    values: List[IndicatorValue]
+    params: dict[str, Any]
+    outputs: dict[str, list[IndicatorValue]]
 
 
 class IndicatorResponse(BaseModel):
@@ -40,17 +39,17 @@ class IndicatorResponse(BaseModel):
 
     symbol: str
     timeframe: str
-    indicators: List[IndicatorResult]
+    indicators: list[IndicatorResult]
 
 
 class IndicatorConfig(BaseModel):
     """Configuration for an indicator."""
 
     name: str = Field(..., description="Indicator name (sma, ema, rsi, macd, etc.)")
-    params: Dict[str, Any] = Field(default_factory=dict, description="Indicator parameters (e.g., {'length': 20})")
+    params: dict[str, Any] = Field(default_factory=dict, description="Indicator parameters")
 
 
 class SupportedIndicatorsResponse(BaseModel):
     """List of supported indicators."""
 
-    indicators: List[Dict[str, Any]]
+    indicators: list[dict[str, Any]]
