@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Price chart component with indicator overlays.
+ * Price chart component with indicator overlays and oscillator sub-pane.
  */
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import {
@@ -13,28 +13,51 @@ import {
   LineStyle,
   UTCTimestamp,
   LineWidth,
+  CandlestickSeries,
+  LineSeries,
 } from 'lightweight-charts';
 import type { OHLCVBar } from '@/lib/types/market-data';
 
+interface IndicatorConfig {
+  name: string;
+  data: Array<{ timestamp: string; value: number }>;
+  color?: string;
+  lineStyle?: LineStyle;
+  lineWidth?: number;
+}
+
+interface OscillatorConfig {
+  name: string;
+  data: Array<{ timestamp: string; value: number }>;
+  color: string;
+  referenceLines?: Array<{ value: number; color: string }>;
+}
+
 interface PriceChartProps {
   data: OHLCVBar[];
-  indicators?: {
-    name: string;
-    data: Array<{ timestamp: string; value: number }>;
-    color?: string;
-    lineStyle?: LineStyle;
-    lineWidth?: number;
-  }[];
+  indicators?: IndicatorConfig[];
+  oscillators?: OscillatorConfig[];
+  oscillatorHeight?: number;
   height?: number;
   onChartReady?: (chart: IChartApi) => void;
 }
 
-export function PriceChart({ data, indicators = [], height = 400, onChartReady }: PriceChartProps) {
+export function PriceChart({
+  data,
+  indicators = [],
+  oscillators = [],
+  oscillatorHeight = 160,
+  height = 400,
+  onChartReady,
+}: PriceChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const closeSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const indicatorSeriesRef = useRef<Map<string, ISeriesApi<'Line'>>>(new Map());
+  // Oscillator pane (pane index 1) series and reference lines
+  const oscillatorSeriesRef = useRef<Map<string, ISeriesApi<'Line'>>>(new Map());
+  const refLineSeriesRef = useRef<Map<string, ISeriesApi<'Line'>[]>>(new Map());
   const onChartReadyRef = useRef(onChartReady);
   useLayoutEffect(() => {
     onChartReadyRef.current = onChartReady;
@@ -44,10 +67,9 @@ export function PriceChart({ data, indicators = [], height = 400, onChartReady }
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
-    // Create chart
     const chart = createChart(chartContainerRef.current, {
       width: chartContainerRef.current.clientWidth,
-      height,
+      height: height + oscillatorHeight,
       layout: {
         background: { color: '#ffffff' },
         textColor: '#333',
@@ -56,12 +78,8 @@ export function PriceChart({ data, indicators = [], height = 400, onChartReady }
         vertLines: { color: '#f0f0f0' },
         horzLines: { color: '#f0f0f0' },
       },
-      crosshair: {
-        mode: 1,
-      },
-      rightPriceScale: {
-        borderColor: '#cccccc',
-      },
+      crosshair: { mode: 1 },
+      rightPriceScale: { borderColor: '#cccccc' },
       timeScale: {
         borderColor: '#cccccc',
         timeVisible: true,
@@ -69,10 +87,9 @@ export function PriceChart({ data, indicators = [], height = 400, onChartReady }
     });
 
     chartRef.current = chart;
-    onChartReadyRef.current?.(chart);
 
-    // Add candlestick series
-    const candlestickSeries = chart.addCandlestickSeries({
+    // Pane 0: candlestick + close line
+    candlestickSeriesRef.current = chart.addSeries(CandlestickSeries, {
       upColor: '#26a69a',
       downColor: '#ef5350',
       borderVisible: false,
@@ -80,10 +97,7 @@ export function PriceChart({ data, indicators = [], height = 400, onChartReady }
       wickDownColor: '#ef5350',
     });
 
-    candlestickSeriesRef.current = candlestickSeries;
-
-    // Add close price line series
-    const closeSeries = chart.addLineSeries({
+    closeSeriesRef.current = chart.addSeries(LineSeries, {
       color: 'rgba(100, 100, 100, 0.5)',
       lineWidth: 1 as LineWidth,
       lineStyle: LineStyle.Solid,
@@ -91,9 +105,11 @@ export function PriceChart({ data, indicators = [], height = 400, onChartReady }
       lastValueVisible: false,
       crosshairMarkerVisible: false,
     });
-    closeSeriesRef.current = closeSeries;
 
-    // Handle resize
+    // Pane 1: oscillator sub-pane
+    const oscPane = chart.addPane();
+    oscPane.setHeight(oscillatorHeight);
+
     const handleResize = () => {
       if (chartContainerRef.current && chartRef.current) {
         chartRef.current.applyOptions({
@@ -101,10 +117,14 @@ export function PriceChart({ data, indicators = [], height = 400, onChartReady }
         });
       }
     };
-
     window.addEventListener('resize', handleResize);
 
+    onChartReadyRef.current?.(chart);
+
     const indicatorSeries = indicatorSeriesRef.current;
+    const oscillatorSeries = oscillatorSeriesRef.current;
+    const refLineSeries = refLineSeriesRef.current;
+
     return () => {
       window.removeEventListener('resize', handleResize);
       chart.remove();
@@ -112,13 +132,14 @@ export function PriceChart({ data, indicators = [], height = 400, onChartReady }
       candlestickSeriesRef.current = null;
       closeSeriesRef.current = null;
       indicatorSeries.clear();
+      oscillatorSeries.clear();
+      refLineSeries.clear();
     };
-  }, [height]);
+  }, [height, oscillatorHeight]);
 
   useEffect(() => {
     if (!candlestickSeriesRef.current || !data.length) return;
 
-    // Convert data to candlestick format, deduplicate by time (keep last), and sort ascending
     const candlestickMap = new Map<UTCTimestamp, CandlestickData>();
     data.forEach((bar) => {
       const time = (new Date(bar.timestamp).getTime() / 1000) as UTCTimestamp;
@@ -153,25 +174,44 @@ export function PriceChart({ data, indicators = [], height = 400, onChartReady }
     if (!chartRef.current) return;
 
     const savedRange = chartRef.current.timeScale().getVisibleLogicalRange();
+    const activeIndicatorNames = new Set(indicators.map((indicator) => indicator.name));
 
-    // Remove old indicator series
-    indicatorSeriesRef.current.forEach((series) => {
-      chartRef.current?.removeSeries(series);
+    indicatorSeriesRef.current.forEach((series, name) => {
+      if (!activeIndicatorNames.has(name)) {
+        series.applyOptions({ visible: false });
+      }
     });
-    indicatorSeriesRef.current.clear();
 
-    // Add new indicator series
     indicators.forEach((indicator) => {
       if (!chartRef.current) return;
 
-      const lineSeries = chartRef.current.addLineSeries({
-        color: indicator.color || '#2196F3',
-        lineWidth: (indicator.lineWidth ?? 2) as LineWidth,
-        lineStyle: indicator.lineStyle ?? LineStyle.Solid,
-        title: indicator.name,
-        priceLineVisible: false,
-        lastValueVisible: indicator.lineStyle === undefined,
-      });
+      let lineSeries = indicatorSeriesRef.current.get(indicator.name);
+      if (!lineSeries) {
+        lineSeries = chartRef.current.addSeries(
+          LineSeries,
+          {
+            color: indicator.color || '#2196F3',
+            lineWidth: (indicator.lineWidth ?? 2) as LineWidth,
+            lineStyle: indicator.lineStyle ?? LineStyle.Solid,
+            title: indicator.name,
+            priceLineVisible: false,
+            lastValueVisible: indicator.lineStyle === undefined,
+            visible: true,
+          },
+          0 // pane 0
+        );
+        indicatorSeriesRef.current.set(indicator.name, lineSeries);
+      } else {
+        lineSeries.applyOptions({
+          color: indicator.color || '#2196F3',
+          lineWidth: (indicator.lineWidth ?? 2) as LineWidth,
+          lineStyle: indicator.lineStyle ?? LineStyle.Solid,
+          title: indicator.name,
+          priceLineVisible: false,
+          lastValueVisible: indicator.lineStyle === undefined,
+          visible: true,
+        });
+      }
 
       const lineMap = new Map<UTCTimestamp, LineData>();
       indicator.data.forEach((point) => {
@@ -181,7 +221,6 @@ export function PriceChart({ data, indicators = [], height = 400, onChartReady }
       const lineData: LineData[] = Array.from(lineMap.values()).sort((a, b) => (a.time as number) - (b.time as number));
 
       lineSeries.setData(lineData);
-      indicatorSeriesRef.current.set(indicator.name, lineSeries);
     });
 
     if (savedRange) {
@@ -189,9 +228,90 @@ export function PriceChart({ data, indicators = [], height = 400, onChartReady }
     }
   }, [indicators]);
 
+  useEffect(() => {
+    if (!chartRef.current) return;
+
+    oscillators.forEach((oscillator) => {
+      if (!chartRef.current) return;
+
+      let series = oscillatorSeriesRef.current.get(oscillator.name);
+      if (!series) {
+        series = chartRef.current.addSeries(
+          LineSeries,
+          {
+            color: oscillator.color,
+            lineWidth: 2 as LineWidth,
+            title: oscillator.name,
+            priceLineVisible: false,
+            lastValueVisible: true,
+          },
+          1 // pane 1 (oscillator sub-pane)
+        );
+        oscillatorSeriesRef.current.set(oscillator.name, series);
+      } else {
+        series.applyOptions({ color: oscillator.color, title: oscillator.name });
+      }
+
+      const lineMap = new Map<UTCTimestamp, LineData>();
+      oscillator.data.forEach((point) => {
+        const time = (new Date(point.timestamp).getTime() / 1000) as UTCTimestamp;
+        lineMap.set(time, { time, value: point.value });
+      });
+      const lineData: LineData[] = Array.from(lineMap.values()).sort((a, b) => (a.time as number) - (b.time as number));
+      series.setData(lineData);
+
+      // Draw reference lines spanning the full data range
+      if (oscillator.referenceLines?.length && lineData.length > 0) {
+        const firstTime = lineData[0].time;
+        const lastTime = lineData[lineData.length - 1].time;
+
+        const existingRefLines = refLineSeriesRef.current.get(oscillator.name) ?? [];
+
+        // Remove stale ref lines if count changed
+        if (existingRefLines.length !== oscillator.referenceLines.length) {
+          existingRefLines.forEach((s) => chartRef.current?.removeSeries(s));
+          refLineSeriesRef.current.delete(oscillator.name);
+        }
+
+        const currentRefLines = refLineSeriesRef.current.get(oscillator.name);
+        if (!currentRefLines) {
+          const newRefLines = oscillator.referenceLines.map((ref) => {
+            const refSeries = chartRef.current!.addSeries(
+              LineSeries,
+              {
+                color: ref.color,
+                lineWidth: 1 as LineWidth,
+                lineStyle: LineStyle.Dashed,
+                priceLineVisible: false,
+                lastValueVisible: false,
+                title: '',
+              },
+              1
+            );
+            refSeries.setData([
+              { time: firstTime, value: ref.value },
+              { time: lastTime, value: ref.value },
+            ]);
+            return refSeries;
+          });
+          refLineSeriesRef.current.set(oscillator.name, newRefLines);
+        } else {
+          currentRefLines.forEach((refSeries, i) => {
+            const ref = oscillator.referenceLines![i];
+            refSeries.applyOptions({ color: ref.color });
+            refSeries.setData([
+              { time: firstTime, value: ref.value },
+              { time: lastTime, value: ref.value },
+            ]);
+          });
+        }
+      }
+    });
+  }, [oscillators]);
+
   return (
     <div className="w-full">
-      <div ref={chartContainerRef} className="w-full" style={{ height: `${height}px` }} />
+      <div ref={chartContainerRef} className="w-full" style={{ height: `${height + oscillatorHeight}px` }} />
     </div>
   );
 }

@@ -1,399 +1,126 @@
-"""
-Core indicator calculation engine.
-"""
+"""TA-Lib-backed indicator calculation engine."""
+
+from __future__ import annotations
 
 import hashlib
 import json
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-import numpy as np
 import pandas as pd
+from talib import abstract
+
+from app.services.indicator_registry import get_all_indicators, get_indicator_map
 
 logger = logging.getLogger(__name__)
 
 
 class IndicatorCalculator:
-    """Calculator for technical indicators with custom implementations."""
+    """Calculator for TA-Lib technical indicators."""
 
     def __init__(self, df: pd.DataFrame):
-        """
-        Initialize calculator with OHLCV data.
-
-        Args:
-            df: DataFrame with columns: timestamp, open, high, low, close, volume
-        """
+        """Initialize calculator with OHLCV data."""
         self.df = df.copy()
+        self.df["timestamp"] = pd.to_datetime(self.df["timestamp"])
         self.df.set_index("timestamp", inplace=True)
         self.df.sort_index(inplace=True)
+        self.inputs = {
+            column: self.df[column].astype(float)
+            for column in ("open", "high", "low", "close", "volume")
+            if column in self.df.columns
+        }
 
     @staticmethod
-    def create_hash(indicator_name: str, params: Dict[str, Any]) -> str:
-        """
-        Create hash for indicator with parameters.
-
-        Args:
-            indicator_name: Name of indicator
-            params: Parameters dictionary
-
-        Returns:
-            Hash string
-        """
+    def create_hash(indicator_name: str, params: dict[str, Any]) -> str:
+        """Create a deterministic hash for an indicator request."""
         data = f"{indicator_name}:{json.dumps(params, sort_keys=True)}"
         return hashlib.sha256(data.encode()).hexdigest()
 
-    def calculate(self, indicator_name: str, params: Optional[Dict[str, Any]] = None) -> pd.Series:
-        """
-        Calculate indicator.
+    def calculate(self, indicator_name: str, params: dict[str, Any] | None = None) -> pd.Series | pd.DataFrame:
+        """Calculate a TA-Lib indicator."""
+        normalized_name = indicator_name.upper()
+        indicator = get_indicator_map().get(normalized_name)
+        if indicator is None:
+            raise ValueError(f"Unsupported indicator: {normalized_name}")
 
-        Args:
-            indicator_name: Name of indicator (sma, ema, rsi, macd, etc.)
-            params: Indicator parameters
+        params = self._normalize_params(indicator, params or {})
+        missing_inputs = [field for field in indicator["inputs"] if field not in self.inputs]
+        if missing_inputs:
+            raise ValueError(f"Indicator {normalized_name} requires inputs not available in bars: {missing_inputs}")
 
-        Returns:
-            Series with indicator values
-
-        Raises:
-            ValueError: If indicator is not supported
-        """
-        if params is None:
-            params = {}
-
-        indicator_name = indicator_name.lower()
         try:
-            if indicator_name == "sma":
-                return self._calculate_sma(params)
-            elif indicator_name == "ema":
-                return self._calculate_ema(params)
-            elif indicator_name == "rsi":
-                return self._calculate_rsi(params)
-            elif indicator_name == "macd":
-                return self._calculate_macd(params)
-            elif indicator_name == "stochastic":
-                return self._calculate_stochastic(params)
-            elif indicator_name == "bollinger_bands":
-                return self._calculate_bollinger_bands(params)
-            elif indicator_name == "atr":
-                return self._calculate_atr(params)
-            else:
-                raise ValueError(f"Unsupported indicator: {indicator_name}")
-
-        except Exception as e:
-            logger.error(f"Error calculating {indicator_name}: {e}")
+            function = abstract.Function(normalized_name)
+            result = function(self.inputs, **params)
+        except Exception as exc:
+            logger.error("Error calculating %s: %s", normalized_name, exc)
             raise
 
-    def _calculate_sma(self, params: Dict[str, Any]) -> pd.Series:
-        """Calculate Simple Moving Average."""
-        length = params.get("length", 20)
-        return self.df["close"].rolling(window=length).mean()
+        output_names = indicator["output_names"]
+        if isinstance(result, pd.Series):
+            return result.rename(output_names[0] if output_names else normalized_name)
 
-    def _calculate_ema(self, params: Dict[str, Any]) -> pd.Series:
-        """Calculate Exponential Moving Average."""
-        length = params.get("length", 20)
-        return self.df["close"].ewm(span=length, adjust=False).mean()
+        if isinstance(result, pd.DataFrame):
+            if len(result.columns) == len(output_names):
+                return result.set_axis(output_names, axis="columns")
+            return result
 
-    def _calculate_rsi(self, params: Dict[str, Any]) -> pd.Series:
-        """Calculate RSI using Wilder's smoothing (SMA init, then alpha=1/length)."""
-        length = params.get("length", 14)
+        if isinstance(result, list | tuple):
+            frame = pd.concat(
+                [
+                    pd.Series(output, index=self.df.index, name=output_name)
+                    for output_name, output in zip(output_names, result, strict=False)
+                ],
+                axis=1,
+            )
+            return frame
 
-        # Calculate price changes
-        delta = self.df["close"].diff()
+        return pd.Series(result, index=self.df.index, name=output_names[0] if output_names else normalized_name)
 
-        # Separate gains and losses
-        gains = delta.where(delta > 0, 0.0)
-        losses = -delta.where(delta < 0, 0.0)
+    @staticmethod
+    def _normalize_params(indicator: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
+        """Coerce request params to the types expected by TA-Lib."""
+        normalized = dict(params)
+        parameter_map = {parameter["name"]: parameter for parameter in indicator["parameters"]}
 
-        n = len(gains)
-        avg_gains = np.full(n, np.nan)
-        avg_losses = np.full(n, np.nan)
+        for name, value in list(normalized.items()):
+            parameter = parameter_map.get(name)
+            if parameter is None:
+                continue
+            if parameter["type"] == "number" and isinstance(value, int):
+                normalized[name] = float(value)
+        return normalized
 
-        if n > length:
-            # First valid average: SMA of first `length` periods (iloc[1] skips the diff NaN)
-            avg_gains[length] = gains.iloc[1 : length + 1].mean()
-            avg_losses[length] = losses.iloc[1 : length + 1].mean()
-
-            # Wilder smoothing for all subsequent bars
-            alpha = 1.0 / length
-            for i in range(length + 1, n):
-                avg_gains[i] = alpha * gains.iloc[i] + (1 - alpha) * avg_gains[i - 1]
-                avg_losses[i] = alpha * losses.iloc[i] + (1 - alpha) * avg_losses[i - 1]
-
-        avg_gains_s = pd.Series(avg_gains, index=self.df.index)
-        avg_losses_s = pd.Series(avg_losses, index=self.df.index)
-
-        rs = avg_gains_s / avg_losses_s
-        rsi = 100.0 - (100.0 / (1.0 + rs))
-        return rsi
-
-    def _calculate_macd(self, params: Dict[str, Any]) -> pd.DataFrame:
-        """Calculate MACD (returns DataFrame with MACD, signal, histogram)."""
-        fast = params.get("fast", 12)
-        slow = params.get("slow", 26)
-        signal = params.get("signal", 9)
-
-        # Calculate fast and slow EMAs
-        ema_fast = self.df["close"].ewm(span=fast, adjust=False).mean()
-        ema_slow = self.df["close"].ewm(span=slow, adjust=False).mean()
-
-        # Calculate MACD line
-        macd_line = ema_fast - ema_slow
-
-        # Calculate signal line
-        signal_line = macd_line.ewm(span=signal, adjust=False).mean()
-
-        # Calculate histogram
-        histogram = macd_line - signal_line
-
-        # Return DataFrame with proper column names to match pandas_ta format
-        return pd.DataFrame(
-            {
-                f"MACD_{fast}_{slow}_{signal}": macd_line,
-                f"MACDh_{fast}_{slow}_{signal}": histogram,
-                f"MACDs_{fast}_{slow}_{signal}": signal_line,
-            }
-        )
-
-    def _calculate_stochastic(self, params: Dict[str, Any]) -> pd.DataFrame:
-        """Calculate Stochastic Oscillator."""
-        k = params.get("k", 14)
-        d = params.get("d", 3)
-        smooth_k = params.get("smooth_k", 3)
-
-        # Calculate lowest low and highest high over k periods
-        lowest_low = self.df["low"].rolling(window=k).min()
-        highest_high = self.df["high"].rolling(window=k).max()
-
-        # Calculate raw %K
-        raw_k = 100 * (self.df["close"] - lowest_low) / (highest_high - lowest_low)
-
-        # Smooth %K if smooth_k > 1
-        if smooth_k > 1:
-            stoch_k = raw_k.rolling(window=smooth_k).mean()
-        else:
-            stoch_k = raw_k
-
-        # Calculate %D (SMA of %K)
-        stoch_d = stoch_k.rolling(window=d).mean()
-
-        # Return DataFrame with proper column names to match pandas_ta format
-        return pd.DataFrame(
-            {
-                f"STOCHk_{k}_{d}_{smooth_k}": stoch_k,
-                f"STOCHd_{k}_{d}_{smooth_k}": stoch_d,
-            }
-        )
-
-    def _calculate_bollinger_bands(self, params: Dict[str, Any]) -> pd.DataFrame:
-        """Calculate Bollinger Bands (returns DataFrame with upper, middle, lower)."""
-        length = params.get("length", 20)
-        std_dev = params.get("std", 2.0)
-
-        # Calculate middle band (SMA)
-        middle_band = self.df["close"].rolling(window=length).mean()
-
-        # Calculate standard deviation
-        rolling_std = self.df["close"].rolling(window=length).std()
-
-        # Calculate upper and lower bands
-        upper_band = middle_band + (std_dev * rolling_std)
-        lower_band = middle_band - (std_dev * rolling_std)
-
-        # Calculate bandwidth and percent B
-        bandwidth = (upper_band - lower_band) / middle_band
-        percent_b = (self.df["close"] - lower_band) / (upper_band - lower_band)
-
-        # Return DataFrame with proper column names to match pandas_ta format
-        return pd.DataFrame(
-            {
-                f"BBL_{length}_{std_dev}": lower_band,
-                f"BBM_{length}_{std_dev}": middle_band,
-                f"BBU_{length}_{std_dev}": upper_band,
-                f"BBB_{length}_{std_dev}": bandwidth,
-                f"BBP_{length}_{std_dev}": percent_b,
-            }
-        )
-
-    def _calculate_atr(self, params: Dict[str, Any]) -> pd.Series:
-        """Calculate Average True Range."""
-        length = params.get("length", 14)
-
-        # Calculate True Range components
-        high_low = self.df["high"] - self.df["low"]
-        high_close = np.abs(self.df["high"] - self.df["close"].shift())
-        low_close = np.abs(self.df["low"] - self.df["close"].shift())
-
-        # True Range is the maximum of the three
-        true_range = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
-
-        # Calculate ATR using EMA (Wilder's smoothing method)
-        atr = true_range.ewm(span=length, adjust=False).mean()
-
-        return atr
-
-    def calculate_multiple(self, indicators: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """
-        Calculate multiple indicators.
-
-        Args:
-            indicators: List of indicator configs with 'name' and 'params'
-
-        Returns:
-            Dictionary mapping indicator keys to results
-        """
-        results = {}
+    def calculate_multiple(self, indicators: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Calculate multiple indicators and return a unified outputs contract."""
+        results: list[dict[str, Any]] = []
 
         for indicator_config in indicators:
             name = indicator_config.get("name")
             params = indicator_config.get("params", {})
-
             if not name:
                 continue
 
-            try:
-                result = self.calculate(name, params)
-                # Create unique key using hash to support multiple instances of the same indicator with different params
-                key = f"{name.upper()}_{self.create_hash(name, params)[:8]}"
-                # Convert to dict format
-                if isinstance(result, pd.Series):
-                    results[key] = {
-                        "name": name.upper(),
-                        "values": [
-                            {"timestamp": idx, "value": float(val)} for idx, val in result.items() if pd.notna(val)
-                        ],
-                        "params": params,
-                    }
-                elif isinstance(result, pd.DataFrame):
-                    # For multi-column indicators (MACD, BBands, Stoch)
-                    results[key] = {"name": name.upper(), "params": params, "columns": {}}
-                    for col in result.columns:
-                        results[key]["columns"][col] = [
-                            {"timestamp": idx, "value": float(val)} for idx, val in result[col].items() if pd.notna(val)
-                        ]
+            result = self.calculate(name, params)
+            outputs: dict[str, list[dict[str, Any]]] = {}
 
-            except Exception as e:
-                logger.error(f"Error calculating {name}: {e}")
-                results[f"{name.upper()}_error"] = {"error": str(e)}
+            if isinstance(result, pd.Series):
+                output_name = result.name or name.upper()
+                outputs[output_name] = [
+                    {"timestamp": idx.isoformat(), "value": float(val)} for idx, val in result.items() if pd.notna(val)
+                ]
+            else:
+                for column in result.columns:
+                    outputs[column] = [
+                        {"timestamp": idx.isoformat(), "value": float(val)}
+                        for idx, val in result[column].items()
+                        if pd.notna(val)
+                    ]
+
+            results.append({"name": name.upper(), "params": params, "outputs": outputs})
 
         return results
 
 
-def get_supported_indicators() -> List[Dict[str, Any]]:
-    """
-    Get list of supported indicators with their parameters.
-
-    Returns:
-        List of indicator information
-    """
-    return [
-        {
-            "name": "sma",
-            "display_name": "Simple Moving Average",
-            "category": "trend",
-            "params": [
-                {
-                    "name": "length",
-                    "type": "int",
-                    "default": 20,
-                    "description": "Period length",
-                }
-            ],
-        },
-        {
-            "name": "ema",
-            "display_name": "Exponential Moving Average",
-            "category": "trend",
-            "params": [
-                {
-                    "name": "length",
-                    "type": "int",
-                    "default": 20,
-                    "description": "Period length",
-                }
-            ],
-        },
-        {
-            "name": "rsi",
-            "display_name": "Relative Strength Index",
-            "category": "momentum",
-            "params": [
-                {
-                    "name": "length",
-                    "type": "int",
-                    "default": 14,
-                    "description": "Period length",
-                }
-            ],
-        },
-        {
-            "name": "macd",
-            "display_name": "MACD",
-            "category": "momentum",
-            "params": [
-                {
-                    "name": "fast",
-                    "type": "int",
-                    "default": 12,
-                    "description": "Fast period",
-                },
-                {
-                    "name": "slow",
-                    "type": "int",
-                    "default": 26,
-                    "description": "Slow period",
-                },
-                {
-                    "name": "signal",
-                    "type": "int",
-                    "default": 9,
-                    "description": "Signal period",
-                },
-            ],
-        },
-        {
-            "name": "stochastic",
-            "display_name": "Stochastic Oscillator",
-            "category": "momentum",
-            "params": [
-                {"name": "k", "type": "int", "default": 14, "description": "%K period"},
-                {"name": "d", "type": "int", "default": 3, "description": "%D period"},
-                {
-                    "name": "smooth_k",
-                    "type": "int",
-                    "default": 3,
-                    "description": "%K smoothing",
-                },
-            ],
-        },
-        {
-            "name": "bollinger_bands",
-            "display_name": "Bollinger Bands",
-            "category": "volatility",
-            "params": [
-                {
-                    "name": "length",
-                    "type": "int",
-                    "default": 20,
-                    "description": "Period length",
-                },
-                {
-                    "name": "std",
-                    "type": "float",
-                    "default": 2.0,
-                    "description": "Standard deviations",
-                },
-            ],
-        },
-        {
-            "name": "atr",
-            "display_name": "Average True Range",
-            "category": "volatility",
-            "params": [
-                {
-                    "name": "length",
-                    "type": "int",
-                    "default": 14,
-                    "description": "Period length",
-                }
-            ],
-        },
-    ]
+def get_supported_indicators() -> list[dict[str, Any]]:
+    """Return the TA-Lib-backed supported indicator catalog."""
+    return get_all_indicators()

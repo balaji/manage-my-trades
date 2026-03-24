@@ -3,7 +3,7 @@
 /**
  * Create new backtest page.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createBacktest, runBacktest } from '@/lib/api/backtests';
@@ -12,7 +12,7 @@ import { Strategy } from '@/lib/types/strategy';
 
 const TIMEFRAMES = ['1d', '1h', '15m', '5m', '1m'];
 
-export default function NewBacktestPage() {
+function NewBacktestPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const prefillStrategyId = searchParams.get('strategyId');
@@ -275,5 +275,13 @@ export default function NewBacktestPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function NewBacktestPageWrapper() {
+  return (
+    <Suspense>
+      <NewBacktestPage />
+    </Suspense>
   );
 }

@@ -15,8 +15,8 @@ def _llm_payload() -> dict:
         "metadata": {"name": "Guard Test"},
         "market": {"timeframe": "1d"},
         "indicators": [
-            {"alias": "fast_ma", "indicator": "ema", "params": {"length": 20}},
-            {"alias": "slow_ma", "indicator": "sma", "params": {"length": 50}},
+            {"alias": "fast_ma", "indicator": "EMA", "params": {"timeperiod": 20}},
+            {"alias": "slow_ma", "indicator": "SMA", "params": {"timeperiod": 50}},
         ],
         "rules": {
             "entry": {

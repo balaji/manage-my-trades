@@ -9,7 +9,8 @@ from typing import Any
 import httpx
 
 from app.config import get_settings
-from app.core.strategies.spec import StrategySpec, SUPPORTED_INDICATORS
+from app.core.strategies.spec import StrategySpec
+from app.services.indicator_registry import get_all_indicators
 from app.services.strategy_prompt_guard_service import StrategyPromptGuardService
 
 logger = logging.getLogger(__name__)
@@ -46,11 +47,18 @@ class StrategyCompilerService:
     ) -> dict[str, Any]:
         """Send a structured completion request to OpenAI."""
         schema = StrategySpec.model_json_schema()
-        indicator_names = ", ".join(sorted(SUPPORTED_INDICATORS.keys()))
+        indicators = get_all_indicators()
+        indicator_names = ", ".join(indicator["name"] for indicator in indicators)
+        multi_output_examples = ", ".join(
+            f"{indicator['name']}({', '.join(indicator['output_names'])})"
+            for indicator in indicators
+            if len(indicator["output_names"]) > 1
+        )
         system_prompt = (
             "You convert user requests into a strict technical trading strategy specification. "
             "Only produce strategies using supported indicators and long-only technical rules. "
             f"Supported indicators: {indicator_names}. "
+            f"Use TA-Lib function names and parameter names exactly. Multi-output indicator fields include: {multi_output_examples}. "
             "Use the schema exactly, including compare/cross rules and indicator fields where required. "
             "Do not create ML, options, shorts, or unsupported indicators. "
             "If the request is ambiguous, choose conservative defaults and encode them explicitly."

@@ -24,7 +24,7 @@ A full-stack platform for managing trading strategies, running backtests, and pe
 | **Styling** | Tailwind CSS 3, CSS design tokens | — |
 | **Charting** | lightweight-charts v4, recharts v2 | — |
 | **HTTP** | Axios (singleton) | FastAPI + CORS |
-| **Indicators** | — | Pandas/NumPy (custom implementations) |
+| **Indicators** | — | TA-Lib |
 | **ML/Backtesting** | — | scikit-learn, joblib |
 | **Market Data** | — | alpaca-py |
 | **Utilities** | clsx, tailwind-merge, class-variance-authority, date-fns | Alembic (migrations) |
@@ -255,7 +255,7 @@ TimescaleDB hypertables optimize range queries and compression on time-series ta
 
 ## Technical Indicators
 
-All indicators are custom implementations using pandas/numpy. No TA-Lib dependency.
+Indicators are calculated through TA-Lib with TA-Lib-native function names, parameters, and output fields.
 
 | Indicator | Parameters | Output |
 |-----------|-----------|--------|

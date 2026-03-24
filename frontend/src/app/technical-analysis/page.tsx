@@ -7,7 +7,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link';
 import { IChartApi, LineStyle } from 'lightweight-charts';
 import { PriceChart } from '@/components/charts/PriceChart';
-import { OscillatorChart } from '@/components/charts/OscillatorChart';
 import { marketDataApi, technicalAnalysisApi } from '@/lib/api';
 import type { OHLCVBar } from '@/lib/types/market-data';
 
@@ -58,14 +57,10 @@ export default function TechnicalAnalysisPage() {
 
   // Oscillator data
   const [rsiData, setRsiData] = useState<DataPoint[]>([]);
-  const [bbpData, setBbpData] = useState<DataPoint[]>([]);
 
   const [rangeDays, setRangeDays] = useState(90);
 
-  // Chart sync
   const priceChartRef = useRef<IChartApi | null>(null);
-  const oscillatorChartRef = useRef<IChartApi | null>(null);
-  const syncingRef = useRef(false);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -104,83 +99,74 @@ export default function TechnicalAnalysisPage() {
           start_date: indicatorStartDate.toISOString().split('T')[0],
           end_date: endDate.toISOString().split('T')[0],
           indicators: [
-            { name: 'SMA', params: { length: 10 } },
-            { name: 'SMA', params: { length: 20 } },
-            { name: 'SMA', params: { length: 30 } },
-            { name: 'EMA', params: { length: 10 } },
-            { name: 'EMA', params: { length: 20 } },
-            { name: 'EMA', params: { length: 30 } },
-            { name: 'RSI', params: { length: 14 } },
-            { name: 'BOLLINGER_BANDS', params: { length: 20, std: 2.0 } },
+            { name: 'SMA', params: { timeperiod: 10 } },
+            { name: 'SMA', params: { timeperiod: 20 } },
+            { name: 'SMA', params: { timeperiod: 30 } },
+            { name: 'EMA', params: { timeperiod: 10 } },
+            { name: 'EMA', params: { timeperiod: 20 } },
+            { name: 'EMA', params: { timeperiod: 30 } },
+            { name: 'RSI', params: { timeperiod: 14 } },
+            { name: 'BBANDS', params: { timeperiod: 20, nbdevup: 2, nbdevdn: 2 } },
           ],
         }),
       ]);
 
       if (marketData.length > 0 && marketData[0].bars.length > 0) {
         setChartData(marketData[0].bars);
-        const results = indicatorResult.indicators;
+        const results = indicatorResult.indicators.map((indicator) => ({
+          ...indicator,
+          outputs: Object.fromEntries(
+            Object.entries(indicator.outputs).map(([outputName, values]) => [
+              outputName,
+              values.filter((value) => value.timestamp >= startDateStr),
+            ])
+          ),
+        }));
 
-        // Filter all indicator values to the original date range (indicators were fetched
-        // with an earlier start date to warm up multi-period calculations like RSI/BB).
-        Object.values(results).forEach((r) => {
-          if (r.values) r.values = r.values.filter((v) => v.value !== null && v.timestamp >= startDateStr);
-          if (r.columns)
-            Object.keys(r.columns).forEach(
-              (k) => (r.columns![k] = r.columns![k].filter((v) => v.value !== null && v.timestamp >= startDateStr))
-            );
-        });
+        const rsiResult = results.find((result) => result.name === 'RSI');
+        setRsiData(rsiResult?.outputs.real ?? []);
 
-        // RSI
-        const rsiResult = Object.values(results).find((r) => (r as any).name === 'RSI');
-        setRsiData(rsiResult?.values ?? []);
-
-        // Bollinger Bands (multi-column)
-        const bbResult = Object.values(results).find((r) => (r as any).name === 'BOLLINGER_BANDS');
-        if (bbResult?.columns) {
-          const cols = bbResult.columns;
-          const length = bbResult.params.length as number;
-          const std = bbResult.params.std as number;
-
-          const pick = (prefix: string): DataPoint[] => cols[`${prefix}_${length}_${std}`] ?? [];
+        const bbResult = results.find((result) => result.name === 'BBANDS');
+        if (bbResult?.outputs) {
+          const outputs = bbResult.outputs;
+          const pick = (key: string): DataPoint[] => outputs[key] ?? [];
 
           setBbandIndicators([
             {
               name: 'BB Upper',
-              data: pick('BBU'),
+              data: pick('upperband'),
               color: BBAND_COLOR,
               lineStyle: LineStyle.Dashed,
               lineWidth: 1,
             },
             {
               name: 'BB Middle',
-              data: pick('BBM'),
+              data: pick('middleband'),
               color: BBAND_COLOR,
               lineStyle: LineStyle.Solid,
               lineWidth: 1,
             },
             {
               name: 'BB Lower',
-              data: pick('BBL'),
+              data: pick('lowerband'),
               color: BBAND_COLOR,
               lineStyle: LineStyle.Dashed,
               lineWidth: 1,
             },
           ]);
-
-          setBbpData(pick('BBP').map((v) => ({ ...v, value: v.value * 100 })));
+        } else {
+          setBbandIndicators([]);
         }
 
-        // SMA / EMA
-        console.log(results);
         const getByName = (name: string) =>
-          Object.entries(results)
-            .filter(([, r]) => (r as any).name === name)
-            .map(([, r]) => {
-              const period = r.params.length as number;
+          results
+            .filter((result) => result.name === name)
+            .map((result) => {
+              const period = result.params.timeperiod as number;
               const colors = name === 'SMA' ? SMA_COLORS : EMA_COLORS;
               return {
                 name: `${name} ${period}`,
-                data: r.values ?? [],
+                data: result.outputs.real ?? [],
                 color: colors[period] ?? '#2196F3',
               };
             });
@@ -191,10 +177,8 @@ export default function TechnicalAnalysisPage() {
         setAllIndicators([]);
         setBbandIndicators([]);
         setRsiData([]);
-        setBbpData([]);
       }
     } catch (err: any) {
-      console.log(err);
       setError(err.message || 'Failed to load data');
     } finally {
       setLoading(false);
@@ -209,54 +193,16 @@ export default function TechnicalAnalysisPage() {
     });
   };
 
-  // Sync all charts together
-  const syncTo = useCallback((source: IChartApi, targets: (IChartApi | null)[]) => {
-    source.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-      if (syncingRef.current || !range) return;
-      syncingRef.current = true;
-      targets.forEach((t) => t?.timeScale().setVisibleLogicalRange(range));
-      syncingRef.current = false;
-    });
+  const handlePriceChartReady = useCallback((chart: IChartApi) => {
+    priceChartRef.current = chart;
   }, []);
 
-  const handlePriceChartReady = useCallback(
-    (chart: IChartApi) => {
-      priceChartRef.current = chart;
-      if (oscillatorChartRef.current) {
-        syncTo(chart, [oscillatorChartRef.current]);
-        syncTo(oscillatorChartRef.current, [chart]);
-      }
-    },
-    [syncTo]
-  );
-
-  const handleOscillatorChartReady = useCallback(
-    (chart: IChartApi) => {
-      oscillatorChartRef.current = chart;
-      if (priceChartRef.current) {
-        syncTo(chart, [priceChartRef.current]);
-        syncTo(priceChartRef.current, [chart]);
-      }
-    },
-    [syncTo]
-  );
-
-  // Fit price chart after all chart series and oscillator sync have settled.
-  // Two rAF frames: first lets lightweight-charts process pending operations,
-  // second ensures the sync callbacks (which also use rAF internally) have fired.
   useEffect(() => {
     if (chartData.length === 0) return;
-    let id1: number;
-    let id2: number;
-    id1 = requestAnimationFrame(() => {
-      id2 = requestAnimationFrame(() => {
-        priceChartRef.current?.timeScale().fitContent();
-      });
+    const id = requestAnimationFrame(() => {
+      priceChartRef.current?.timeScale().fitContent();
     });
-    return () => {
-      cancelAnimationFrame(id1);
-      cancelAnimationFrame(id2);
-    };
+    return () => cancelAnimationFrame(id);
   }, [chartData]);
 
   const smaGroup = allIndicators.filter((i) => i.name.startsWith('SMA'));
@@ -417,47 +363,28 @@ export default function TechnicalAnalysisPage() {
                 )}
               </div>
 
-              {/* Price chart */}
+              {/* Price chart with RSI sub-pane */}
               <PriceChart
                 data={chartData}
                 indicators={activeIndicators}
+                oscillators={
+                  rsiData.length > 0
+                    ? [
+                        {
+                          name: 'RSI 14',
+                          data: rsiData,
+                          color: '#E91E63',
+                          referenceLines: [
+                            { value: 70, color: '#ef5350' },
+                            { value: 30, color: '#26a69a' },
+                          ],
+                        },
+                      ]
+                    : []
+                }
                 height={500}
                 onChartReady={handlePriceChartReady}
               />
-
-              {/* RSI + BB% oscillator */}
-              {(rsiData.length > 0 || bbpData.length > 0) && (
-                <div className="mt-1">
-                  <div className="flex items-center gap-4 mb-1">
-                    {rsiData.length > 0 && (
-                      <span className="flex items-center gap-1.5 text-sm">
-                        <span className="inline-block w-6 h-0.5 rounded" style={{ backgroundColor: '#E91E63' }} />
-                        RSI (14)
-                      </span>
-                    )}
-                    {bbpData.length > 0 && (
-                      <span className="flex items-center gap-1.5 text-sm">
-                        <span className="inline-block w-6 h-0.5 rounded" style={{ backgroundColor: '#FF9800' }} />
-                        BB% (20, 2)
-                      </span>
-                    )}
-                    <span className="text-xs text-gray-400 ml-1">— 70 overbought · 30 oversold</span>
-                  </div>
-                  <OscillatorChart
-                    seriesConfigs={[
-                      { color: '#E91E63', title: 'RSI 14' },
-                      { color: '#FF9800', title: 'BB%' },
-                    ]}
-                    seriesData={[rsiData, bbpData]}
-                    referenceLines={[
-                      { value: 70, color: '#ef5350' },
-                      { value: 30, color: '#26a69a' },
-                    ]}
-                    height={160}
-                    onChartReady={handleOscillatorChartReady}
-                  />
-                </div>
-              )}
             </div>
           )}
 
