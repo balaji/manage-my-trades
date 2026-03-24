@@ -43,6 +43,9 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     logger.info("Shutting down application...")
+    from app.services.langfuse_client import flush_langfuse
+
+    flush_langfuse()
 
 
 # OpenAPI tags metadata
