@@ -3,7 +3,7 @@ API v1 router.
 """
 
 from fastapi import APIRouter
-from app.api.v1.endpoints import market_data, technical_analysis, strategies, backtests, indicators
+from app.api.v1.endpoints import market_data, technical_analysis, strategies, backtests, indicators, portfolios
 
 api_router = APIRouter()
 
@@ -13,6 +13,7 @@ api_router.include_router(technical_analysis.router, prefix="/technical-analysis
 api_router.include_router(strategies.router, prefix="/strategies", tags=["strategies"])
 api_router.include_router(backtests.router, prefix="/backtests", tags=["backtests"])
 api_router.include_router(indicators.router, prefix="/indicators", tags=["indicators"])
+api_router.include_router(portfolios.router, prefix="/portfolios", tags=["portfolios"])
 
 
 @api_router.get("/")
