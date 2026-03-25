@@ -3,15 +3,19 @@
 /**
  * Backtest results page.
  */
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import type { SeriesMarker, Time, UTCTimestamp } from 'lightweight-charts';
 import { getBacktest, getBacktestTrades, getBacktestSignals, deleteBacktest } from '@/lib/api/backtests';
+import { getStrategy } from '@/lib/api/strategies';
+import { technicalAnalysisApi, IndicatorResult } from '@/lib/api/technical-analysis';
 import { Backtest, BacktestTrade } from '@/lib/types/backtest';
 import { Signal } from '@/lib/types/signal';
 import { marketDataApi } from '@/lib/api/market-data';
 import { MarketDataResponse } from '@/lib/types/market-data';
+import { PriceChart } from '@/components/charts/PriceChart';
 
 function MetricCard({
   label,
@@ -50,6 +54,90 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+const INDICATOR_COLORS = ['#2196F3', '#FF5722', '#4CAF50', '#9C27B0', '#FF9800', '#00BCD4', '#E91E63', '#795548'];
+
+const OSCILLATOR_REF_LINES: Record<string, Array<{ value: number; color: string }>> = {
+  RSI: [
+    { value: 70, color: '#ef4444' },
+    { value: 30, color: '#22c55e' },
+  ],
+  STOCH: [
+    { value: 80, color: '#ef4444' },
+    { value: 20, color: '#22c55e' },
+  ],
+  STOCHF: [
+    { value: 80, color: '#ef4444' },
+    { value: 20, color: '#22c55e' },
+  ],
+};
+
+interface IndicatorConfig {
+  name: string;
+  data: Array<{ timestamp: string; value: number }>;
+  color: string;
+}
+
+interface OscillatorConfig {
+  name: string;
+  data: Array<{ timestamp: string; value: number }>;
+  color: string;
+  referenceLines?: Array<{ value: number; color: string }>;
+}
+
+function buildChartConfigs(
+  results: IndicatorResult[],
+  groupMap: Record<string, string>,
+  strategyIndicators: Array<{ alias: string; indicator: string; params?: Record<string, unknown> }>
+): { overlays: IndicatorConfig[]; oscillators: OscillatorConfig[] } {
+  const overlays: IndicatorConfig[] = [];
+  const oscillators: OscillatorConfig[] = [];
+  let colorIdx = 0;
+  for (const result of results) {
+    const isOverlay = groupMap[result.name] === 'Overlap Studies';
+    const strategyDef = strategyIndicators.find((d) => {
+      const res = d.indicator.toUpperCase() === result.name;
+      if (d.params || result.params) {
+        return res && JSON.stringify(d.params) === JSON.stringify(result.params);
+      }
+      return res;
+    });
+    const alias = strategyDef?.alias ?? result.name;
+    const outputKeys = Object.keys(result.outputs);
+
+    for (const outputName of outputKeys) {
+      const data = result.outputs[outputName];
+      const color = INDICATOR_COLORS[colorIdx++ % INDICATOR_COLORS.length];
+      const label = outputKeys.length > 1 ? `${alias} (${outputName})` : alias;
+
+      if (isOverlay) {
+        overlays.push({ name: label, data, color });
+      } else {
+        oscillators.push({
+          name: label,
+          data,
+          color,
+          referenceLines: outputKeys.length === 1 ? OSCILLATOR_REF_LINES[result.name] : undefined,
+        });
+      }
+    }
+  }
+
+  return { overlays, oscillators };
+}
+
+function buildSignalMarkers(symbol: string, signals: Signal[]): SeriesMarker<Time>[] {
+  return signals
+    .filter((signal) => signal.symbol === symbol && (signal.signal_type === 'buy' || signal.signal_type === 'sell'))
+    .map((signal) => ({
+      time: (new Date(signal.timestamp).getTime() / 1000) as UTCTimestamp,
+      position: signal.signal_type === 'buy' ? ('belowBar' as const) : ('aboveBar' as const),
+      shape: signal.signal_type === 'buy' ? ('arrowUp' as const) : ('arrowDown' as const),
+      color: signal.signal_type === 'buy' ? '#16a34a' : '#dc2626',
+      text: signal.signal_type === 'buy' ? 'Buy' : 'Sell',
+    }))
+    .sort((a, b) => (a.time as number) - (b.time as number));
+}
+
 export default function BacktestDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -59,6 +147,9 @@ export default function BacktestDetailPage() {
   const [trades, setTrades] = useState<BacktestTrade[]>([]);
   const [signals, setSignals] = useState<Signal[]>([]);
   const [priceData, setPriceData] = useState<MarketDataResponse[]>([]);
+  const [symbolIndicators, setSymbolIndicators] = useState<
+    Record<string, { overlays: IndicatorConfig[]; oscillators: OscillatorConfig[] }>
+  >({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -76,13 +167,46 @@ export default function BacktestDetailPage() {
         setTrades(tradesData.trades);
         setSignals(signalsData.signals);
         if (bt.status === 'completed') {
-          const bars = await marketDataApi.getBars({
-            symbols: bt.symbols,
-            start_date: bt.start_date,
-            end_date: bt.end_date,
-            timeframe: bt.timeframe,
-          });
+          const [bars, strategy, { indicators: supportedIndicators }] = await Promise.all([
+            marketDataApi.getBars({
+              symbols: bt.symbols,
+              start_date: bt.start_date,
+              end_date: bt.end_date,
+              timeframe: bt.timeframe,
+            }),
+            getStrategy(bt.strategy_id).catch(() => null),
+            technicalAnalysisApi.getSupportedIndicators().catch(() => ({ indicators: [] })),
+          ]);
           setPriceData(bars);
+
+          const specIndicators: Array<{ alias: string; indicator: string; params: Record<string, unknown> }> =
+            strategy?.spec?.indicators ?? [];
+          const groupMap: Record<string, string> = Object.fromEntries(
+            supportedIndicators.map((ind) => [ind.name, ind.group ?? ''])
+          );
+
+          if (specIndicators.length > 0) {
+            const indicatorRequests = specIndicators.map((d) => ({ name: d.indicator, params: d.params ?? {} }));
+            const perSymbol: Record<string, { overlays: IndicatorConfig[]; oscillators: OscillatorConfig[] }> = {};
+
+            await Promise.all(
+              bt.symbols.map(async (symbol) => {
+                try {
+                  const response = await technicalAnalysisApi.calculateIndicators({
+                    symbol,
+                    timeframe: bt.timeframe,
+                    start_date: bt.start_date,
+                    end_date: bt.end_date,
+                    indicators: indicatorRequests,
+                  });
+                  perSymbol[symbol] = buildChartConfigs(response.indicators, groupMap, specIndicators);
+                } catch {
+                  perSymbol[symbol] = { overlays: [], oscillators: [] };
+                }
+              })
+            );
+            setSymbolIndicators(perSymbol);
+          }
         }
       } catch (err: any) {
         setError(err.message || 'Failed to load backtest');
@@ -103,24 +227,6 @@ export default function BacktestDetailPage() {
       alert(`Failed to delete: ${err.message}`);
     }
   };
-
-  const SYMBOL_COLORS = ['#2563eb', '#16a34a', '#dc2626', '#d97706', '#7c3aed', '#0891b2'];
-
-  // Build price chart data: one row per date, normalized close price (% return from first bar)
-  const priceChartData = useMemo(() => {
-    if (!priceData.length) return [];
-    const map = new Map<string, Record<string, number | string>>();
-    for (const { symbol, bars } of priceData) {
-      if (!bars.length) continue;
-      const base = bars[0].close;
-      for (const bar of bars) {
-        const date = bar.timestamp.split('T')[0];
-        if (!map.has(date)) map.set(date, { date });
-        map.get(date)![symbol] = ((bar.close - base) / base) * 100;
-      }
-    }
-    return Array.from(map.values()).sort((a, b) => (a.date as string).localeCompare(b.date as string));
-  }, [priceData]);
 
   if (loading) {
     return (
@@ -302,40 +408,24 @@ export default function BacktestDetailPage() {
         )}
 
         {/* Price History Chart */}
-        {priceChartData.length > 0 && (
+        {priceData.length > 0 && (
           <div className="bg-white rounded-lg shadow p-6 mb-6">
             <h2 className="text-xl font-semibold mb-4">Price History</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={priceChartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={(d) => new Date(d).toLocaleDateString(undefined, { month: 'short', year: '2-digit' })}
-                  tick={{ fontSize: 11 }}
-                  interval={Math.ceil(priceChartData.length / 8)}
+            {priceData.map(({ symbol, bars }) => (
+              <div key={symbol} className={priceData.length > 1 ? 'mb-6' : ''}>
+                {priceData.length > 1 && <h3 className="text-base font-medium text-gray-700 mb-2">{symbol}</h3>}
+                <PriceChart
+                  data={bars}
+                  indicators={symbolIndicators[symbol]?.overlays ?? []}
+                  oscillators={symbolIndicators[symbol]?.oscillators ?? []}
+                  markers={buildSignalMarkers(symbol, signals)}
+                  timeRange={{
+                    from: `${backtest.start_date}T00:00:00Z`,
+                    to: `${backtest.end_date}T23:59:59Z`,
+                  }}
                 />
-                <YAxis
-                  tickFormatter={(v) => `${(v as number) >= 0 ? '+' : ''}${(v as number).toFixed(1)}%`}
-                  tick={{ fontSize: 11 }}
-                  width={64}
-                />
-                <Tooltip
-                  formatter={(v, name) => [`${(v as number) >= 0 ? '+' : ''}${(v as number).toFixed(2)}%`, name]}
-                  labelFormatter={(l) => new Date(l as string).toLocaleDateString()}
-                />
-                <Legend />
-                {priceData.map(({ symbol }, i) => (
-                  <Line
-                    key={symbol}
-                    type="monotone"
-                    dataKey={symbol}
-                    stroke={SYMBOL_COLORS[i % SYMBOL_COLORS.length]}
-                    dot={false}
-                    strokeWidth={2}
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
+              </div>
+            ))}
           </div>
         )}
 
@@ -419,10 +509,22 @@ export default function BacktestDetailPage() {
                             {trade.side}
                           </span>
                         </td>
-                        <td className="py-2 px-3 text-gray-600">{new Date(trade.entry_date).toLocaleDateString()}</td>
+                        <td className="py-2 px-3 text-gray-600">
+                          {new Date(trade.entry_date).toLocaleDateString('en-GB', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                          })}
+                        </td>
                         <td className="py-2 px-3 text-right font-mono">${trade.entry_price.toFixed(2)}</td>
                         <td className="py-2 px-3 text-gray-600">
-                          {trade.exit_date ? new Date(trade.exit_date).toLocaleDateString() : '—'}
+                          {trade.exit_date
+                            ? new Date(trade.exit_date).toLocaleDateString('en-GB', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                              })
+                            : '—'}
                         </td>
                         <td className="py-2 px-3 text-right font-mono">
                           {trade.exit_price != null ? `$${trade.exit_price.toFixed(2)}` : '—'}

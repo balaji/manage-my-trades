@@ -6,11 +6,15 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import {
   createChart,
+  createSeriesMarkers,
   IChartApi,
+  ISeriesMarkersPluginApi,
   ISeriesApi,
   CandlestickData,
   LineData,
   LineStyle,
+  SeriesMarker,
+  Time,
   UTCTimestamp,
   LineWidth,
   CandlestickSeries,
@@ -37,8 +41,13 @@ interface PriceChartProps {
   data: OHLCVBar[];
   indicators?: IndicatorConfig[];
   oscillators?: OscillatorConfig[];
+  markers?: SeriesMarker<Time>[];
   oscillatorHeight?: number;
   height?: number;
+  timeRange?: {
+    from: string;
+    to: string;
+  };
   onChartReady?: (chart: IChartApi) => void;
 }
 
@@ -46,22 +55,27 @@ export function PriceChart({
   data,
   indicators = [],
   oscillators = [],
+  markers = [],
   oscillatorHeight = 160,
   height = 400,
+  timeRange,
   onChartReady,
 }: PriceChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const markerSeriesRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
   const closeSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const indicatorSeriesRef = useRef<Map<string, ISeriesApi<'Line'>>>(new Map());
   // Oscillator pane (pane index 1) series and reference lines
   const oscillatorSeriesRef = useRef<Map<string, ISeriesApi<'Line'>>>(new Map());
   const refLineSeriesRef = useRef<Map<string, ISeriesApi<'Line'>[]>>(new Map());
   const onChartReadyRef = useRef(onChartReady);
+  const timeRangeRef = useRef(timeRange);
   useLayoutEffect(() => {
     onChartReadyRef.current = onChartReady;
-  }, [onChartReady]);
+    timeRangeRef.current = timeRange;
+  }, [onChartReady, timeRange]);
   const prevDataRef = useRef(data);
 
   useEffect(() => {
@@ -96,6 +110,7 @@ export function PriceChart({
       wickUpColor: '#26a69a',
       wickDownColor: '#ef5350',
     });
+    markerSeriesRef.current = createSeriesMarkers(candlestickSeriesRef.current, []);
 
     closeSeriesRef.current = chart.addSeries(LineSeries, {
       color: 'rgba(100, 100, 100, 0.5)',
@@ -130,6 +145,7 @@ export function PriceChart({
       chart.remove();
       chartRef.current = null;
       candlestickSeriesRef.current = null;
+      markerSeriesRef.current = null;
       closeSeriesRef.current = null;
       indicatorSeries.clear();
       oscillatorSeries.clear();
@@ -165,10 +181,16 @@ export function PriceChart({
 
     if (dataChanged) {
       prevDataRef.current = data;
+    } else if (timeRangeRef.current) {
+      chartRef.current?.timeScale().fitContent();
     } else if (savedRange) {
       chartRef.current?.timeScale().setVisibleLogicalRange(savedRange);
     }
   }, [data]);
+
+  useEffect(() => {
+    markerSeriesRef.current?.setMarkers(markers);
+  }, [markers]);
 
   useEffect(() => {
     if (!chartRef.current) return;
@@ -223,7 +245,9 @@ export function PriceChart({
       lineSeries.setData(lineData);
     });
 
-    if (savedRange) {
+    if (timeRangeRef.current) {
+      chartRef.current?.timeScale().fitContent();
+    } else if (savedRange) {
       chartRef.current.timeScale().setVisibleLogicalRange(savedRange);
     }
   }, [indicators]);
