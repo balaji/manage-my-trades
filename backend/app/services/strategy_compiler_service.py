@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import nullcontext
 import json
 import logging
 from typing import Any
@@ -11,6 +12,7 @@ import httpx
 from app.config import get_settings
 from app.core.strategies.spec import StrategySpec
 from app.services.indicator_registry import get_all_indicators
+from app.services.langfuse_client import get_langfuse_client
 from app.services.strategy_prompt_guard_service import StrategyPromptGuardService
 
 logger = logging.getLogger(__name__)
@@ -28,22 +30,66 @@ class StrategyCompilerService:
         if not self.settings.OPENAI_API_KEY:
             raise ValueError("OpenAI compiler is not configured. Set OPENAI_API_KEY to enable strategy compilation.")
 
-        guard_result = self.prompt_guard.evaluate(prompt, name=name, description=description)
-        if guard_result.decision == "reject":
-            raise ValueError("; ".join(guard_result.reasons))
+        lf = get_langfuse_client()
+        compiler_span_context = (
+            lf.start_as_current_observation(
+                name="strategy_compile",
+                as_type="span",
+                input={"prompt": prompt, "name": name, "description": description},
+                metadata={"model": self.settings.OPENAI_MODEL},
+            )
+            if lf
+            else nullcontext(None)
+        )
 
-        payload = await self._request_llm(guard_result.normalized_prompt, name=name, description=description)
-        spec = StrategySpec.model_validate(payload)
+        with compiler_span_context as compiler_span:
+            guard_span_context = (
+                lf.start_as_current_observation(name="prompt_guard", as_type="guardrail") if lf else nullcontext(None)
+            )
+            with guard_span_context as guard_span:
+                guard_result = self.prompt_guard.evaluate(prompt, name=name, description=description)
+                if guard_span:
+                    guard_span.update(
+                        output={
+                            "decision": guard_result.decision,
+                            "reasons": guard_result.reasons,
+                            "warnings": guard_result.warnings,
+                        }
+                    )
 
-        return {
-            "normalized_spec": spec,
-            "summary": self._summarize_spec(spec),
-            "warnings": self._build_warnings(guard_result.normalized_prompt, spec),
-            "prompt_warnings": guard_result.warnings,
-        }
+            if guard_result.decision == "reject":
+                if compiler_span:
+                    compiler_span.update(
+                        level="WARNING",
+                        status_message="; ".join(guard_result.reasons),
+                    )
+                raise ValueError("; ".join(guard_result.reasons))
+
+            try:
+                payload = await self._request_llm(
+                    guard_result.normalized_prompt, name=name, description=description, langfuse_client=lf
+                )
+                spec = StrategySpec.model_validate(payload)
+
+                result = {
+                    "normalized_spec": spec,
+                    "summary": self._summarize_spec(spec),
+                    "warnings": self._build_warnings(guard_result.normalized_prompt, spec),
+                    "prompt_warnings": guard_result.warnings,
+                }
+
+                if compiler_span:
+                    compiler_span.update(output={"summary": result["summary"], "warnings": result["warnings"]})
+
+                return result
+
+            except Exception as exc:
+                if compiler_span:
+                    compiler_span.update(level="ERROR", status_message=str(exc))
+                raise
 
     async def _request_llm(
-        self, prompt: str, name: str | None = None, description: str | None = None
+        self, prompt: str, name: str | None = None, description: str | None = None, langfuse_client=None
     ) -> dict[str, Any]:
         """Send a structured completion request to OpenAI."""
         schema = StrategySpec.model_json_schema()
@@ -69,35 +115,67 @@ class StrategyCompilerService:
             "description": description,
         }
 
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(
-                f"{self.settings.OPENAI_BASE_URL.rstrip('/')}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {self.settings.OPENAI_API_KEY}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": self.settings.OPENAI_MODEL,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": json.dumps(user_payload)},
-                    ],
-                    "response_format": {
-                        "type": "json_schema",
-                        "json_schema": {"name": "strategy_spec", "schema": schema},
-                    },
-                },
+        generation_context = (
+            langfuse_client.start_as_current_observation(
+                name="openai_chat_completion",
+                as_type="generation",
+                model=self.settings.OPENAI_MODEL,
+                input=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": json.dumps(user_payload)},
+                ],
             )
-            response.raise_for_status()
+            if langfuse_client
+            else nullcontext(None)
+        )
 
-        data = response.json()
-        content = data["choices"][0]["message"]["content"]
-        if isinstance(content, list):
-            content = "".join(part.get("text", "") for part in content if isinstance(part, dict))
-        if not isinstance(content, str):
-            raise ValueError("Compiler returned an unexpected payload")
+        with generation_context as generation:
+            try:
+                async with httpx.AsyncClient(timeout=60.0) as client:
+                    response = await client.post(
+                        f"{self.settings.OPENAI_BASE_URL.rstrip('/')}/chat/completions",
+                        headers={
+                            "Authorization": f"Bearer {self.settings.OPENAI_API_KEY}",
+                            "Content-Type": "application/json",
+                        },
+                        json={
+                            "model": self.settings.OPENAI_MODEL,
+                            "messages": [
+                                {"role": "system", "content": system_prompt},
+                                {"role": "user", "content": json.dumps(user_payload)},
+                            ],
+                            "response_format": {
+                                "type": "json_schema",
+                                "json_schema": {"name": "strategy_spec", "schema": schema},
+                            },
+                        },
+                    )
+                    response.raise_for_status()
 
-        return json.loads(content)
+                data = response.json()
+                content = data["choices"][0]["message"]["content"]
+                if isinstance(content, list):
+                    content = "".join(part.get("text", "") for part in content if isinstance(part, dict))
+                if not isinstance(content, str):
+                    raise ValueError("Compiler returned an unexpected payload")
+
+                if generation:
+                    usage = data.get("usage", {})
+                    generation.update(
+                        output=content,
+                        usage={
+                            "promptTokens": usage.get("prompt_tokens"),
+                            "completionTokens": usage.get("completion_tokens"),
+                            "totalTokens": usage.get("total_tokens"),
+                        },
+                    )
+
+                return json.loads(content)
+
+            except Exception as exc:
+                if generation:
+                    generation.update(level="ERROR", status_message=str(exc))
+                raise
 
     @staticmethod
     def _summarize_spec(spec: StrategySpec) -> str:
