@@ -31,7 +31,6 @@ out/
 next-env.d.ts
 
 # Dependencies
-package-lock.json
 yarn.lock
 pnpm-lock.yaml
 
