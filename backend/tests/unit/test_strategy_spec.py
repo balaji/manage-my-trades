@@ -1,8 +1,7 @@
-"""Unit tests for strategy spec validation and legacy adaptation."""
+"""Unit tests for strategy spec validation."""
 
 import pytest
 
-from app.core.strategies.legacy import indicator_rows_from_spec
 from app.core.strategies.spec import CrossRule, LogicalRule, PrevExpr, StrategySpec
 
 
@@ -200,20 +199,3 @@ def test_strategy_spec_rejects_nested_prev():
                 }
             )
         )
-
-
-def test_indicator_rows_from_spec_extracts_cross_rule_aliases():
-    spec = StrategySpec.model_validate(
-        _base_spec(
-            entry_rule={
-                "type": "cross",
-                "left": {"type": "indicator", "alias": "fast_ma"},
-                "operator": "crosses_above",
-                "right": {"type": "indicator", "alias": "slow_ma"},
-            }
-        )
-    )
-
-    rows = indicator_rows_from_spec(spec)
-
-    assert {row["indicator_name"] for row in rows} == {"EMA", "SMA"}

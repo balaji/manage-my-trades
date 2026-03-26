@@ -21,6 +21,7 @@ import {
   LineSeries,
 } from 'lightweight-charts';
 import type { OHLCVBar } from '@/lib/types/market-data';
+import { getRemovedSeriesNames } from './seriesCleanup.js';
 
 interface IndicatorConfig {
   name: string;
@@ -255,6 +256,22 @@ export function PriceChart({
   useEffect(() => {
     if (!chartRef.current) return;
 
+    const activeOscillatorNames = new Set(oscillators.map((oscillator) => oscillator.name));
+
+    getRemovedSeriesNames(Array.from(oscillatorSeriesRef.current.keys()), Array.from(activeOscillatorNames)).forEach(
+      (name) => {
+        const series = oscillatorSeriesRef.current.get(name);
+        if (series) {
+          chartRef.current?.removeSeries(series);
+          oscillatorSeriesRef.current.delete(name);
+        }
+
+        const refLines = refLineSeriesRef.current.get(name) ?? [];
+        refLines.forEach((refLine) => chartRef.current?.removeSeries(refLine));
+        refLineSeriesRef.current.delete(name);
+      }
+    );
+
     oscillators.forEach((oscillator) => {
       if (!chartRef.current) return;
 
@@ -329,6 +346,12 @@ export function PriceChart({
             ]);
           });
         }
+      }
+
+      if (!oscillator.referenceLines?.length) {
+        const existingRefLines = refLineSeriesRef.current.get(oscillator.name) ?? [];
+        existingRefLines.forEach((refLine) => chartRef.current?.removeSeries(refLine));
+        refLineSeriesRef.current.delete(oscillator.name);
       }
     });
   }, [oscillators]);

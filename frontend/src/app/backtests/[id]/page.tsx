@@ -10,12 +10,18 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import type { SeriesMarker, Time, UTCTimestamp } from 'lightweight-charts';
 import { getBacktest, getBacktestTrades, getBacktestSignals, deleteBacktest } from '@/lib/api/backtests';
 import { getStrategy } from '@/lib/api/strategies';
-import { technicalAnalysisApi, IndicatorResult } from '@/lib/api/technical-analysis';
+import { technicalAnalysisApi } from '@/lib/api/technical-analysis';
 import { Backtest, BacktestTrade } from '@/lib/types/backtest';
 import { Signal } from '@/lib/types/signal';
 import { marketDataApi } from '@/lib/api/market-data';
 import { MarketDataResponse } from '@/lib/types/market-data';
 import { PriceChart } from '@/components/charts/PriceChart';
+import {
+  buildChartSeries,
+  buildStrategyIndicatorDefinitions,
+  IndicatorSeriesConfig,
+  OscillatorSeriesConfig,
+} from '@/lib/technical-analysis/chart-model';
 
 function MetricCard({
   label,
@@ -54,77 +60,6 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-const INDICATOR_COLORS = ['#2196F3', '#FF5722', '#4CAF50', '#9C27B0', '#FF9800', '#00BCD4', '#E91E63', '#795548'];
-
-const OSCILLATOR_REF_LINES: Record<string, Array<{ value: number; color: string }>> = {
-  RSI: [
-    { value: 70, color: '#ef4444' },
-    { value: 30, color: '#22c55e' },
-  ],
-  STOCH: [
-    { value: 80, color: '#ef4444' },
-    { value: 20, color: '#22c55e' },
-  ],
-  STOCHF: [
-    { value: 80, color: '#ef4444' },
-    { value: 20, color: '#22c55e' },
-  ],
-};
-
-interface IndicatorConfig {
-  name: string;
-  data: Array<{ timestamp: string; value: number }>;
-  color: string;
-}
-
-interface OscillatorConfig {
-  name: string;
-  data: Array<{ timestamp: string; value: number }>;
-  color: string;
-  referenceLines?: Array<{ value: number; color: string }>;
-}
-
-function buildChartConfigs(
-  results: IndicatorResult[],
-  groupMap: Record<string, string>,
-  strategyIndicators: Array<{ alias: string; indicator: string; params?: Record<string, unknown> }>
-): { overlays: IndicatorConfig[]; oscillators: OscillatorConfig[] } {
-  const overlays: IndicatorConfig[] = [];
-  const oscillators: OscillatorConfig[] = [];
-  let colorIdx = 0;
-  for (const result of results) {
-    const isOverlay = groupMap[result.name] === 'Overlap Studies';
-    const strategyDef = strategyIndicators.find((d) => {
-      const res = d.indicator.toUpperCase() === result.name;
-      if (d.params || result.params) {
-        return res && JSON.stringify(d.params) === JSON.stringify(result.params);
-      }
-      return res;
-    });
-    const alias = strategyDef?.alias ?? result.name;
-    const outputKeys = Object.keys(result.outputs);
-
-    for (const outputName of outputKeys) {
-      const data = result.outputs[outputName];
-      const color = INDICATOR_COLORS[colorIdx++ % INDICATOR_COLORS.length];
-      const label = outputKeys.length > 1 ? `${alias} (${outputName})` : alias;
-
-      if (isOverlay) {
-        overlays.push({ name: label, data, color });
-      } else {
-        oscillators.push({
-          name: label,
-          data,
-          color,
-          referenceLines: outputKeys.length === 1 ? OSCILLATOR_REF_LINES[result.name] : undefined,
-        });
-      }
-    }
-  }
-
-  return { overlays, oscillators };
-}
-
 function buildSignalMarkers(symbol: string, signals: Signal[]): SeriesMarker<Time>[] {
   return signals
     .filter((signal) => signal.symbol === symbol && (signal.signal_type === 'buy' || signal.signal_type === 'sell'))
@@ -148,7 +83,7 @@ export default function BacktestDetailPage() {
   const [signals, setSignals] = useState<Signal[]>([]);
   const [priceData, setPriceData] = useState<MarketDataResponse[]>([]);
   const [symbolIndicators, setSymbolIndicators] = useState<
-    Record<string, { overlays: IndicatorConfig[]; oscillators: OscillatorConfig[] }>
+    Record<string, { overlays: IndicatorSeriesConfig[]; oscillators: OscillatorSeriesConfig[] }>
   >({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -181,13 +116,14 @@ export default function BacktestDetailPage() {
 
           const specIndicators: Array<{ alias: string; indicator: string; params: Record<string, unknown> }> =
             strategy?.spec?.indicators ?? [];
-          const groupMap: Record<string, string> = Object.fromEntries(
-            supportedIndicators.map((ind) => [ind.name, ind.group ?? ''])
-          );
 
           if (specIndicators.length > 0) {
             const indicatorRequests = specIndicators.map((d) => ({ name: d.indicator, params: d.params ?? {} }));
-            const perSymbol: Record<string, { overlays: IndicatorConfig[]; oscillators: OscillatorConfig[] }> = {};
+            const definitions = buildStrategyIndicatorDefinitions(specIndicators);
+            const perSymbol: Record<
+              string,
+              { overlays: IndicatorSeriesConfig[]; oscillators: OscillatorSeriesConfig[] }
+            > = {};
 
             await Promise.all(
               bt.symbols.map(async (symbol) => {
@@ -199,7 +135,7 @@ export default function BacktestDetailPage() {
                     end_date: bt.end_date,
                     indicators: indicatorRequests,
                   });
-                  perSymbol[symbol] = buildChartConfigs(response.indicators, groupMap, specIndicators);
+                  perSymbol[symbol] = buildChartSeries(response.indicators, supportedIndicators, definitions);
                 } catch {
                   perSymbol[symbol] = { overlays: [], oscillators: [] };
                 }

@@ -4,12 +4,11 @@ Strategy service for managing trading strategies.
 
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
-from sqlalchemy.orm import selectinload
+from sqlalchemy import select
 import logging
 
-from app.core.strategies.legacy import build_legacy_spec, indicator_rows_from_spec
-from app.models.strategy import Strategy, StrategyIndicator
+from app.core.strategies.legacy import build_legacy_spec
+from app.models.strategy import Strategy
 from app.schemas.strategy import StrategyCreate, StrategyUpdate
 
 logger = logging.getLogger(__name__)
@@ -51,24 +50,9 @@ class StrategyService:
         self.db.add(strategy)
         await self.db.flush()  # Flush to get strategy ID
 
-        # Create indicators
-        for indicator_config in indicator_rows_from_spec(strategy_data.spec):
-            indicator = StrategyIndicator(
-                strategy_id=strategy.id,
-                indicator_name=indicator_config["indicator_name"],
-                parameters=indicator_config["parameters"],
-                usage=indicator_config["usage"],
-            )
-            self.db.add(indicator)
-
         await self.db.commit()
         await self.db.refresh(strategy)
-
-        # Load relationships
-        result = await self.db.execute(
-            select(Strategy).where(Strategy.id == strategy.id).options(selectinload(Strategy.indicators))
-        )
-        return result.scalar_one()
+        return strategy
 
     async def get_strategy(self, strategy_id: int) -> Optional[Strategy]:
         """
@@ -80,9 +64,7 @@ class StrategyService:
         Returns:
             Strategy if found, None otherwise
         """
-        result = await self.db.execute(
-            select(Strategy).where(Strategy.id == strategy_id).options(selectinload(Strategy.indicators))
-        )
+        result = await self.db.execute(select(Strategy).where(Strategy.id == strategy_id))
         return result.scalar_one_or_none()
 
     async def list_strategies(
@@ -105,7 +87,7 @@ class StrategyService:
             Tuple of (list of strategies, total count)
         """
         # Build query
-        query = select(Strategy).options(selectinload(Strategy.indicators))
+        query = select(Strategy)
 
         # Apply filters
         if is_active is not None:
@@ -171,22 +153,6 @@ class StrategyService:
         elif strategy_data.config is not None:
             spec = build_legacy_spec(config=strategy_data.config)
             strategy.config = spec
-
-        # Update indicators if provided
-        if strategy_data.indicators is not None or strategy_data.spec is not None or strategy_data.config is not None:
-            # Delete existing indicators
-            await self.db.execute(delete(StrategyIndicator).where(StrategyIndicator.strategy_id == strategy_id))
-            await self.db.flush()
-
-            # Create new indicators from the updated spec (already a StrategySpec on strategy.config)
-            for indicator_config in indicator_rows_from_spec(strategy.config):
-                indicator = StrategyIndicator(
-                    strategy_id=strategy_id,
-                    indicator_name=indicator_config["indicator_name"],
-                    parameters=indicator_config["parameters"],
-                    usage=indicator_config["usage"],
-                )
-                self.db.add(indicator)
 
         await self.db.commit()
         await self.db.refresh(strategy)

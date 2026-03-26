@@ -9,6 +9,10 @@ import Link from 'next/link';
 import { getStrategy, activateStrategy, deactivateStrategy, deleteStrategy } from '@/lib/api/strategies';
 import { Strategy, StrategyType, getStrategyTypeLabel } from '@/lib/types/strategy';
 
+function getSpecIndicators(strategy: Strategy) {
+  return Array.isArray(strategy.spec?.indicators) ? strategy.spec.indicators : [];
+}
+
 export default function StrategyDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -110,6 +114,8 @@ export default function StrategyDetailPage() {
     );
   }
 
+  const specIndicators = getSpecIndicators(strategy);
+
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-7xl mx-auto">
@@ -167,21 +173,21 @@ export default function StrategyDetailPage() {
             {/* Indicators */}
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-xl font-semibold mb-4">Indicators</h2>
-              {strategy.indicators.length === 0 ? (
+              {specIndicators.length === 0 ? (
                 <p className="text-gray-500">No indicators configured</p>
               ) : (
                 <div className="space-y-3">
-                  {strategy.indicators.map((indicator) => (
-                    <div key={indicator.id} className="border rounded-lg p-4">
+                  {specIndicators.map((indicator, index) => (
+                    <div key={`${indicator.alias}-${index}`} className="border rounded-lg p-4">
                       <div className="flex justify-between items-start mb-2">
-                        <h3 className="font-semibold text-lg capitalize">{indicator.indicator_name}</h3>
+                        <h3 className="font-semibold text-lg">{indicator.alias}</h3>
                         <span className="px-2 py-1 text-xs font-semibold rounded bg-purple-100 text-purple-800">
-                          {indicator.usage}
+                          {indicator.indicator}
                         </span>
                       </div>
                       <div className="text-sm text-gray-600">
                         <span className="font-medium">Parameters: </span>
-                        {JSON.stringify(indicator.parameters)}
+                        {JSON.stringify(indicator.params || {})}
                       </div>
                     </div>
                   ))}
@@ -198,7 +204,7 @@ export default function StrategyDetailPage() {
               <div className="space-y-3">
                 <div>
                   <div className="text-sm text-gray-600">Indicators</div>
-                  <div className="text-2xl font-bold">{strategy.indicators.length}</div>
+                  <div className="text-2xl font-bold">{specIndicators.length}</div>
                 </div>
                 <div>
                   <div className="text-sm text-gray-600">Created</div>

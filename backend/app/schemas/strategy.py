@@ -2,14 +2,13 @@
 Strategy schemas for API requests and responses.
 """
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from typing import Optional, List
 from datetime import datetime, date
 from enum import Enum
 
 from app.core.strategies.legacy import build_legacy_spec
 from app.core.strategies.spec import StrategySpec
-from app.services.indicator_registry import get_indicator_map
 
 
 class StrategyType(str, Enum):
@@ -28,35 +27,6 @@ class SignalType(str, Enum):
     HOLD = "hold"
 
 
-class IndicatorUsage(str, Enum):
-    """Indicator usage enumeration."""
-
-    ENTRY = "entry"
-    EXIT = "exit"
-    FILTER = "filter"
-
-
-class StrategyIndicatorConfig(BaseModel):
-    """Indicator configuration for a strategy."""
-
-    indicator_name: str = Field(..., description="Name of the indicator (sma, ema, rsi, macd, etc.)")
-    parameters: dict = Field(default_factory=dict, description="Indicator-specific parameters (e.g., {'period': 20})")
-    usage: IndicatorUsage = Field(..., description="How the indicator is used (entry, exit, filter)")
-
-    @field_validator("indicator_name")
-    @classmethod
-    def validate_indicator_name(cls, v: str) -> str:
-        """Validate indicator name."""
-        indicator_name = v.upper()
-        valid_indicators = sorted(get_indicator_map().keys())
-        if indicator_name not in valid_indicators:
-            raise ValueError(f"Invalid indicator name. Must be one of: {', '.join(valid_indicators)}")
-        return indicator_name
-
-    class Config:
-        json_schema_extra = {"example": {"indicator_name": "RSI", "parameters": {"timeperiod": 14}, "usage": "entry"}}
-
-
 class StrategyCreate(BaseModel):
     """Schema for creating a new strategy."""
 
@@ -65,7 +35,6 @@ class StrategyCreate(BaseModel):
     strategy_type: StrategyType = Field(default=StrategyType.TECHNICAL, description="Type of strategy")
     spec: Optional[StrategySpec] = Field(None, description="Canonical strategy specification")
     config: dict = Field(default_factory=dict, description="Legacy strategy configuration")
-    indicators: List[StrategyIndicatorConfig] = Field(default_factory=list, description="Legacy indicator definitions")
 
     @field_validator("name")
     @classmethod
@@ -85,8 +54,9 @@ class StrategyCreate(BaseModel):
         self.strategy_type = StrategyType.TECHNICAL
         return self
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
             "example": {
                 "name": "RSI Mean Reversion",
                 "description": "Buy when RSI < 30, sell when RSI > 70",
@@ -118,7 +88,8 @@ class StrategyCreate(BaseModel):
                     "execution": {},
                 },
             }
-        }
+        },
+    )
 
 
 class StrategyUpdate(BaseModel):
@@ -130,7 +101,6 @@ class StrategyUpdate(BaseModel):
     is_active: Optional[bool] = Field(None, description="Whether the strategy is active")
     spec: Optional[StrategySpec] = Field(None, description="Canonical strategy specification")
     config: Optional[dict] = Field(None, description="Strategy-specific configuration")
-    indicators: Optional[List[StrategyIndicatorConfig]] = Field(None, description="List of indicators to use")
 
     @model_validator(mode="after")
     def normalize_spec(self) -> "StrategyUpdate":
@@ -139,8 +109,9 @@ class StrategyUpdate(BaseModel):
             self.strategy_type = StrategyType.TECHNICAL
         return self
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
             "example": {
                 "name": "Updated RSI Strategy",
                 "is_active": True,
@@ -166,22 +137,8 @@ class StrategyUpdate(BaseModel):
                     },
                 },
             }
-        }
-
-
-class StrategyIndicatorResponse(BaseModel):
-    """Response schema for strategy indicator."""
-
-    id: int
-    strategy_id: int
-    indicator_name: str
-    parameters: dict
-    usage: str
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
+        },
+    )
 
 
 class StrategyResponse(BaseModel):
@@ -194,7 +151,6 @@ class StrategyResponse(BaseModel):
     is_active: bool
     spec: StrategySpec
     config: dict
-    indicators: List[StrategyIndicatorResponse]
     created_at: datetime
     updated_at: datetime
 
@@ -231,17 +187,6 @@ class StrategyResponse(BaseModel):
                     "execution": {},
                 },
                 "config": {},
-                "indicators": [
-                    {
-                        "id": 1,
-                        "strategy_id": 1,
-                        "indicator_name": "RSI",
-                        "parameters": {"timeperiod": 14},
-                        "usage": "entry",
-                        "created_at": "2024-01-15T10:00:00",
-                        "updated_at": "2024-01-15T10:00:00",
-                    }
-                ],
                 "created_at": "2024-01-15T10:00:00",
                 "updated_at": "2024-01-15T10:00:00",
             }

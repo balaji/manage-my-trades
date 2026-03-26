@@ -14,28 +14,6 @@ export enum SignalType {
   HOLD = 'hold',
 }
 
-export enum IndicatorUsage {
-  ENTRY = 'entry',
-  EXIT = 'exit',
-  FILTER = 'filter',
-}
-
-export interface StrategyIndicatorConfig {
-  indicator_name: string;
-  parameters: Record<string, any>;
-  usage: IndicatorUsage;
-}
-
-export interface StrategyIndicator {
-  id: number;
-  strategy_id: number;
-  indicator_name: string;
-  parameters: Record<string, any>;
-  usage: string;
-  created_at: string;
-  updated_at: string;
-}
-
 export interface Strategy {
   id: number;
   name: string;
@@ -44,7 +22,6 @@ export interface Strategy {
   is_active: boolean;
   spec: StrategySpec;
   config: Record<string, any>;
-  indicators: StrategyIndicator[];
   created_at: string;
   updated_at: string;
 }
@@ -59,7 +36,6 @@ export interface StrategyCreate {
   strategy_type: StrategyType;
   spec: StrategySpec;
   config?: Record<string, any>;
-  indicators?: StrategyIndicatorConfig[];
 }
 
 export interface StrategyUpdate {
@@ -69,7 +45,6 @@ export interface StrategyUpdate {
   is_active?: boolean;
   spec?: StrategySpec;
   config?: Record<string, any>;
-  indicators?: StrategyIndicatorConfig[];
 }
 
 export interface StrategyListResponse {
