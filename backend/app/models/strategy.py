@@ -2,9 +2,9 @@
 Strategy models.
 """
 
-from sqlalchemy import Column, Integer, String, Text, Boolean, ForeignKey, JSON
-from sqlalchemy.types import TypeDecorator
+from sqlalchemy import Column, Integer, String, Text, Boolean, JSON
 from sqlalchemy.orm import relationship
+from sqlalchemy.types import TypeDecorator
 from app.db.session import Base
 from app.models.base import TimestampMixin
 from app.core.strategies.spec import StrategySpec
@@ -40,22 +40,4 @@ class Strategy(Base, TimestampMixin):
     strategy_type: str = Column(String(50), nullable=False)  # type: ignore[assignment]  # technical, ml, combined
     is_active: bool = Column(Boolean, default=False)  # type: ignore[assignment]
     config: StrategySpec = Column(StrategySpecType, nullable=False)  # type: ignore[assignment]
-
-    # Relationships
-    indicators = relationship("StrategyIndicator", back_populates="strategy", cascade="all, delete-orphan")
     backtests = relationship("Backtest", back_populates="strategy")
-
-
-class StrategyIndicator(Base, TimestampMixin):
-    """Indicator configuration for a strategy."""
-
-    __tablename__ = "strategy_indicators"
-
-    id: int = Column(Integer, primary_key=True, index=True)  # type: ignore[assignment]
-    strategy_id: int = Column(Integer, ForeignKey("strategies.id", ondelete="CASCADE"), nullable=False)  # type: ignore[assignment]
-    indicator_name: str = Column(String(100), nullable=False)  # type: ignore[assignment]  # sma, ema, rsi, macd, etc.
-    parameters: dict = Column(JSON, nullable=False, default={})  # type: ignore[assignment]  # Indicator-specific parameters
-    usage: str = Column(String(50), nullable=False)  # type: ignore[assignment]  # entry, exit, filter
-
-    # Relationships
-    strategy = relationship("Strategy", back_populates="indicators")

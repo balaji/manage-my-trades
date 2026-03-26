@@ -44,6 +44,13 @@ export interface SupportedIndicator {
   inputs: string[];
   parameters: Array<Record<string, unknown>>;
   output_names: string[];
+  chart?: {
+    pane?: 'overlay' | 'oscillator';
+    default_enabled?: boolean;
+    default_params_presets?: Array<Record<string, unknown>>;
+    reference_lines?: Array<{ value: number; color: string }>;
+    output_labels?: Record<string, string>;
+  };
 }
 
 export const technicalAnalysisApi = {

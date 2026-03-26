@@ -2,7 +2,7 @@
 Database models.
 """
 
-from app.models.strategy import Strategy, StrategyIndicator
+from app.models.strategy import Strategy
 from app.models.backtest import Backtest, BacktestResult
 from app.models.trade import Trade
 from app.models.signal import Signal
@@ -12,7 +12,6 @@ from app.models.market_data import MarketData, IndicatorCache, PortfolioHistory
 
 __all__ = [
     "Strategy",
-    "StrategyIndicator",
     "Backtest",
     "BacktestResult",
     "Trade",

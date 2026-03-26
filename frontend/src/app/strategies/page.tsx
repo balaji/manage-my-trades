@@ -8,6 +8,10 @@ import Link from 'next/link';
 import { getStrategies, deleteStrategy, activateStrategy, deactivateStrategy } from '@/lib/api/strategies';
 import { Strategy, StrategyType, getStrategyTypeLabel } from '@/lib/types/strategy';
 
+function getIndicatorCount(strategy: Strategy): number {
+  return Array.isArray(strategy.spec?.indicators) ? strategy.spec.indicators.length : 0;
+}
+
 export default function StrategiesPage() {
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [loading, setLoading] = useState(true);
@@ -150,7 +154,7 @@ export default function StrategiesPage() {
                       </div>
                       <p className="text-gray-600 mb-2">{strategy.description || 'No description'}</p>
                       <div className="text-sm text-gray-500">
-                        <span className="mr-4">Indicators: {strategy.indicators.length}</span>
+                        <span className="mr-4">Indicators: {getIndicatorCount(strategy)}</span>
                         <span>Created: {new Date(strategy.created_at).toLocaleDateString()}</span>
                       </div>
                     </div>
@@ -174,7 +178,7 @@ export default function StrategiesPage() {
             </div>
             <div className="bg-white rounded-lg shadow p-4">
               <div className="text-2xl font-bold text-gray-600">
-                {strategies.reduce((sum, s) => sum + s.indicators.length, 0)}
+                {strategies.reduce((sum, strategy) => sum + getIndicatorCount(strategy), 0)}
               </div>
               <div className="text-sm text-gray-600">Total Indicators</div>
             </div>

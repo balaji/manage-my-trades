@@ -20,21 +20,25 @@ from app.schemas.strategy import (
     StrategyListResponse,
 )
 from app.models.strategy import Strategy
+from app.core.strategies.spec import StrategySpec
 
 router = APIRouter()
 
 
 def serialize_strategy(strategy: Strategy) -> StrategyResponse:
     """Serialize a strategy ORM object into API response shape."""
+    spec = strategy.config
+    if isinstance(spec, dict):
+        spec = StrategySpec.model_validate(spec)
+
     return StrategyResponse(
         id=strategy.id,
         name=strategy.name,
         description=strategy.description,
         strategy_type=strategy.strategy_type,
         is_active=strategy.is_active,
-        spec=strategy.config,
-        config=strategy.config.model_dump(mode="json"),
-        indicators=strategy.indicators,
+        spec=spec,
+        config=spec.model_dump(mode="json"),
         created_at=strategy.created_at,
         updated_at=strategy.updated_at,
     )

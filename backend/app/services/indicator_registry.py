@@ -10,6 +10,48 @@ from talib import abstract
 
 BAR_INPUT_FIELDS = {"open", "high", "low", "close", "volume"}
 
+DEFAULT_CHART_CONFIGS: dict[str, dict[str, Any]] = {
+    "SMA": {
+        "default_enabled": True,
+        "default_params_presets": [{"timeperiod": 10}, {"timeperiod": 20}, {"timeperiod": 30}],
+    },
+    "EMA": {
+        "default_enabled": False,
+        "default_params_presets": [{"timeperiod": 10}, {"timeperiod": 20}, {"timeperiod": 30}],
+    },
+    "RSI": {
+        "default_enabled": True,
+        "default_params_presets": [{"timeperiod": 14}],
+        "reference_lines": [
+            {"value": 70, "color": "#ef4444"},
+            {"value": 30, "color": "#22c55e"},
+        ],
+    },
+    "STOCH": {
+        "default_enabled": False,
+        "reference_lines": [
+            {"value": 80, "color": "#ef4444"},
+            {"value": 20, "color": "#22c55e"},
+        ],
+    },
+    "STOCHF": {
+        "default_enabled": False,
+        "reference_lines": [
+            {"value": 80, "color": "#ef4444"},
+            {"value": 20, "color": "#22c55e"},
+        ],
+    },
+    "BBANDS": {
+        "default_enabled": False,
+        "default_params_presets": [{"timeperiod": 20, "nbdevup": 2, "nbdevdn": 2}],
+        "output_labels": {
+            "upperband": "Upper",
+            "middleband": "Middle",
+            "lowerband": "Lower",
+        },
+    },
+}
+
 
 def _normalize_input_names(input_names: Any) -> list[str]:
     if isinstance(input_names, dict):
@@ -41,6 +83,18 @@ def _build_parameter_definition(name: str, default: Any) -> dict[str, Any]:
         "default": default,
         "required": False,
     }
+
+
+def _build_chart_definition(name: str, group: str | None) -> dict[str, Any]:
+    chart = {
+        "pane": "overlay" if group == "Overlap Studies" else "oscillator",
+        "default_enabled": False,
+        "default_params_presets": [],
+        "reference_lines": [],
+        "output_labels": {},
+    }
+    chart.update(DEFAULT_CHART_CONFIGS.get(name, {}))
+    return chart
 
 
 @lru_cache(maxsize=1)
@@ -78,6 +132,7 @@ def get_all_indicators() -> list[dict[str, Any]]:
                 "params": parameters,
                 "output_names": output_names,
                 "fields": fields,
+                "chart": _build_chart_definition(function_name, info.get("group")),
             }
         )
 
