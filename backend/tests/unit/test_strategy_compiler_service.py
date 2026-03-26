@@ -64,7 +64,7 @@ def test_compile_does_not_call_llm_when_guard_rejects(monkeypatch):
         )
 
     async def fake_request_llm(
-        prompt: str, name: str | None = None, description: str | None = None, trace=None
+        prompt: str, name: str | None = None, description: str | None = None, langfuse_client=None
     ) -> dict:
         raise AssertionError("LLM should not be called for rejected prompts")
 
@@ -89,7 +89,7 @@ def test_compile_uses_normalized_prompt_and_returns_prompt_warnings(monkeypatch)
         )
 
     async def fake_request_llm(
-        prompt: str, name: str | None = None, description: str | None = None, trace=None
+        prompt: str, name: str | None = None, description: str | None = None, langfuse_client=None
     ) -> dict:
         captured["prompt"] = prompt
         return _llm_payload()
@@ -108,12 +108,12 @@ def test_compile_works_without_langfuse_keys(monkeypatch):
     service = _service(monkeypatch)
     monkeypatch.setattr(compiler_module, "get_langfuse_client", lambda: None)
 
-    trace_received = {}
+    langfuse_received = {}
 
     async def fake_request_llm(
-        prompt: str, name: str | None = None, description: str | None = None, trace=None
+        prompt: str, name: str | None = None, description: str | None = None, langfuse_client=None
     ) -> dict:
-        trace_received["trace"] = trace
+        langfuse_received["client"] = langfuse_client
         return _llm_payload()
 
     monkeypatch.setattr(service, "_request_llm", fake_request_llm)
@@ -124,26 +124,32 @@ def test_compile_works_without_langfuse_keys(monkeypatch):
     )
 
     result = asyncio.run(service.compile("Buy SPY when EMA crosses above SMA."))
-    assert trace_received["trace"] is None
+    assert langfuse_received["client"] is None
     assert result["normalized_spec"] is not None
 
 
-def test_compile_creates_langfuse_trace_when_configured(monkeypatch):
+def test_compile_creates_langfuse_spans_when_configured(monkeypatch):
     from unittest.mock import MagicMock
 
     service = _service(monkeypatch)
 
+    mock_compiler_span = MagicMock()
     mock_guard_span = MagicMock()
-    mock_trace = MagicMock()
-    mock_trace.span.return_value = mock_guard_span
+    mock_compiler_context = MagicMock()
+    mock_compiler_context.__enter__.return_value = mock_compiler_span
+    mock_compiler_context.__exit__.return_value = None
+    mock_guard_context = MagicMock()
+    mock_guard_context.__enter__.return_value = mock_guard_span
+    mock_guard_context.__exit__.return_value = None
     mock_lf = MagicMock()
-    mock_lf.trace.return_value = mock_trace
+    mock_lf.start_as_current_observation.side_effect = [mock_compiler_context, mock_guard_context]
 
     monkeypatch.setattr(compiler_module, "get_langfuse_client", lambda: mock_lf)
 
     async def fake_request_llm(
-        prompt: str, name: str | None = None, description: str | None = None, trace=None
+        prompt: str, name: str | None = None, description: str | None = None, langfuse_client=None
     ) -> dict:
+        assert langfuse_client is mock_lf
         return _llm_payload()
 
     monkeypatch.setattr(service, "_request_llm", fake_request_llm)
@@ -155,21 +161,32 @@ def test_compile_creates_langfuse_trace_when_configured(monkeypatch):
 
     asyncio.run(service.compile("Buy SPY when EMA crosses above SMA."))
 
-    mock_lf.trace.assert_called_once()
-    assert mock_lf.trace.call_args.kwargs["name"] == "strategy_compile"
-    mock_trace.update.assert_called()
+    assert mock_lf.start_as_current_observation.call_count == 2
+    first_call = mock_lf.start_as_current_observation.call_args_list[0]
+    second_call = mock_lf.start_as_current_observation.call_args_list[1]
+    assert first_call.kwargs["name"] == "strategy_compile"
+    assert first_call.kwargs["as_type"] == "span"
+    assert second_call.kwargs["name"] == "prompt_guard"
+    assert second_call.kwargs["as_type"] == "guardrail"
+    mock_guard_span.update.assert_called_once()
+    mock_compiler_span.update.assert_called()
 
 
-def test_compile_updates_trace_with_warning_on_guard_reject(monkeypatch):
+def test_compile_updates_root_span_with_warning_on_guard_reject(monkeypatch):
     from unittest.mock import MagicMock
 
     service = _service(monkeypatch)
 
+    mock_compiler_span = MagicMock()
     mock_guard_span = MagicMock()
-    mock_trace = MagicMock()
-    mock_trace.span.return_value = mock_guard_span
+    mock_compiler_context = MagicMock()
+    mock_compiler_context.__enter__.return_value = mock_compiler_span
+    mock_compiler_context.__exit__.return_value = None
+    mock_guard_context = MagicMock()
+    mock_guard_context.__enter__.return_value = mock_guard_span
+    mock_guard_context.__exit__.return_value = None
     mock_lf = MagicMock()
-    mock_lf.trace.return_value = mock_trace
+    mock_lf.start_as_current_observation.side_effect = [mock_compiler_context, mock_guard_context]
 
     monkeypatch.setattr(compiler_module, "get_langfuse_client", lambda: mock_lf)
     monkeypatch.setattr(
@@ -183,6 +200,58 @@ def test_compile_updates_trace_with_warning_on_guard_reject(monkeypatch):
     with pytest.raises(ValueError):
         asyncio.run(service.compile("bad"))
 
-    mock_trace.update.assert_called_once()
-    update_kwargs = mock_trace.update.call_args.kwargs
+    mock_compiler_span.update.assert_called_once()
+    update_kwargs = mock_compiler_span.update.call_args.kwargs
     assert update_kwargs["level"] == "WARNING"
+
+
+def test_request_llm_creates_generation_when_langfuse_configured(monkeypatch):
+    from unittest.mock import MagicMock
+
+    service = _service(monkeypatch)
+
+    mock_generation = MagicMock()
+    mock_generation_context = MagicMock()
+    mock_generation_context.__enter__.return_value = mock_generation
+    mock_generation_context.__exit__.return_value = None
+    mock_lf = MagicMock()
+    mock_lf.start_as_current_observation.return_value = mock_generation_context
+
+    class FakeResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict:
+            return {
+                "choices": [
+                    {
+                        "message": {
+                            "content": '{"kind":"technical","metadata":{"name":"Guard Test"},"market":{"timeframe":"1d"},"indicators":[],"rules":{"entry":{"type":"cross","left":{"type":"indicator","alias":"fast_ma"},"operator":"crosses_above","right":{"type":"indicator","alias":"slow_ma"}},"exit":{"type":"cross","left":{"type":"indicator","alias":"fast_ma"},"operator":"crosses_below","right":{"type":"indicator","alias":"slow_ma"}},"filters":[]},"risk":{"position_sizing":{"method":"fixed_percentage","percentage":0.1}},"execution":{}}'
+                        }
+                    }
+                ],
+                "usage": {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
+            }
+
+    class FakeAsyncClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def post(self, *args, **kwargs):
+            return FakeResponse()
+
+    monkeypatch.setattr(compiler_module.httpx, "AsyncClient", FakeAsyncClient)
+
+    result = asyncio.run(service._request_llm("Buy SPY", langfuse_client=mock_lf))
+
+    assert result["kind"] == "technical"
+    mock_lf.start_as_current_observation.assert_called_once()
+    assert mock_lf.start_as_current_observation.call_args.kwargs["name"] == "openai_chat_completion"
+    assert mock_lf.start_as_current_observation.call_args.kwargs["as_type"] == "generation"
+    mock_generation.update.assert_called_once()

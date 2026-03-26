@@ -27,7 +27,7 @@ def test_get_langfuse_client_returns_none_without_keys(monkeypatch):
         lambda: SimpleNamespace(
             LANGFUSE_PUBLIC_KEY="",
             LANGFUSE_SECRET_KEY="",
-            LANGFUSE_HOST="https://cloud.langfuse.com",
+            LANGFUSE_BASE_URL="https://cloud.langfuse.com",
         ),
     )
     result = lf_module.get_langfuse_client()
@@ -44,7 +44,7 @@ def test_get_langfuse_client_returns_none_on_missing_secret(monkeypatch):
         lambda: SimpleNamespace(
             LANGFUSE_PUBLIC_KEY="pk-test",
             LANGFUSE_SECRET_KEY="",
-            LANGFUSE_HOST="https://cloud.langfuse.com",
+            LANGFUSE_BASE_URL="https://cloud.langfuse.com",
         ),
     )
     result = lf_module.get_langfuse_client()
@@ -62,7 +62,7 @@ def test_get_langfuse_client_is_idempotent(monkeypatch):
         lambda: SimpleNamespace(
             LANGFUSE_PUBLIC_KEY="",
             LANGFUSE_SECRET_KEY="",
-            LANGFUSE_HOST="https://cloud.langfuse.com",
+            LANGFUSE_BASE_URL="https://cloud.langfuse.com",
         ),
     )
     r1 = lf_module.get_langfuse_client()

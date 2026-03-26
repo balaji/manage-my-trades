@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     OPENAI_BASE_URL: str = "https://api.openai.com/v1"
     LANGFUSE_PUBLIC_KEY: str = ""
     LANGFUSE_SECRET_KEY: str = ""
-    LANGFUSE_HOST: str = "https://cloud.langfuse.com"
+    LANGFUSE_BASE_URL: str = "https://cloud.langfuse.com"
 
     # Trading Configuration
     DEFAULT_COMMISSION: float = 0.0  # Alpaca has no commission
