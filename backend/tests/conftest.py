@@ -1,3 +1,8 @@
+import os
+
+os.environ.setdefault("TRADE_DATA_DATABASE_URL", "postgresql+asyncpg://test:test@localhost/test")
+os.environ.setdefault("MARKET_DATA_DATABASE_URL", "postgresql+asyncpg://test:test@localhost/test_market")
+
 from datetime import datetime, timedelta
 
 import numpy as np
