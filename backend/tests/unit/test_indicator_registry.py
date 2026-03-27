@@ -26,3 +26,10 @@ def test_supported_indicators_include_chart_metadata():
         "middleband": "Middle",
         "lowerband": "Lower",
     }
+
+    # Non-oscillator, non-overlay groups should use "other" pane
+    floor = indicators["FLOOR"]
+    assert floor["chart"]["pane"] == "other"
+
+    add = indicators["ADD"]
+    assert add["chart"]["pane"] == "other"

@@ -41,9 +41,15 @@ function IndicatorDropdown({
   loading,
   onSelect,
 }: IndicatorDropdownProps) {
+  const [filterText, setFilterText] = useState('');
+
   if (options.length === 0) {
     return null;
   }
+
+  const filteredOptions = filterText
+    ? options.filter(({ label }) => label.toLowerCase().includes(filterText.toLowerCase()))
+    : options;
 
   return (
     <div className="relative">
@@ -62,21 +68,40 @@ function IndicatorDropdown({
         </svg>
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-10 mt-1 max-h-96 min-w-[260px] overflow-y-auto rounded-lg border bg-white shadow-lg">
-          {options.map(({ id, color, label }) => (
-            <label key={id} className="flex cursor-pointer select-none items-center gap-2.5 px-3 py-2 hover:bg-gray-50">
-              <input
-                type="checkbox"
-                checked={enabledIndicatorIds.has(id)}
-                onChange={() => void onSelect(id)}
-                disabled={loadingIndicatorIds.has(id) || loading}
-                className="h-4 w-4"
-                style={{ accentColor: color }}
-              />
-              <span className="inline-block h-0.5 w-5 rounded" style={{ backgroundColor: color }} />
-              <span className="text-sm">{label}</span>
-            </label>
-          ))}
+        <div className="absolute left-0 top-full z-10 mt-1 min-w-[260px] rounded-lg border bg-white shadow-lg">
+          <div className="border-b px-3 py-2">
+            <input
+              type="text"
+              value={filterText}
+              onChange={(e) => setFilterText(e.target.value)}
+              placeholder="Filter..."
+              className="w-full rounded border border-gray-200 px-2 py-1 text-sm focus:border-sky-400 focus:outline-none"
+              autoFocus
+            />
+          </div>
+          <div className="max-h-80 overflow-y-auto">
+            {filteredOptions.length === 0 ? (
+              <div className="px-3 py-2 text-sm text-gray-400">No matches</div>
+            ) : (
+              filteredOptions.map(({ id, color, label }) => (
+                <label
+                  key={id}
+                  className="flex cursor-pointer select-none items-center gap-2.5 px-3 py-2 hover:bg-gray-50"
+                >
+                  <input
+                    type="checkbox"
+                    checked={enabledIndicatorIds.has(id)}
+                    onChange={() => void onSelect(id)}
+                    disabled={loadingIndicatorIds.has(id) || loading}
+                    className="h-4 w-4"
+                    style={{ accentColor: color }}
+                  />
+                  <span className="inline-block h-0.5 w-5 rounded" style={{ backgroundColor: color }} />
+                  <span className="text-sm">{label}</span>
+                </label>
+              ))
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -94,7 +119,11 @@ export default function TechnicalAnalysisPage() {
   >([]);
   const [enabledIndicatorIds, setEnabledIndicatorIds] = useState<Set<string>>(new Set());
   const [overlayDropdownOpen, setOverlayDropdownOpen] = useState(false);
+  const [overlayDropdownOpenCount, setOverlayDropdownOpenCount] = useState(0);
   const [oscillatorDropdownOpen, setOscillatorDropdownOpen] = useState(false);
+  const [oscillatorDropdownOpenCount, setOscillatorDropdownOpenCount] = useState(0);
+  const [otherDropdownOpen, setOtherDropdownOpen] = useState(false);
+  const [otherDropdownOpenCount, setOtherDropdownOpenCount] = useState(0);
   const [rangeDays, setRangeDays] = useState(90);
   const [loadedRequest, setLoadedRequest] = useState<{
     symbol: string;
@@ -106,6 +135,7 @@ export default function TechnicalAnalysisPage() {
 
   const overlayDropdownRef = useRef<HTMLDivElement>(null);
   const oscillatorDropdownRef = useRef<HTMLDivElement>(null);
+  const otherDropdownRef = useRef<HTMLDivElement>(null);
   const priceChartRef = useRef<IChartApi | null>(null);
   const chartRequestVersionRef = useRef(0);
 
@@ -118,6 +148,7 @@ export default function TechnicalAnalysisPage() {
     () => indicatorOptions.filter((option) => option.pane === 'oscillator'),
     [indicatorOptions]
   );
+  const otherOptions = useMemo(() => indicatorOptions.filter((option) => option.pane === 'other'), [indicatorOptions]);
   const chartSeries = useMemo(
     () =>
       buildChartSeries(
@@ -139,6 +170,10 @@ export default function TechnicalAnalysisPage() {
 
       if (oscillatorDropdownRef.current && !oscillatorDropdownRef.current.contains(target)) {
         setOscillatorDropdownOpen(false);
+      }
+
+      if (otherDropdownRef.current && !otherDropdownRef.current.contains(target)) {
+        setOtherDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handler);
@@ -318,6 +353,22 @@ export default function TechnicalAnalysisPage() {
     [enabledIndicatorIds, indicatorOptions, indicatorResults, loadedRequest]
   );
 
+  const handleClear = useCallback(() => {
+    chartRequestVersionRef.current++;
+    setSymbol('SPY');
+    setLoading(false);
+    setError(null);
+    setChartData([]);
+    setIndicatorResults([]);
+    setEnabledIndicatorIds(new Set());
+    setOverlayDropdownOpen(false);
+    setOscillatorDropdownOpen(false);
+    setOtherDropdownOpen(false);
+    setRangeDays(90);
+    setLoadedRequest(null);
+    setLoadingIndicatorIds(new Set());
+  }, []);
+
   const handlePriceChartReady = useCallback((chart: IChartApi) => {
     priceChartRef.current = chart;
   }, []);
@@ -356,6 +407,13 @@ export default function TechnicalAnalysisPage() {
           >
             {loading ? 'Loading...' : 'Load Chart'}
           </button>
+          <button
+            onClick={handleClear}
+            disabled={loading}
+            className="rounded-lg border border-slate-300 px-5 py-2 font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Clear
+          </button>
           <div className="flex flex-wrap items-center gap-2">
             {RANGES.map(({ label, days }) => (
               <button
@@ -384,11 +442,16 @@ export default function TechnicalAnalysisPage() {
             {overlayOptions.length > 0 && (
               <div ref={overlayDropdownRef}>
                 <IndicatorDropdown
+                  key={overlayDropdownOpenCount}
                   buttonLabel="Technicals"
                   open={overlayDropdownOpen}
                   onToggle={() => {
-                    setOverlayDropdownOpen((open) => !open);
+                    setOverlayDropdownOpen((prev) => {
+                      if (!prev) setOverlayDropdownOpenCount((c) => c + 1);
+                      return !prev;
+                    });
                     setOscillatorDropdownOpen(false);
+                    setOtherDropdownOpen(false);
                   }}
                   options={overlayOptions}
                   enabledIndicatorIds={enabledIndicatorIds}
@@ -402,13 +465,41 @@ export default function TechnicalAnalysisPage() {
             {oscillatorOptions.length > 0 && (
               <div ref={oscillatorDropdownRef}>
                 <IndicatorDropdown
+                  key={oscillatorDropdownOpenCount}
                   buttonLabel="Oscillators"
                   open={oscillatorDropdownOpen}
                   onToggle={() => {
-                    setOscillatorDropdownOpen((open) => !open);
+                    setOscillatorDropdownOpen((prev) => {
+                      if (!prev) setOscillatorDropdownOpenCount((c) => c + 1);
+                      return !prev;
+                    });
                     setOverlayDropdownOpen(false);
+                    setOtherDropdownOpen(false);
                   }}
                   options={oscillatorOptions}
+                  enabledIndicatorIds={enabledIndicatorIds}
+                  loadingIndicatorIds={loadingIndicatorIds}
+                  loading={loading}
+                  onSelect={toggleIndicator}
+                />
+              </div>
+            )}
+
+            {otherOptions.length > 0 && (
+              <div ref={otherDropdownRef}>
+                <IndicatorDropdown
+                  key={otherDropdownOpenCount}
+                  buttonLabel="Others"
+                  open={otherDropdownOpen}
+                  onToggle={() => {
+                    setOtherDropdownOpen((prev) => {
+                      if (!prev) setOtherDropdownOpenCount((c) => c + 1);
+                      return !prev;
+                    });
+                    setOverlayDropdownOpen(false);
+                    setOscillatorDropdownOpen(false);
+                  }}
+                  options={otherOptions}
                   enabledIndicatorIds={enabledIndicatorIds}
                   loadingIndicatorIds={loadingIndicatorIds}
                   loading={loading}

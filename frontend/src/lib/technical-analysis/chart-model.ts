@@ -29,7 +29,7 @@ export interface IndicatorPresetOption {
   displayName: string;
   label: string;
   params: Record<string, unknown>;
-  pane: 'overlay' | 'oscillator';
+  pane: 'overlay' | 'oscillator' | 'other';
   defaultSelected: boolean;
   color: string;
 }
@@ -80,8 +80,11 @@ function formatIndicatorLabel(name: string, params: Record<string, unknown>): st
   return `${name} (${values.join(', ')})`;
 }
 
-function getPane(indicator: SupportedIndicator): 'overlay' | 'oscillator' {
-  return indicator.chart?.pane ?? (indicator.group === 'Overlap Studies' ? 'overlay' : 'oscillator');
+function getPane(indicator: SupportedIndicator): 'overlay' | 'oscillator' | 'other' {
+  if (indicator.chart?.pane) {
+    return indicator.chart.pane;
+  }
+  return indicator.group === 'Overlap Studies' ? 'overlay' : 'oscillator';
 }
 
 function buildDefaultParams(indicator: SupportedIndicator): Record<string, unknown> | null {
@@ -186,6 +189,7 @@ export function buildChartSeries(
       if (pane === 'overlay') {
         overlays.push(series);
       } else {
+        // 'oscillator' and 'other' both render as sub-pane charts
         oscillators.push({
           ...series,
           referenceLines: outputEntries.length === 1 ? indicator?.chart?.reference_lines : undefined,

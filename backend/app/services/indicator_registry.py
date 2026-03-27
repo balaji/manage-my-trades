@@ -10,6 +10,14 @@ from talib import abstract
 
 BAR_INPUT_FIELDS = {"open", "high", "low", "close", "volume"}
 
+OSCILLATOR_GROUPS = {
+    "Cycle Indicators",
+    "Momentum Indicators",
+    "Statistic Functions",
+    "Volatility Indicators",
+    "Volume Indicators",
+}
+
 DEFAULT_CHART_CONFIGS: dict[str, dict[str, Any]] = {
     "SMA": {
         "default_enabled": True,
@@ -86,8 +94,14 @@ def _build_parameter_definition(name: str, default: Any) -> dict[str, Any]:
 
 
 def _build_chart_definition(name: str, group: str | None) -> dict[str, Any]:
+    if group == "Overlap Studies":
+        pane = "overlay"
+    elif group in OSCILLATOR_GROUPS:
+        pane = "oscillator"
+    else:
+        pane = "other"
     chart = {
-        "pane": "overlay" if group == "Overlap Studies" else "oscillator",
+        "pane": pane,
         "default_enabled": False,
         "default_params_presets": [],
         "reference_lines": [],
