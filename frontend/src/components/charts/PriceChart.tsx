@@ -385,10 +385,14 @@ export function PriceChart({
               series.applyOptions({ color: oscillator.color, title: oscillator.name });
             }
 
+            const CHART_MAX_VALUE = 90071992547409.91;
             const lineMap = new Map<UTCTimestamp, LineData>();
             oscillator.data.forEach((point) => {
               const pointTime = new Date(point.timestamp).getTime();
               if (visibleBounds && (pointTime < visibleBounds.from || pointTime > visibleBounds.to)) {
+                return;
+              }
+              if (!isFinite(point.value) || Math.abs(point.value) > CHART_MAX_VALUE) {
                 return;
               }
 
