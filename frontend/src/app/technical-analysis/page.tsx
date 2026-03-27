@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import { IChartApi } from 'lightweight-charts';
 import { PriceChart } from '@/components/charts/PriceChart';
 import { marketDataApi, technicalAnalysisApi } from '@/lib/api';
@@ -9,7 +8,6 @@ import type { OHLCVBar } from '@/lib/types/market-data';
 import type { IndicatorResult } from '@/lib/api/technical-analysis';
 import {
   buildChartSeries,
-  buildDefaultIndicatorRequests,
   buildIndicatorPresetOptions,
   serializeIndicatorKey,
 } from '@/lib/technical-analysis/chart-model';
@@ -109,12 +107,9 @@ export default function TechnicalAnalysisPage() {
   const overlayDropdownRef = useRef<HTMLDivElement>(null);
   const oscillatorDropdownRef = useRef<HTMLDivElement>(null);
   const priceChartRef = useRef<IChartApi | null>(null);
+  const chartRequestVersionRef = useRef(0);
 
   const indicatorOptions = useMemo(() => buildIndicatorPresetOptions(supportedIndicators), [supportedIndicators]);
-  const defaultIndicatorRequests = useMemo(
-    () => buildDefaultIndicatorRequests(supportedIndicators),
-    [supportedIndicators]
-  );
   const overlayOptions = useMemo(
     () => indicatorOptions.filter((option) => option.pane === 'overlay'),
     [indicatorOptions]
@@ -172,17 +167,6 @@ export default function TechnicalAnalysisPage() {
     };
   }, []);
 
-  useEffect(() => {
-    if (indicatorOptions.length === 0) return;
-
-    setEnabledIndicatorIds((current) => {
-      if (current.size > 0) {
-        return current;
-      }
-      return new Set(indicatorOptions.filter((option) => option.defaultSelected).map((option) => option.id));
-    });
-  }, [indicatorOptions]);
-
   const handleLoadData = useCallback(
     async (days: number = rangeDays) => {
       if (indicatorOptions.length === 0) {
@@ -190,8 +174,15 @@ export default function TechnicalAnalysisPage() {
         return;
       }
 
+      const requestVersion = ++chartRequestVersionRef.current;
+
+      const selectedIndicatorRequests = indicatorOptions
+        .filter((option) => enabledIndicatorIds.has(option.id))
+        .map(({ name, params }) => ({ name, params }));
+
       setLoading(true);
       setError(null);
+      setLoadingIndicatorIds(new Set());
 
       try {
         const endDate = new Date();
@@ -212,14 +203,24 @@ export default function TechnicalAnalysisPage() {
             end_date: endDateStr,
             timeframe: '1d',
           }),
-          technicalAnalysisApi.calculateIndicators({
-            symbol,
-            timeframe: '1d',
-            start_date: indicatorStartDateStr,
-            end_date: endDateStr,
-            indicators: defaultIndicatorRequests,
-          }),
+          selectedIndicatorRequests.length > 0
+            ? technicalAnalysisApi.calculateIndicators({
+                symbol,
+                timeframe: '1d',
+                start_date: indicatorStartDateStr,
+                end_date: endDateStr,
+                indicators: selectedIndicatorRequests,
+              })
+            : Promise.resolve({
+                symbol,
+                timeframe: '1d',
+                indicators: [],
+              }),
         ]);
+
+        if (requestVersion !== chartRequestVersionRef.current) {
+          return;
+        }
 
         if (marketData.length > 0 && marketData[0].bars.length > 0) {
           setChartData(marketData[0].bars);
@@ -237,12 +238,17 @@ export default function TechnicalAnalysisPage() {
           setLoadedRequest(null);
         }
       } catch (err: any) {
+        if (requestVersion !== chartRequestVersionRef.current) {
+          return;
+        }
         setError(err.message || 'Failed to load data');
       } finally {
-        setLoading(false);
+        if (requestVersion === chartRequestVersionRef.current) {
+          setLoading(false);
+        }
       }
     },
-    [defaultIndicatorRequests, indicatorOptions.length, rangeDays, symbol]
+    [enabledIndicatorIds, indicatorOptions, rangeDays, symbol]
   );
 
   const toggleIndicator = useCallback(
@@ -272,6 +278,7 @@ export default function TechnicalAnalysisPage() {
       }
 
       setLoadingIndicatorIds((prev) => new Set(prev).add(id));
+      const requestVersion = chartRequestVersionRef.current;
 
       try {
         const response = await technicalAnalysisApi.calculateIndicators({
@@ -282,11 +289,18 @@ export default function TechnicalAnalysisPage() {
           indicators: [{ name: option.name, params: option.params }],
         });
 
+        if (requestVersion !== chartRequestVersionRef.current) {
+          return;
+        }
+
         setIndicatorResults((prev) => [
           ...prev.filter((result) => serializeIndicatorKey(result.name, result.params ?? {}) !== id),
           ...response.indicators,
         ]);
       } catch (err: any) {
+        if (requestVersion !== chartRequestVersionRef.current) {
+          return;
+        }
         setEnabledIndicatorIds((prev) => {
           const next = new Set(prev);
           next.delete(id);
@@ -308,14 +322,6 @@ export default function TechnicalAnalysisPage() {
     priceChartRef.current = chart;
   }, []);
 
-  useEffect(() => {
-    if (chartData.length === 0) return;
-    const id = requestAnimationFrame(() => {
-      priceChartRef.current?.timeScale().fitContent();
-    });
-    return () => cancelAnimationFrame(id);
-  }, [chartData]);
-
   const activeOverlaySeries = useMemo(
     () => chartSeries.overlays.filter((series) => enabledIndicatorIds.has(series.selectionId)),
     [chartSeries.overlays, enabledIndicatorIds]
@@ -330,122 +336,124 @@ export default function TechnicalAnalysisPage() {
   );
 
   return (
-    <div className="min-h-screen p-8">
-      <div className="mx-auto max-w-7xl">
-        <Link href="/" className="text-sm text-blue-600 hover:underline">
-          ← Home
-        </Link>
-        <h1 className="mb-8 mt-1 text-3xl font-bold">Technical Analysis</h1>
-
-        <div className="mb-6 rounded-lg bg-white p-6 shadow">
-          <div className="mb-6 flex gap-4">
-            <div className="flex-1">
-              <label className="mb-2 block text-sm font-medium">Symbol</label>
-              <input
-                type="text"
-                value={symbol}
-                onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-                onKeyDown={(e) => e.key === 'Enter' && !loading && handleLoadData(rangeDays)}
-                className="w-full rounded-lg border px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter symbol (e.g., SPY)"
-              />
-            </div>
-            <div className="flex items-end">
-              <button
-                onClick={() => handleLoadData(rangeDays)}
-                disabled={loading || defaultIndicatorRequests.length === 0}
-                className="rounded-lg bg-blue-600 px-6 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
-              >
-                {loading ? 'Loading...' : 'Load Chart'}
-              </button>
-            </div>
+    <div className="flex h-screen flex-col overflow-hidden bg-slate-50 text-slate-900">
+      <div className="border-b border-slate-200 bg-white px-5 py-4">
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="min-w-56 flex-1">
+            <input
+              type="text"
+              value={symbol}
+              onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+              onKeyDown={(e) => e.key === 'Enter' && !loading && handleLoadData(rangeDays)}
+              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 placeholder:text-slate-400 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20"
+              placeholder="Enter symbol (e.g., SPY)"
+            />
           </div>
-
-          {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>}
-
-          {chartData.length > 0 && (
-            <div>
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-xl font-semibold">{symbol} - Daily Chart</h2>
-                <div className="flex items-center gap-3">
-                  {RANGES.map(({ label, days }) => (
-                    <button
-                      key={days}
-                      onClick={() => {
-                        setRangeDays(days);
-                        handleLoadData(days);
-                      }}
-                      disabled={loading}
-                      className={`rounded px-3 py-1 text-sm ${rangeDays === days ? 'bg-blue-600 text-white' : 'text-blue-600 hover:underline'}`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mb-3 flex flex-wrap items-center gap-4">
-                {overlayOptions.length > 0 && (
-                  <div ref={overlayDropdownRef}>
-                    <IndicatorDropdown
-                      buttonLabel="Technicals"
-                      open={overlayDropdownOpen}
-                      onToggle={() => {
-                        setOverlayDropdownOpen((open) => !open);
-                        setOscillatorDropdownOpen(false);
-                      }}
-                      options={overlayOptions}
-                      enabledIndicatorIds={enabledIndicatorIds}
-                      loadingIndicatorIds={loadingIndicatorIds}
-                      loading={loading}
-                      onSelect={toggleIndicator}
-                    />
-                  </div>
-                )}
-
-                {oscillatorOptions.length > 0 && (
-                  <div ref={oscillatorDropdownRef}>
-                    <IndicatorDropdown
-                      buttonLabel="Oscillators"
-                      open={oscillatorDropdownOpen}
-                      onToggle={() => {
-                        setOscillatorDropdownOpen((open) => !open);
-                        setOverlayDropdownOpen(false);
-                      }}
-                      options={oscillatorOptions}
-                      enabledIndicatorIds={enabledIndicatorIds}
-                      loadingIndicatorIds={loadingIndicatorIds}
-                      loading={loading}
-                      onSelect={toggleIndicator}
-                    />
-                  </div>
-                )}
-
-                {activeOverlayLegend.map(({ id, color, label }) => (
-                  <span key={id} className="flex items-center gap-1.5 text-sm">
-                    <span className="inline-block h-0.5 w-6 rounded" style={{ backgroundColor: color }} />
-                    {label}
-                  </span>
-                ))}
-              </div>
-
-              <PriceChart
-                data={chartData}
-                indicators={activeOverlaySeries}
-                oscillators={activeOscillatorSeries}
-                height={500}
-                onChartReady={handlePriceChartReady}
-              />
-            </div>
-          )}
-
-          {!loading && chartData.length === 0 && !error && (
-            <div className="py-12 text-center text-gray-500">
-              <p>Enter a symbol and click &quot;Load Chart&quot; to view technical analysis</p>
-              <p className="mt-2 text-sm">Popular ETFs: SPY, QQQ, IWM, DIA, GLD</p>
-            </div>
-          )}
+          <button
+            onClick={() => handleLoadData(rangeDays)}
+            disabled={loading || indicatorOptions.length === 0}
+            className="rounded-lg bg-sky-600 px-5 py-2 font-medium text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:bg-slate-300"
+          >
+            {loading ? 'Loading...' : 'Load Chart'}
+          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {RANGES.map(({ label, days }) => (
+              <button
+                key={days}
+                onClick={() => {
+                  setRangeDays(days);
+                  handleLoadData(days);
+                }}
+                disabled={loading}
+                className={`rounded px-3 py-1 text-sm transition ${
+                  rangeDays === days
+                    ? 'bg-slate-900 text-white'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {error && <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-red-700">{error}</div>}
+
+        {chartData.length > 0 && (
+          <div className="mt-4 flex flex-wrap items-center gap-4">
+            {overlayOptions.length > 0 && (
+              <div ref={overlayDropdownRef}>
+                <IndicatorDropdown
+                  buttonLabel="Technicals"
+                  open={overlayDropdownOpen}
+                  onToggle={() => {
+                    setOverlayDropdownOpen((open) => !open);
+                    setOscillatorDropdownOpen(false);
+                  }}
+                  options={overlayOptions}
+                  enabledIndicatorIds={enabledIndicatorIds}
+                  loadingIndicatorIds={loadingIndicatorIds}
+                  loading={loading}
+                  onSelect={toggleIndicator}
+                />
+              </div>
+            )}
+
+            {oscillatorOptions.length > 0 && (
+              <div ref={oscillatorDropdownRef}>
+                <IndicatorDropdown
+                  buttonLabel="Oscillators"
+                  open={oscillatorDropdownOpen}
+                  onToggle={() => {
+                    setOscillatorDropdownOpen((open) => !open);
+                    setOverlayDropdownOpen(false);
+                  }}
+                  options={oscillatorOptions}
+                  enabledIndicatorIds={enabledIndicatorIds}
+                  loadingIndicatorIds={loadingIndicatorIds}
+                  loading={loading}
+                  onSelect={toggleIndicator}
+                />
+              </div>
+            )}
+
+            {activeOverlayLegend.map(({ id, color, label }) => (
+              <span key={id} className="flex items-center gap-1.5 text-sm text-slate-600">
+                <span className="inline-block h-0.5 w-6 rounded" style={{ backgroundColor: color }} />
+                {label}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {chartData.length > 0 ? (
+          <PriceChart
+            data={chartData}
+            indicators={activeOverlaySeries}
+            oscillators={activeOscillatorSeries}
+            timeRange={
+              loadedRequest
+                ? {
+                    from: `${loadedRequest.startDate}T00:00:00Z`,
+                    to: `${loadedRequest.endDate}T23:59:59Z`,
+                  }
+                : undefined
+            }
+            onChartReady={handlePriceChartReady}
+          />
+        ) : (
+          !loading &&
+          !error && (
+            <div className="flex h-full items-center justify-center px-6 text-center text-slate-500">
+              <div>
+                <p className="text-lg">Enter a symbol and load a chart</p>
+                <p className="mt-2 text-sm">Popular ETFs: SPY, QQQ, IWM, DIA, GLD</p>
+              </div>
+            </div>
+          )
+        )}
       </div>
     </div>
   );

@@ -8,6 +8,7 @@ import {
   createChart,
   createSeriesMarkers,
   IChartApi,
+  IPaneApi,
   ISeriesMarkersPluginApi,
   ISeriesApi,
   CandlestickData,
@@ -21,7 +22,6 @@ import {
   LineSeries,
 } from 'lightweight-charts';
 import type { OHLCVBar } from '@/lib/types/market-data';
-import { getRemovedSeriesNames } from './seriesCleanup.js';
 
 interface IndicatorConfig {
   name: string;
@@ -32,6 +32,8 @@ interface IndicatorConfig {
 }
 
 interface OscillatorConfig {
+  id?: string;
+  selectionId?: string;
   name: string;
   data: Array<{ timestamp: string; value: number }>;
   color: string;
@@ -52,13 +54,43 @@ interface PriceChartProps {
   onChartReady?: (chart: IChartApi) => void;
 }
 
+function preserveVisibleRange(chart: IChartApi, update: () => void, fitInstead = false) {
+  if (fitInstead) {
+    update();
+    chart.timeScale().fitContent();
+    return;
+  }
+
+  const savedRange = chart.timeScale().getVisibleRange();
+  update();
+
+  if (savedRange) {
+    chart.timeScale().setVisibleRange(savedRange);
+  }
+}
+
+function parseTimeRangeBounds(timeRange?: { from: string; to: string }) {
+  if (!timeRange) {
+    return null;
+  }
+
+  const from = new Date(timeRange.from).getTime();
+  const to = new Date(timeRange.to).getTime();
+
+  if (Number.isNaN(from) || Number.isNaN(to)) {
+    return null;
+  }
+
+  return { from, to };
+}
+
 export function PriceChart({
   data,
   indicators = [],
   oscillators = [],
   markers = [],
   oscillatorHeight = 160,
-  height = 400,
+  height,
   timeRange,
   onChartReady,
 }: PriceChartProps) {
@@ -68,23 +100,38 @@ export function PriceChart({
   const markerSeriesRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
   const closeSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const indicatorSeriesRef = useRef<Map<string, ISeriesApi<'Line'>>>(new Map());
-  // Oscillator pane (pane index 1) series and reference lines
-  const oscillatorSeriesRef = useRef<Map<string, ISeriesApi<'Line'>>>(new Map());
-  const refLineSeriesRef = useRef<Map<string, ISeriesApi<'Line'>[]>>(new Map());
+  const oscillatorPaneRef = useRef<
+    Map<
+      string,
+      {
+        pane: IPaneApi<Time>;
+        series: Map<string, ISeriesApi<'Line'>>;
+        referenceLines: ISeriesApi<'Line'>[];
+      }
+    >
+  >(new Map());
   const onChartReadyRef = useRef(onChartReady);
   const timeRangeRef = useRef(timeRange);
+  const shouldFitContentRef = useRef(false);
   useLayoutEffect(() => {
     onChartReadyRef.current = onChartReady;
     timeRangeRef.current = timeRange;
   }, [onChartReady, timeRange]);
-  const prevDataRef = useRef(data);
+
+  const getOscillatorKey = (oscillator: OscillatorConfig) => oscillator.selectionId ?? oscillator.id ?? oscillator.name;
+  const getOscillatorSeriesKey = (oscillator: OscillatorConfig) => oscillator.id ?? oscillator.name;
+  const oscillatorPaneCount = new Set(oscillators.map((oscillator) => getOscillatorKey(oscillator))).size;
+  const totalHeight = (height ?? 400) + oscillatorPaneCount * oscillatorHeight;
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
+    const container = chartContainerRef.current;
+    const initialHeight = container.clientHeight || totalHeight;
+
     const chart = createChart(chartContainerRef.current, {
-      width: chartContainerRef.current.clientWidth,
-      height: height + oscillatorHeight,
+      width: container.clientWidth,
+      height: initialHeight,
       layout: {
         background: { color: '#ffffff' },
         textColor: '#333',
@@ -122,37 +169,45 @@ export function PriceChart({
       crosshairMarkerVisible: false,
     });
 
-    // Pane 1: oscillator sub-pane
-    const oscPane = chart.addPane();
-    oscPane.setHeight(oscillatorHeight);
+    const resizeObserver =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver((entries) => {
+            const entry = entries[0];
+            if (!entry || !chartRef.current) {
+              return;
+            }
 
-    const handleResize = () => {
-      if (chartContainerRef.current && chartRef.current) {
-        chartRef.current.applyOptions({
-          width: chartContainerRef.current.clientWidth,
-        });
-      }
-    };
-    window.addEventListener('resize', handleResize);
+            chartRef.current.applyOptions({
+              width: Math.floor(entry.contentRect.width),
+              height: Math.floor(entry.contentRect.height) || initialHeight,
+            });
+          })
+        : null;
+    resizeObserver?.observe(container);
 
     onChartReadyRef.current?.(chart);
 
     const indicatorSeries = indicatorSeriesRef.current;
-    const oscillatorSeries = oscillatorSeriesRef.current;
-    const refLineSeries = refLineSeriesRef.current;
+    const oscillatorPanes = oscillatorPaneRef.current;
 
     return () => {
-      window.removeEventListener('resize', handleResize);
+      resizeObserver?.disconnect();
       chart.remove();
       chartRef.current = null;
       candlestickSeriesRef.current = null;
       markerSeriesRef.current = null;
       closeSeriesRef.current = null;
       indicatorSeries.clear();
-      oscillatorSeries.clear();
-      refLineSeries.clear();
+      oscillatorPanes.clear();
     };
-  }, [height, oscillatorHeight]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!chartRef.current) return;
+    preserveVisibleRange(chartRef.current, () => {
+      chartRef.current?.applyOptions({ height: totalHeight });
+    });
+  }, [totalHeight]);
 
   useEffect(() => {
     if (!candlestickSeriesRef.current || !data.length) return;
@@ -177,16 +232,8 @@ export function PriceChart({
     const closeData: LineData[] = candlestickData.map((bar) => ({ time: bar.time, value: bar.close }));
     closeSeriesRef.current?.setData(closeData);
 
-    const dataChanged = prevDataRef.current !== data;
-    const savedRange = !dataChanged ? chartRef.current?.timeScale().getVisibleLogicalRange() : null;
-
-    if (dataChanged) {
-      prevDataRef.current = data;
-    } else if (timeRangeRef.current) {
-      chartRef.current?.timeScale().fitContent();
-    } else if (savedRange) {
-      chartRef.current?.timeScale().setVisibleLogicalRange(savedRange);
-    }
+    shouldFitContentRef.current = true;
+    chartRef.current?.timeScale().fitContent();
   }, [data]);
 
   useEffect(() => {
@@ -196,169 +243,223 @@ export function PriceChart({
   useEffect(() => {
     if (!chartRef.current) return;
 
-    const savedRange = chartRef.current.timeScale().getVisibleLogicalRange();
     const activeIndicatorNames = new Set(indicators.map((indicator) => indicator.name));
+    const fitContent = shouldFitContentRef.current;
 
-    indicatorSeriesRef.current.forEach((series, name) => {
-      if (!activeIndicatorNames.has(name)) {
-        series.applyOptions({ visible: false });
-      }
-    });
-
-    indicators.forEach((indicator) => {
-      if (!chartRef.current) return;
-
-      let lineSeries = indicatorSeriesRef.current.get(indicator.name);
-      if (!lineSeries) {
-        lineSeries = chartRef.current.addSeries(
-          LineSeries,
-          {
-            color: indicator.color || '#2196F3',
-            lineWidth: (indicator.lineWidth ?? 2) as LineWidth,
-            lineStyle: indicator.lineStyle ?? LineStyle.Solid,
-            title: indicator.name,
-            priceLineVisible: false,
-            lastValueVisible: indicator.lineStyle === undefined,
-            visible: true,
-          },
-          0 // pane 0
-        );
-        indicatorSeriesRef.current.set(indicator.name, lineSeries);
-      } else {
-        lineSeries.applyOptions({
-          color: indicator.color || '#2196F3',
-          lineWidth: (indicator.lineWidth ?? 2) as LineWidth,
-          lineStyle: indicator.lineStyle ?? LineStyle.Solid,
-          title: indicator.name,
-          priceLineVisible: false,
-          lastValueVisible: indicator.lineStyle === undefined,
-          visible: true,
+    preserveVisibleRange(
+      chartRef.current,
+      () => {
+        indicatorSeriesRef.current.forEach((series, name) => {
+          if (!activeIndicatorNames.has(name)) {
+            series.applyOptions({ visible: false });
+          }
         });
-      }
 
-      const lineMap = new Map<UTCTimestamp, LineData>();
-      indicator.data.forEach((point) => {
-        const time = (new Date(point.timestamp).getTime() / 1000) as UTCTimestamp;
-        lineMap.set(time, { time, value: point.value });
-      });
-      const lineData: LineData[] = Array.from(lineMap.values()).sort((a, b) => (a.time as number) - (b.time as number));
+        indicators.forEach((indicator) => {
+          if (!chartRef.current) return;
 
-      lineSeries.setData(lineData);
-    });
+          let lineSeries = indicatorSeriesRef.current.get(indicator.name);
+          if (!lineSeries) {
+            lineSeries = chartRef.current.addSeries(
+              LineSeries,
+              {
+                color: indicator.color || '#2196F3',
+                lineWidth: (indicator.lineWidth ?? 2) as LineWidth,
+                lineStyle: indicator.lineStyle ?? LineStyle.Solid,
+                title: indicator.name,
+                priceLineVisible: false,
+                lastValueVisible: indicator.lineStyle === undefined,
+                visible: true,
+              },
+              0 // pane 0
+            );
+            indicatorSeriesRef.current.set(indicator.name, lineSeries);
+          } else {
+            lineSeries.applyOptions({
+              color: indicator.color || '#2196F3',
+              lineWidth: (indicator.lineWidth ?? 2) as LineWidth,
+              lineStyle: indicator.lineStyle ?? LineStyle.Solid,
+              title: indicator.name,
+              priceLineVisible: false,
+              lastValueVisible: indicator.lineStyle === undefined,
+              visible: true,
+            });
+          }
 
-    if (timeRangeRef.current) {
-      chartRef.current?.timeScale().fitContent();
-    } else if (savedRange) {
-      chartRef.current.timeScale().setVisibleLogicalRange(savedRange);
-    }
+          const lineMap = new Map<UTCTimestamp, LineData>();
+          indicator.data.forEach((point) => {
+            const time = (new Date(point.timestamp).getTime() / 1000) as UTCTimestamp;
+            lineMap.set(time, { time, value: point.value });
+          });
+          const lineData: LineData[] = Array.from(lineMap.values()).sort(
+            (a, b) => (a.time as number) - (b.time as number)
+          );
+
+          lineSeries.setData(lineData);
+        });
+      },
+      fitContent
+    );
   }, [indicators]);
 
   useEffect(() => {
     if (!chartRef.current) return;
 
-    const activeOscillatorNames = new Set(oscillators.map((oscillator) => oscillator.name));
+    const chart = chartRef.current;
+    const activeOscillatorKeys = new Set(oscillators.map((oscillator) => getOscillatorKey(oscillator)));
+    const groupedOscillators = new Map<string, OscillatorConfig[]>();
+    const visibleBounds = parseTimeRangeBounds(timeRangeRef.current);
+    const fitContent = shouldFitContentRef.current;
+    shouldFitContentRef.current = false;
 
-    getRemovedSeriesNames(Array.from(oscillatorSeriesRef.current.keys()), Array.from(activeOscillatorNames)).forEach(
-      (name) => {
-        const series = oscillatorSeriesRef.current.get(name);
-        if (series) {
-          chartRef.current?.removeSeries(series);
-          oscillatorSeriesRef.current.delete(name);
-        }
+    preserveVisibleRange(
+      chart,
+      () => {
+        oscillators.forEach((oscillator) => {
+          const key = getOscillatorKey(oscillator);
+          const existing = groupedOscillators.get(key);
+          if (existing) {
+            existing.push(oscillator);
+          } else {
+            groupedOscillators.set(key, [oscillator]);
+          }
+        });
 
-        const refLines = refLineSeriesRef.current.get(name) ?? [];
-        refLines.forEach((refLine) => chartRef.current?.removeSeries(refLine));
-        refLineSeriesRef.current.delete(name);
-      }
-    );
+        const removedPanes = Array.from(oscillatorPaneRef.current.entries())
+          .filter(([key]) => !activeOscillatorKeys.has(key))
+          .sort(([, left], [, right]) => right.pane.paneIndex() - left.pane.paneIndex());
 
-    oscillators.forEach((oscillator) => {
-      if (!chartRef.current) return;
+        removedPanes.forEach(([key, paneState]) => {
+          paneState.series.forEach((series) => chart.removeSeries(series));
+          paneState.referenceLines.forEach((refLine) => chart.removeSeries(refLine));
+          const paneStillExists = chart.panes().some((pane) => pane === paneState.pane);
+          if (paneStillExists) {
+            chart.removePane(paneState.pane.paneIndex());
+          }
+          oscillatorPaneRef.current.delete(key);
+        });
 
-      let series = oscillatorSeriesRef.current.get(oscillator.name);
-      if (!series) {
-        series = chartRef.current.addSeries(
-          LineSeries,
-          {
-            color: oscillator.color,
-            lineWidth: 2 as LineWidth,
-            title: oscillator.name,
-            priceLineVisible: false,
-            lastValueVisible: true,
-          },
-          1 // pane 1 (oscillator sub-pane)
-        );
-        oscillatorSeriesRef.current.set(oscillator.name, series);
-      } else {
-        series.applyOptions({ color: oscillator.color, title: oscillator.name });
-      }
+        groupedOscillators.forEach((oscillatorGroup, paneKey) => {
+          let paneState = oscillatorPaneRef.current.get(paneKey);
+          if (!paneState) {
+            const pane = chart.addPane();
+            pane.setHeight(oscillatorHeight);
+            paneState = {
+              pane,
+              series: new Map(),
+              referenceLines: [],
+            };
+            oscillatorPaneRef.current.set(paneKey, paneState);
+          }
 
-      const lineMap = new Map<UTCTimestamp, LineData>();
-      oscillator.data.forEach((point) => {
-        const time = (new Date(point.timestamp).getTime() / 1000) as UTCTimestamp;
-        lineMap.set(time, { time, value: point.value });
-      });
-      const lineData: LineData[] = Array.from(lineMap.values()).sort((a, b) => (a.time as number) - (b.time as number));
-      series.setData(lineData);
+          const ps = paneState;
+          ps.pane.setHeight(oscillatorHeight);
 
-      // Draw reference lines spanning the full data range
-      if (oscillator.referenceLines?.length && lineData.length > 0) {
-        const firstTime = lineData[0].time;
-        const lastTime = lineData[lineData.length - 1].time;
+          const activeSeriesKeys = new Set(oscillatorGroup.map((oscillator) => getOscillatorSeriesKey(oscillator)));
+          let paneTimeBounds: { firstTime: UTCTimestamp; lastTime: UTCTimestamp } | null = null;
 
-        const existingRefLines = refLineSeriesRef.current.get(oscillator.name) ?? [];
+          ps.series.forEach((series, seriesKey) => {
+            if (!activeSeriesKeys.has(seriesKey)) {
+              chart.removeSeries(series);
+              ps.series.delete(seriesKey);
+            }
+          });
 
-        // Remove stale ref lines if count changed
-        if (existingRefLines.length !== oscillator.referenceLines.length) {
-          existingRefLines.forEach((s) => chartRef.current?.removeSeries(s));
-          refLineSeriesRef.current.delete(oscillator.name);
-        }
+          oscillatorGroup.forEach((oscillator) => {
+            const seriesKey = getOscillatorSeriesKey(oscillator);
+            let series = ps.series.get(seriesKey);
+            if (!series) {
+              series = chart.addSeries(
+                LineSeries,
+                {
+                  color: oscillator.color,
+                  lineWidth: 2 as LineWidth,
+                  title: oscillator.name,
+                  priceLineVisible: false,
+                  lastValueVisible: true,
+                },
+                ps.pane.paneIndex()
+              );
+              ps.series.set(seriesKey, series);
+            } else {
+              series.applyOptions({ color: oscillator.color, title: oscillator.name });
+            }
 
-        const currentRefLines = refLineSeriesRef.current.get(oscillator.name);
-        if (!currentRefLines) {
-          const newRefLines = oscillator.referenceLines.map((ref) => {
-            const refSeries = chartRef.current!.addSeries(
-              LineSeries,
-              {
-                color: ref.color,
-                lineWidth: 1 as LineWidth,
-                lineStyle: LineStyle.Dashed,
-                priceLineVisible: false,
-                lastValueVisible: false,
-                title: '',
-              },
-              1
+            const lineMap = new Map<UTCTimestamp, LineData>();
+            oscillator.data.forEach((point) => {
+              const pointTime = new Date(point.timestamp).getTime();
+              if (visibleBounds && (pointTime < visibleBounds.from || pointTime > visibleBounds.to)) {
+                return;
+              }
+
+              const time = (pointTime / 1000) as UTCTimestamp;
+              lineMap.set(time, { time, value: point.value });
+            });
+            const lineData: LineData[] = Array.from(lineMap.values()).sort(
+              (a, b) => (a.time as number) - (b.time as number)
             );
-            refSeries.setData([
-              { time: firstTime, value: ref.value },
-              { time: lastTime, value: ref.value },
-            ]);
-            return refSeries;
+            series.setData(lineData);
+            if (!paneTimeBounds && lineData.length > 0) {
+              paneTimeBounds = visibleBounds
+                ? {
+                    firstTime: (visibleBounds.from / 1000) as UTCTimestamp,
+                    lastTime: (visibleBounds.to / 1000) as UTCTimestamp,
+                  }
+                : {
+                    firstTime: lineData[0].time as UTCTimestamp,
+                    lastTime: lineData[lineData.length - 1].time as UTCTimestamp,
+                  };
+            }
           });
-          refLineSeriesRef.current.set(oscillator.name, newRefLines);
-        } else {
-          currentRefLines.forEach((refSeries, i) => {
-            const ref = oscillator.referenceLines![i];
-            refSeries.applyOptions({ color: ref.color });
-            refSeries.setData([
-              { time: firstTime, value: ref.value },
-              { time: lastTime, value: ref.value },
-            ]);
-          });
-        }
-      }
 
-      if (!oscillator.referenceLines?.length) {
-        const existingRefLines = refLineSeriesRef.current.get(oscillator.name) ?? [];
-        existingRefLines.forEach((refLine) => chartRef.current?.removeSeries(refLine));
-        refLineSeriesRef.current.delete(oscillator.name);
-      }
-    });
-  }, [oscillators]);
+          const referenceLines =
+            oscillatorGroup.find((oscillator) => (oscillator.referenceLines?.length ?? 0) > 0)?.referenceLines ?? [];
+          if (referenceLines.length > 0 && paneTimeBounds) {
+            const bounds: { firstTime: UTCTimestamp; lastTime: UTCTimestamp } = paneTimeBounds;
+            if (ps.referenceLines.length !== referenceLines.length) {
+              ps.referenceLines.forEach((refLine) => chart.removeSeries(refLine));
+              ps.referenceLines = referenceLines.map((ref) => {
+                const refSeries = chart.addSeries(
+                  LineSeries,
+                  {
+                    color: ref.color,
+                    lineWidth: 1 as LineWidth,
+                    lineStyle: LineStyle.Dashed,
+                    priceLineVisible: false,
+                    lastValueVisible: false,
+                    title: '',
+                  },
+                  ps.pane.paneIndex()
+                );
+                refSeries.setData([
+                  { time: bounds.firstTime, value: ref.value },
+                  { time: bounds.lastTime, value: ref.value },
+                ]);
+                return refSeries;
+              });
+            } else {
+              ps.referenceLines.forEach((refSeries, index) => {
+                const ref = referenceLines[index];
+                refSeries.applyOptions({ color: ref.color });
+                refSeries.setData([
+                  { time: bounds.firstTime, value: ref.value },
+                  { time: bounds.lastTime, value: ref.value },
+                ]);
+              });
+            }
+          } else if (ps.referenceLines.length > 0) {
+            ps.referenceLines.forEach((refLine) => chart.removeSeries(refLine));
+            ps.referenceLines = [];
+          }
+        });
+      },
+      fitContent
+    );
+  }, [oscillatorHeight, oscillators, timeRange]);
 
   return (
     <div className="w-full">
-      <div ref={chartContainerRef} className="w-full" style={{ height: `${height + oscillatorHeight}px` }} />
+      <div ref={chartContainerRef} className="h-full w-full" style={{ height: `${totalHeight}px` }} />
     </div>
   );
 }
