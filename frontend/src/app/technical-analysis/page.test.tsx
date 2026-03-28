@@ -1,4 +1,5 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -39,6 +40,25 @@ vi.mock('@/lib/api', () => ({
 
 describe('TechnicalAnalysisPage', () => {
   const rsiSelectionId = 'RSI:{"timeperiod":14}';
+
+  function renderPage() {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+        mutations: {
+          retry: false,
+        },
+      },
+    });
+
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <TechnicalAnalysisPage />
+      </QueryClientProvider>
+    );
+  }
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -94,7 +114,7 @@ describe('TechnicalAnalysisPage', () => {
   it('loads bars without preloading indicator values and omits the home header', async () => {
     const user = userEvent.setup();
 
-    render(<TechnicalAnalysisPage />);
+    renderPage();
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Load Chart' })).toBeEnabled());
 
@@ -140,7 +160,7 @@ describe('TechnicalAnalysisPage', () => {
         ],
       });
 
-    render(<TechnicalAnalysisPage />);
+    renderPage();
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Load Chart' })).toBeEnabled());
     await user.click(screen.getByRole('button', { name: 'Load Chart' }));
@@ -190,7 +210,7 @@ describe('TechnicalAnalysisPage', () => {
       ],
     });
 
-    render(<TechnicalAnalysisPage />);
+    renderPage();
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Load Chart' })).toBeEnabled());
 
@@ -240,7 +260,7 @@ describe('TechnicalAnalysisPage', () => {
       ],
     });
 
-    render(<TechnicalAnalysisPage />);
+    renderPage();
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Load Chart' })).toBeEnabled());
     await user.click(screen.getByRole('button', { name: 'Load Chart' }));
@@ -288,7 +308,7 @@ describe('TechnicalAnalysisPage', () => {
       ],
     });
 
-    render(<TechnicalAnalysisPage />);
+    renderPage();
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Load Chart' })).toBeEnabled());
     await user.click(screen.getByRole('button', { name: 'Load Chart' }));
@@ -333,7 +353,7 @@ describe('TechnicalAnalysisPage', () => {
       ],
     });
 
-    render(<TechnicalAnalysisPage />);
+    renderPage();
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Load Chart' })).toBeEnabled());
     await user.click(screen.getByRole('button', { name: 'Load Chart' }));
@@ -385,7 +405,7 @@ describe('TechnicalAnalysisPage', () => {
         ],
       });
 
-    render(<TechnicalAnalysisPage />);
+    renderPage();
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Load Chart' })).toBeEnabled());
     await user.click(screen.getByRole('button', { name: 'Load Chart' }));
