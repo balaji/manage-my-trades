@@ -1,6 +1,7 @@
 """Unit tests for the strategy compiler service guard integration."""
 
 import asyncio
+import inspect
 from types import SimpleNamespace
 
 import pytest
@@ -49,6 +50,13 @@ def _service(monkeypatch) -> compiler_module.StrategyCompilerService:
         ),
     )
     return compiler_module.StrategyCompilerService()
+
+
+def test_compile_is_observed():
+    assert (
+        inspect.unwrap(compiler_module.StrategyCompilerService.compile)
+        is not compiler_module.StrategyCompilerService.compile
+    )
 
 
 def test_compile_does_not_call_llm_when_guard_rejects(monkeypatch):

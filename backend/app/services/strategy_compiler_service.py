@@ -6,6 +6,7 @@ import json
 import logging
 from typing import Any
 
+from langfuse import observe
 from langfuse.openai import AsyncOpenAI
 
 from app.config import get_settings
@@ -23,6 +24,7 @@ class StrategyCompilerService:
         self.settings = get_settings()
         self.prompt_guard = StrategyPromptGuardService()
 
+    @observe()
     async def compile(self, prompt: str, name: str | None = None, description: str | None = None) -> dict[str, Any]:
         """Compile a prompt to a normalized strategy spec."""
         if not self.settings.OPENAI_API_KEY:
