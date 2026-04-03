@@ -59,6 +59,17 @@ def test_compile_is_observed():
     )
 
 
+def test_compiled_prompt_and_request_llm_are_observed():
+    assert (
+        inspect.unwrap(compiler_module.StrategyCompilerService._compiled_prompt)
+        is not compiler_module.StrategyCompilerService._compiled_prompt
+    )
+    assert (
+        inspect.unwrap(compiler_module.StrategyCompilerService._request_llm)
+        is not compiler_module.StrategyCompilerService._request_llm
+    )
+
+
 def test_compile_does_not_call_llm_when_guard_rejects(monkeypatch):
     service = _service(monkeypatch)
 
@@ -71,19 +82,24 @@ def test_compile_does_not_call_llm_when_guard_rejects(monkeypatch):
             metrics={},
         )
 
-    async def fake_request_llm(prompt: str, name: str | None = None, description: str | None = None) -> dict:
+    async def fake_compiled_prompt(prompt: str, name: str | None = None, description: str | None = None):
+        raise AssertionError("_compiled_prompt should not be called for rejected prompts")
+
+    async def fake_request_llm(compiled_prompt) -> dict:
         raise AssertionError("LLM should not be called for rejected prompts")
 
     monkeypatch.setattr(service.prompt_guard, "evaluate", fake_evaluate)
+    monkeypatch.setattr(service, "_compiled_prompt", fake_compiled_prompt)
     monkeypatch.setattr(service, "_request_llm", fake_request_llm)
 
     with pytest.raises(ValueError, match="too short"):
         asyncio.run(service.compile("bad"))
 
 
-def test_compile_uses_normalized_prompt_and_returns_prompt_warnings(monkeypatch):
+def test_compile_returns_prompt_warnings_and_calls_compiled_prompt_with_original(monkeypatch):
     service = _service(monkeypatch)
     captured: dict[str, str] = {}
+    fake_messages = [{"role": "user", "content": "compiled"}]
 
     def fake_evaluate(prompt: str, name: str | None = None, description: str | None = None) -> PromptGuardResult:
         return PromptGuardResult(
@@ -94,16 +110,22 @@ def test_compile_uses_normalized_prompt_and_returns_prompt_warnings(monkeypatch)
             metrics={},
         )
 
-    async def fake_request_llm(prompt: str, name: str | None = None, description: str | None = None) -> dict:
-        captured["prompt"] = prompt
+    async def fake_compiled_prompt(prompt: str, name: str | None = None, description: str | None = None):
+        captured["compiled_prompt_input"] = prompt
+        return fake_messages
+
+    async def fake_request_llm(compiled_prompt) -> dict:
+        captured["llm_input"] = compiled_prompt
         return _llm_payload()
 
     monkeypatch.setattr(service.prompt_guard, "evaluate", fake_evaluate)
+    monkeypatch.setattr(service, "_compiled_prompt", fake_compiled_prompt)
     monkeypatch.setattr(service, "_request_llm", fake_request_llm)
 
     result = asyncio.run(service.compile("raw prompt with url"))
 
-    assert captured["prompt"] == "Buy SPY when EMA 20 crosses above SMA 50. Sell when it crosses below."
+    assert captured["compiled_prompt_input"] == "raw prompt with url"
+    assert captured["llm_input"] is fake_messages
     assert result["prompt_warnings"] == ["Removed URL-only lines before compilation."]
     assert any("default 10% position sizing" in warning for warning in result["warnings"])
 
@@ -111,9 +133,13 @@ def test_compile_uses_normalized_prompt_and_returns_prompt_warnings(monkeypatch)
 def test_compile_returns_valid_spec(monkeypatch):
     service = _service(monkeypatch)
 
-    async def fake_request_llm(prompt: str, name: str | None = None, description: str | None = None) -> dict:
+    async def fake_compiled_prompt(prompt: str, name: str | None = None, description: str | None = None):
+        return [{"role": "user", "content": prompt}]
+
+    async def fake_request_llm(compiled_prompt) -> dict:
         return _llm_payload()
 
+    monkeypatch.setattr(service, "_compiled_prompt", fake_compiled_prompt)
     monkeypatch.setattr(service, "_request_llm", fake_request_llm)
     monkeypatch.setattr(
         service.prompt_guard,
