@@ -19,7 +19,7 @@ export default function NewStrategyPage() {
   };
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-full p-8">
       <div className="max-w-4xl mx-auto">
         <div className="mb-6">
           <Link href="/strategies" className="text-blue-600 hover:underline mb-2 inline-block">

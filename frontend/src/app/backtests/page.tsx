@@ -58,14 +58,11 @@ export default function BacktestsPage() {
   };
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-full p-8">
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <Link href="/" className="text-blue-600 hover:underline text-sm">
-              ← Home
-            </Link>
-            <h1 className="text-3xl font-bold mt-1">Backtests</h1>
+            <h1 className="text-3xl font-bold">Backtests</h1>
           </div>
           <Button nativeButton={false} render={<Link href="/backtests/new" />}>
             New Backtest

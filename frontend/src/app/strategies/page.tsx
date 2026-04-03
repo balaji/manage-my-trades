@@ -71,11 +71,8 @@ export default function StrategiesPage() {
   };
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-full p-8">
       <div className="max-w-7xl mx-auto">
-        <Link href="/" className="text-blue-600 hover:underline text-sm">
-          ← Home
-        </Link>
         <div className="flex justify-between items-center mb-8 mt-1">
           <h1 className="text-3xl font-bold">Trading Strategies</h1>
           <Button nativeButton={false} render={<Link href="/strategies/new" />}>
@@ -108,7 +105,7 @@ export default function StrategiesPage() {
               </div>
               <div className="flex-1">
                 <label className="block text-sm font-medium mb-2">Type</label>
-                <Select value={filterType} onValueChange={setFilterType}>
+                <Select value={filterType} onValueChange={(value) => setFilterType(value ?? '')}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="All Types" />
                   </SelectTrigger>

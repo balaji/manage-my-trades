@@ -170,7 +170,7 @@ export default function BacktestDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen p-8">
+      <div className="min-h-full p-8">
         <div className="max-w-7xl mx-auto text-center py-12 text-gray-500">Loading backtest...</div>
       </div>
     );
@@ -178,7 +178,7 @@ export default function BacktestDetailPage() {
 
   if (error || !backtest) {
     return (
-      <div className="min-h-screen p-8">
+      <div className="min-h-full p-8">
         <div className="max-w-7xl mx-auto">
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
             {error || 'Backtest not found'}
@@ -208,7 +208,7 @@ export default function BacktestDetailPage() {
   );
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-full p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6">

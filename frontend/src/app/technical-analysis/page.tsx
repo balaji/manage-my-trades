@@ -31,7 +31,7 @@ export default function TechnicalAnalysisPage() {
   } = useTechnicalAnalysisChart();
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-slate-50 text-slate-900">
+    <div className="flex min-h-full flex-col overflow-hidden bg-slate-50 text-slate-900 md:m-5 md:rounded-[28px] md:border md:border-slate-200 md:bg-white md:shadow-sm">
       <div className="border-b border-slate-200 bg-white px-5 py-4">
         <TechnicalAnalysisControls
           symbol={symbol}
@@ -60,7 +60,7 @@ export default function TechnicalAnalysisPage() {
         )}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50">
         {hasChartData ? (
           <PriceChart
             data={chartData}
