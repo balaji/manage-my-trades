@@ -131,6 +131,7 @@ export default function TechnicalAnalysisPage() {
     endDate: string;
   } | null>(null);
   const [loadingIndicatorIds, setLoadingIndicatorIds] = useState<Set<string>>(new Set());
+  const [mounted, setMounted] = useState(false);
 
   const overlayDropdownRef = useRef<HTMLDivElement>(null);
   const oscillatorDropdownRef = useRef<HTMLDivElement>(null);
@@ -158,6 +159,10 @@ export default function TechnicalAnalysisPage() {
       ),
     [indicatorOptions, indicatorResults, loadedRequest?.startDate, supportedIndicators]
   );
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -399,7 +404,10 @@ export default function TechnicalAnalysisPage() {
               className="w-full"
             />
           </div>
-          <Button onClick={() => handleLoadData(rangeDays)} disabled={loading || indicatorOptions.length === 0}>
+          <Button
+            onClick={() => handleLoadData(rangeDays)}
+            disabled={loading || (mounted && indicatorOptions.length === 0)}
+          >
             {loading ? 'Loading...' : 'Load Chart'}
           </Button>
           <Button variant="outline" onClick={handleClear} disabled={loading}>
