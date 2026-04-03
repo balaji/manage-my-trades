@@ -40,4 +40,4 @@ class Strategy(Base, TimestampMixin):
     strategy_type: str = Column(String(50), nullable=False)  # type: ignore[assignment]  # technical, ml, combined
     is_active: bool = Column(Boolean, default=False)  # type: ignore[assignment]
     config: StrategySpec = Column(StrategySpecType, nullable=False)  # type: ignore[assignment]
-    backtests = relationship("Backtest", back_populates="strategy")
+    backtests = relationship("Backtest", back_populates="strategy", cascade="all, delete-orphan")

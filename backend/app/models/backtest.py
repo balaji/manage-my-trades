@@ -17,7 +17,7 @@ class Backtest(Base, TimestampMixin):
     __tablename__ = "backtests"
 
     id = Column(Integer, primary_key=True, index=True)
-    strategy_id = Column(Integer, ForeignKey("strategies.id"), nullable=False)
+    strategy_id = Column(Integer, ForeignKey("strategies.id", ondelete="CASCADE"), nullable=False)
     name = Column(String(255), nullable=False)
     symbols = Column(JSON, nullable=False)  # List of symbols
     start_date = Column(Date, nullable=False, index=True)
