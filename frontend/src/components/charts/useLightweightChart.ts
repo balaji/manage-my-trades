@@ -34,7 +34,6 @@ interface UseLightweightChartResult {
   closeSeriesRef: React.MutableRefObject<ISeriesApi<'Line'> | null>;
   indicatorSeriesRef: React.MutableRefObject<Map<string, ISeriesApi<'Line'>>>;
   oscillatorPaneRef: React.MutableRefObject<Map<string, OscillatorPaneState>>;
-  shouldFitContentRef: React.MutableRefObject<boolean>;
 }
 
 export function useLightweightChart({
@@ -48,7 +47,6 @@ export function useLightweightChart({
   const closeSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const indicatorSeriesRef = useRef<Map<string, ISeriesApi<'Line'>>>(new Map());
   const oscillatorPaneRef = useRef<Map<string, OscillatorPaneState>>(new Map());
-  const shouldFitContentRef = useRef(false);
   const onChartReadyRef = useRef(onChartReady);
 
   useLayoutEffect(() => {
@@ -137,7 +135,6 @@ export function useLightweightChart({
     closeSeriesRef,
     indicatorSeriesRef,
     oscillatorPaneRef,
-    shouldFitContentRef,
   };
 }
 

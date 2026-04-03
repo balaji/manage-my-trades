@@ -237,7 +237,7 @@ describe('PriceChart', () => {
     );
 
     await waitFor(() => expect(chart.addPane).toHaveBeenCalledTimes(1));
-    expect(timeScale.setVisibleRange).toHaveBeenCalledWith(visibleRange);
+    expect(timeScale.fitContent).toHaveBeenCalled();
   });
 
   it('fits the chart to newly loaded price data', async () => {

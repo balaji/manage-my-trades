@@ -56,13 +56,11 @@ describe('useOscillatorPanes', () => {
     const chart = makeChart();
     const chartRef = { current: chart as unknown as Parameters<typeof useOscillatorPanes>[0]['current'] };
     const oscillatorPaneRef = { current: new Map() };
-    const shouldFitContentRef = { current: false };
 
     renderHook(() =>
       useOscillatorPanes(
         chartRef,
         oscillatorPaneRef,
-        shouldFitContentRef,
         [
           { id: 'rsi:real', selectionId: 'rsi-14', name: 'RSI', color: '#f00', data: [] },
           { id: 'macd:macd', selectionId: 'macd', name: 'MACD', color: '#00f', data: [] },
@@ -79,13 +77,11 @@ describe('useOscillatorPanes', () => {
     const chart = makeChart();
     const chartRef = { current: chart as unknown as Parameters<typeof useOscillatorPanes>[0]['current'] };
     const oscillatorPaneRef = { current: new Map() };
-    const shouldFitContentRef = { current: false };
 
     renderHook(() =>
       useOscillatorPanes(
         chartRef,
         oscillatorPaneRef,
-        shouldFitContentRef,
         [
           { id: 'macd:macd', selectionId: 'macd', name: 'MACD (MACD)', color: '#00f', data: [] },
           { id: 'macd:signal', selectionId: 'macd', name: 'MACD (Signal)', color: '#f0f', data: [] },
@@ -102,13 +98,11 @@ describe('useOscillatorPanes', () => {
     const chart = makeChart();
     const chartRef = { current: chart as unknown as Parameters<typeof useOscillatorPanes>[0]['current'] };
     const oscillatorPaneRef = { current: new Map() };
-    const shouldFitContentRef = { current: false };
 
     renderHook(() =>
       useOscillatorPanes(
         chartRef,
         oscillatorPaneRef,
-        shouldFitContentRef,
         [
           {
             id: 'rsi:real',
@@ -137,11 +131,9 @@ describe('useOscillatorPanes', () => {
     const chart = makeChart();
     const chartRef = { current: chart as unknown as Parameters<typeof useOscillatorPanes>[0]['current'] };
     const oscillatorPaneRef = { current: new Map() };
-    const shouldFitContentRef = { current: false };
 
     const { rerender } = renderHook(
-      ({ oscillators }) =>
-        useOscillatorPanes(chartRef, oscillatorPaneRef, shouldFitContentRef, oscillators, 160, undefined),
+      ({ oscillators }) => useOscillatorPanes(chartRef, oscillatorPaneRef, oscillators, 160, undefined),
       {
         initialProps: {
           oscillators: [{ id: 'rsi:real', selectionId: 'rsi-14', name: 'RSI', color: '#f00', data: [] }],
