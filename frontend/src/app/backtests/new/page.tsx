@@ -65,12 +65,14 @@ function NewBacktestPage() {
     loadStrategies();
   }, [prefillStrategyId]);
 
-  const handleStrategyChange = (strategyId: string) => {
+  const handleStrategyChange = (strategyId: string | null) => {
+    const nextStrategyId = strategyId ?? '';
+
     setForm((f) => {
-      const strategy = strategies.find((s) => s.id === parseInt(strategyId));
+      const strategy = strategies.find((s) => s.id === parseInt(nextStrategyId));
       return {
         ...f,
-        strategy_id: strategyId,
+        strategy_id: nextStrategyId,
         name: strategy ? `${strategy.name} Backtest` : f.name,
       };
     });
@@ -109,7 +111,7 @@ function NewBacktestPage() {
   };
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-full p-8">
       <div className="max-w-2xl mx-auto">
         <div className="mb-6">
           <Link href="/backtests" className="text-blue-600 hover:underline text-sm">
@@ -221,7 +223,7 @@ function NewBacktestPage() {
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Timeframe</label>
-              <Select value={form.timeframe} onValueChange={(v) => setForm({ ...form, timeframe: v })}>
+              <Select value={form.timeframe} onValueChange={(v) => setForm({ ...form, timeframe: v ?? '1d' })}>
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>

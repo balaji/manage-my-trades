@@ -51,7 +51,7 @@ export default function EditStrategyPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen p-8">
+      <div className="min-h-full p-8">
         <div className="max-w-3xl mx-auto text-center py-12 text-gray-500">Loading strategy...</div>
       </div>
     );
@@ -59,7 +59,7 @@ export default function EditStrategyPage() {
 
   if (error || !strategy) {
     return (
-      <div className="min-h-screen p-8">
+      <div className="min-h-full p-8">
         <div className="max-w-3xl mx-auto">
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
             {error || 'Strategy not found'}
@@ -80,7 +80,7 @@ export default function EditStrategyPage() {
   };
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-full p-8">
       <div className="max-w-3xl mx-auto">
         <div className="mb-6">
           <Link href={`/strategies/${strategyId}`} className="text-blue-600 hover:underline text-sm">
