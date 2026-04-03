@@ -29,7 +29,7 @@ class Trade(Base, TimestampMixin):
         nullable=True,
         index=True,
     )
-    strategy_id = Column(Integer, ForeignKey("strategies.id"), nullable=False)
+    strategy_id = Column(Integer, ForeignKey("strategies.id", ondelete="CASCADE"), nullable=False)
     symbol = Column(String(20), nullable=False, index=True)
     side = Column(String(10), nullable=False)  # buy, sell
     trade_type = Column(String(20), nullable=False)  # backtest, paper
