@@ -37,10 +37,8 @@ describe('useIndicatorSeries', () => {
     const chart = makeChart();
     const chartRef = { current: chart as unknown as Parameters<typeof useIndicatorSeries>[0]['current'] };
     const indicatorSeriesRef = { current: new Map() };
-    const shouldFitContentRef = { current: false };
-
     renderHook(() =>
-      useIndicatorSeries(chartRef, indicatorSeriesRef, shouldFitContentRef, [
+      useIndicatorSeries(chartRef, indicatorSeriesRef, [
         { name: 'SMA 20', data: [{ timestamp: '2024-01-01T00:00:00Z', value: 100 }], color: '#f00' },
         { name: 'EMA 50', data: [{ timestamp: '2024-01-01T00:00:00Z', value: 98 }], color: '#0f0' },
       ])
@@ -54,16 +52,12 @@ describe('useIndicatorSeries', () => {
     const chart = makeChart();
     const chartRef = { current: chart as unknown as Parameters<typeof useIndicatorSeries>[0]['current'] };
     const indicatorSeriesRef = { current: new Map() };
-    const shouldFitContentRef = { current: false };
 
-    const { rerender } = renderHook(
-      ({ indicators }) => useIndicatorSeries(chartRef, indicatorSeriesRef, shouldFitContentRef, indicators),
-      {
-        initialProps: {
-          indicators: [{ name: 'SMA 20', data: [{ timestamp: '2024-01-01T00:00:00Z', value: 100 }], color: '#f00' }],
-        },
-      }
-    );
+    const { rerender } = renderHook(({ indicators }) => useIndicatorSeries(chartRef, indicatorSeriesRef, indicators), {
+      initialProps: {
+        indicators: [{ name: 'SMA 20', data: [{ timestamp: '2024-01-01T00:00:00Z', value: 100 }], color: '#f00' }],
+      },
+    });
 
     const series = indicatorSeriesRef.current.get('SMA 20');
     rerender({ indicators: [] });
@@ -75,14 +69,12 @@ describe('useIndicatorSeries', () => {
     const chart = makeChart();
     const chartRef = { current: chart as unknown as Parameters<typeof useIndicatorSeries>[0]['current'] };
     const indicatorSeriesRef = { current: new Map() };
-    const shouldFitContentRef = { current: false };
 
     const indicator = { name: 'SMA 20', data: [{ timestamp: '2024-01-01T00:00:00Z', value: 100 }], color: '#f00' };
 
-    const { rerender } = renderHook(
-      ({ indicators }) => useIndicatorSeries(chartRef, indicatorSeriesRef, shouldFitContentRef, indicators),
-      { initialProps: { indicators: [indicator] } }
-    );
+    const { rerender } = renderHook(({ indicators }) => useIndicatorSeries(chartRef, indicatorSeriesRef, indicators), {
+      initialProps: { indicators: [indicator] },
+    });
 
     rerender({ indicators: [{ ...indicator, color: '#00f' }] });
 

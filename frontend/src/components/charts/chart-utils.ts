@@ -17,19 +17,9 @@ export interface OscillatorConfig {
   referenceLines?: Array<{ value: number; color: string }>;
 }
 
-export function preserveVisibleRange(chart: IChartApi, update: () => void, fitInstead = false) {
-  if (fitInstead) {
-    update();
-    chart.timeScale().fitContent();
-    return;
-  }
-
-  const savedRange = chart.timeScale().getVisibleRange();
+export function preserveVisibleRange(chart: IChartApi, update: () => void) {
   update();
-
-  if (savedRange) {
-    chart.timeScale().setVisibleRange(savedRange);
-  }
+  chart.timeScale().fitContent();
 }
 
 export function parseTimeRangeBounds(timeRange?: { from: string; to: string }) {

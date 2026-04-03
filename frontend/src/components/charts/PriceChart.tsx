@@ -41,15 +41,8 @@ export function PriceChart({
 
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const {
-    chartRef,
-    candlestickSeriesRef,
-    markerSeriesRef,
-    closeSeriesRef,
-    indicatorSeriesRef,
-    oscillatorPaneRef,
-    shouldFitContentRef,
-  } = useLightweightChart({ containerRef, totalHeight, onChartReady });
+  const { chartRef, candlestickSeriesRef, markerSeriesRef, closeSeriesRef, indicatorSeriesRef, oscillatorPaneRef } =
+    useLightweightChart({ containerRef, totalHeight, onChartReady });
 
   useEffect(() => {
     if (!chartRef.current) return;
@@ -73,7 +66,6 @@ export function PriceChart({
     const closeData = candlestickData.map((bar) => ({ time: bar.time, value: bar.close }));
     closeSeriesRef.current?.setData(closeData as never);
 
-    shouldFitContentRef.current = true;
     chartRef.current?.timeScale().fitContent();
   }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -81,8 +73,8 @@ export function PriceChart({
     markerSeriesRef.current?.setMarkers(markers);
   }, [markers]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useIndicatorSeries(chartRef, indicatorSeriesRef, shouldFitContentRef, indicators);
-  useOscillatorPanes(chartRef, oscillatorPaneRef, shouldFitContentRef, oscillators, oscillatorHeight, timeRange);
+  useIndicatorSeries(chartRef, indicatorSeriesRef, indicators);
+  useOscillatorPanes(chartRef, oscillatorPaneRef, oscillators, oscillatorHeight, timeRange);
 
   return (
     <div className="w-full">
