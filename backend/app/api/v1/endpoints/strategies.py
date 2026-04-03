@@ -1,10 +1,7 @@
-"""
-Strategy API endpoints.
-"""
-
-import httpx
+"""Strategy API endpoints."""
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from openai import APIError
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
@@ -64,7 +61,7 @@ async def compile_strategy(
         return StrategyCompileResponse(**result)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except httpx.HTTPError as e:
+    except APIError as e:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Compiler request failed: {str(e)}")
     except Exception as e:
         raise HTTPException(
