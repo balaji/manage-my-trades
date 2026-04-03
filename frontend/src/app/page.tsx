@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 
 export default function Home() {
   return (
@@ -8,47 +9,62 @@ export default function Home() {
         <p className="text-lg mb-4">Welcome to your algorithmic trading platform</p>
 
         <div className="grid grid-cols-2 gap-4 mt-8">
-          <div className="p-6 border rounded-lg opacity-60 cursor-not-allowed">
-            <h2 className="text-xl font-semibold mb-2">Dashboard</h2>
-            <p className="text-sm text-gray-600">View portfolio and real-time data</p>
-            <p className="text-xs text-gray-400 mt-2">Coming soon</p>
-          </div>
+          <Card className="opacity-60 cursor-not-allowed">
+            <CardHeader>
+              <CardTitle>Dashboard</CardTitle>
+              <CardDescription>View portfolio and real-time data</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-muted-foreground">Coming soon</p>
+            </CardContent>
+          </Card>
 
-          <div className="p-6 border rounded-lg opacity-60 cursor-not-allowed">
-            <h2 className="text-xl font-semibold mb-2">Paper Trading</h2>
-            <p className="text-sm text-gray-600">Execute strategies with paper money</p>
-            <p className="text-xs text-gray-400 mt-2">Coming soon</p>
-          </div>
+          <Card className="opacity-60 cursor-not-allowed">
+            <CardHeader>
+              <CardTitle>Paper Trading</CardTitle>
+              <CardDescription>Execute strategies with paper money</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-muted-foreground">Coming soon</p>
+            </CardContent>
+          </Card>
 
-          <Link
-            href="/backtests"
-            className="p-6 border rounded-lg hover:border-blue-500 hover:shadow-lg transition-all"
-          >
-            <h2 className="text-xl font-semibold mb-2">Backtesting</h2>
-            <p className="text-sm text-gray-600">Test strategies on historical data</p>
+          <Link href="/backtests">
+            <Card className="hover:ring-primary/50 hover:shadow-lg transition-all cursor-pointer">
+              <CardHeader>
+                <CardTitle>Backtesting</CardTitle>
+                <CardDescription>Test strategies on historical data</CardDescription>
+              </CardHeader>
+            </Card>
           </Link>
 
-          <Link
-            href="/strategies"
-            className="p-6 border rounded-lg hover:border-blue-500 hover:shadow-lg transition-all"
-          >
-            <h2 className="text-xl font-semibold mb-2">Strategies</h2>
-            <p className="text-sm text-gray-600">Create and manage trading strategies</p>
+          <Link href="/strategies">
+            <Card className="hover:ring-primary/50 hover:shadow-lg transition-all cursor-pointer">
+              <CardHeader>
+                <CardTitle>Strategies</CardTitle>
+                <CardDescription>Create and manage trading strategies</CardDescription>
+              </CardHeader>
+            </Card>
           </Link>
 
-          <a
-            href="/technical-analysis"
-            className="p-6 border rounded-lg hover:border-blue-500 hover:shadow-lg transition-all"
-          >
-            <h2 className="text-xl font-semibold mb-2">Technical Analysis</h2>
-            <p className="text-sm text-gray-600">Analyze charts and indicators</p>
-          </a>
+          <Link href="/technical-analysis">
+            <Card className="hover:ring-primary/50 hover:shadow-lg transition-all cursor-pointer">
+              <CardHeader>
+                <CardTitle>Technical Analysis</CardTitle>
+                <CardDescription>Analyze charts and indicators</CardDescription>
+              </CardHeader>
+            </Card>
+          </Link>
 
-          <div className="p-6 border rounded-lg opacity-60 cursor-not-allowed">
-            <h2 className="text-xl font-semibold mb-2">ML Models</h2>
-            <p className="text-sm text-gray-600">Train and deploy ML models</p>
-            <p className="text-xs text-gray-400 mt-2">Coming soon</p>
-          </div>
+          <Card className="opacity-60 cursor-not-allowed">
+            <CardHeader>
+              <CardTitle>ML Models</CardTitle>
+              <CardDescription>Train and deploy ML models</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-muted-foreground">Coming soon</p>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </main>

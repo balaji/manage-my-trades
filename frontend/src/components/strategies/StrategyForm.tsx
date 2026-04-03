@@ -4,6 +4,9 @@ import React, { useState } from 'react';
 
 import { compileStrategy } from '@/lib/api/strategies';
 import { StrategyCreate, StrategySpec, StrategyType } from '@/lib/types/strategy';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 interface StrategyFormProps {
   onSubmit: (data: StrategyCreate) => Promise<void>;
@@ -132,126 +135,119 @@ export function StrategyForm({
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>}
 
-      <div className="rounded-lg bg-white p-6 shadow">
-        <h2 className="mb-4 text-xl font-semibold">Basic Information</h2>
-        <div className="space-y-4">
-          <div>
-            <label className="mb-2 block text-sm font-medium">Strategy Name *</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-lg border px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500"
-              placeholder="e.g., RSI Mean Reversion"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium">Description</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full rounded-lg border px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500"
-              rows={3}
-              placeholder="Describe your trading strategy..."
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium">Strategy Type</label>
-            <input
-              type="text"
-              value="Technical"
-              disabled
-              className="w-full rounded-lg border bg-gray-50 px-4 py-2 text-gray-600"
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-lg bg-white p-6 shadow">
-        <h2 className="mb-4 text-xl font-semibold">Natural Language Compiler</h2>
-        <div className="space-y-4">
-          <div>
-            <label className="mb-2 block text-sm font-medium">Describe the Strategy</label>
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              className="w-full rounded-lg border px-4 py-3 font-mono focus:border-transparent focus:ring-2 focus:ring-blue-500"
-              rows={6}
-              placeholder="Buy SPY when 14-day RSI falls below 30, sell when it rises above 70, use 10% position sizing on daily bars."
-            />
-            <p className="mt-2 text-sm text-gray-500">
-              The compiler returns a draft technical strategy spec. Review the generated JSON before saving.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleCompile}
-            disabled={compiling}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:bg-gray-400"
-          >
-            {compiling ? 'Compiling...' : 'Compile Strategy'}
-          </button>
-
-          {compileSummary && (
-            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-900">{compileSummary}</div>
-          )}
-
-          {promptWarnings.length > 0 && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-              <div className="mb-2 font-medium text-amber-900">Prompt Warnings</div>
-              <ul className="list-disc space-y-1 pl-5 text-sm text-amber-800">
-                {promptWarnings.map((warning) => (
-                  <li key={warning}>{warning}</li>
-                ))}
-              </ul>
+      <Card>
+        <CardHeader>
+          <CardTitle>Basic Information</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div>
+              <label className="mb-2 block text-sm font-medium">Strategy Name *</label>
+              <Input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g., RSI Mean Reversion"
+                required
+                className="w-full"
+              />
             </div>
-          )}
 
-          {compileWarnings.length > 0 && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-              <div className="mb-2 font-medium text-amber-900">Warnings</div>
-              <ul className="list-disc space-y-1 pl-5 text-sm text-amber-800">
-                {compileWarnings.map((warning) => (
-                  <li key={warning}>{warning}</li>
-                ))}
-              </ul>
+            <div>
+              <label className="mb-2 block text-sm font-medium">Description</label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                rows={3}
+                placeholder="Describe your trading strategy..."
+              />
             </div>
-          )}
-        </div>
-      </div>
 
-      <div className="rounded-lg bg-white p-6 shadow">
-        <h2 className="mb-4 text-xl font-semibold">Strategy Spec</h2>
-        <textarea
-          value={specJson}
-          onChange={(e) => setSpecJson(e.target.value)}
-          className="w-full rounded-lg border px-4 py-3 font-mono text-sm focus:border-transparent focus:ring-2 focus:ring-blue-500"
-          rows={24}
-        />
-      </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium">Strategy Type</label>
+              <Input type="text" value="Technical" disabled className="w-full" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Natural Language Compiler</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div>
+              <label className="mb-2 block text-sm font-medium">Describe the Strategy</label>
+              <textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                className="w-full rounded-lg border border-input bg-transparent px-2.5 py-2 font-mono text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                rows={6}
+                placeholder="Buy SPY when 14-day RSI falls below 30, sell when it rises above 70, use 10% position sizing on daily bars."
+              />
+              <p className="mt-2 text-sm text-muted-foreground">
+                The compiler returns a draft technical strategy spec. Review the generated JSON before saving.
+              </p>
+            </div>
+
+            <Button type="button" onClick={handleCompile} disabled={compiling}>
+              {compiling ? 'Compiling...' : 'Compile Strategy'}
+            </Button>
+
+            {compileSummary && (
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-900">{compileSummary}</div>
+            )}
+
+            {promptWarnings.length > 0 && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <div className="mb-2 font-medium text-amber-900">Prompt Warnings</div>
+                <ul className="list-disc space-y-1 pl-5 text-sm text-amber-800">
+                  {promptWarnings.map((warning) => (
+                    <li key={warning}>{warning}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {compileWarnings.length > 0 && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <div className="mb-2 font-medium text-amber-900">Warnings</div>
+                <ul className="list-disc space-y-1 pl-5 text-sm text-amber-800">
+                  {compileWarnings.map((warning) => (
+                    <li key={warning}>{warning}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Strategy Spec</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <textarea
+            value={specJson}
+            onChange={(e) => setSpecJson(e.target.value)}
+            className="w-full rounded-lg border border-input bg-transparent px-2.5 py-2 font-mono text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            rows={24}
+          />
+        </CardContent>
+      </Card>
 
       <div className="flex gap-3">
-        <button
-          type="submit"
-          disabled={submitting}
-          className="rounded-lg bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700 disabled:bg-gray-400"
-        >
+        <Button type="submit" disabled={submitting} size="lg">
           {submitting ? 'Saving...' : submitLabel}
-        </button>
+        </Button>
 
         {onSaveAsNew && (
-          <button
-            type="button"
-            onClick={handleSaveAsNew}
-            disabled={savingAsNew}
-            className="rounded-lg border px-6 py-3 font-medium hover:bg-gray-50 disabled:opacity-50"
-          >
+          <Button type="button" variant="outline" size="lg" onClick={handleSaveAsNew} disabled={savingAsNew}>
             {savingAsNew ? 'Saving Copy...' : 'Save As New'}
-          </button>
+          </Button>
         )}
       </div>
     </form>
