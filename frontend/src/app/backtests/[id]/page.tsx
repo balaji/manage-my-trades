@@ -198,7 +198,10 @@ export default function BacktestDetailPage() {
     if (bars.length > 0) latestPrices[symbol] = bars[bars.length - 1].close;
   }
   const openTrades = trades.filter((t) => t.status === 'open');
-  const openTradesValue = openTrades.reduce((sum, t) => sum + (latestPrices[t.symbol] ?? t.entry_price) * t.quantity, 0);
+  const openTradesValue = openTrades.reduce(
+    (sum, t) => sum + (latestPrices[t.symbol] ?? t.entry_price) * t.quantity,
+    0
+  );
 
   return (
     <div className="min-h-screen p-8">
@@ -298,7 +301,7 @@ export default function BacktestDetailPage() {
                   value={`$${r.final_capital.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
                   sub={
                     openTradesValue > 0
-                      ? `Initial: $${backtest.initial_capital.toLocaleString()} · Open: $${openTradesValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+                      ? `Initial: $${backtest.initial_capital.toLocaleString()} · With Open: $${(openTradesValue + r.final_capital).toLocaleString(undefined, { maximumFractionDigits: 2 })}`
                       : `Initial: $${backtest.initial_capital.toLocaleString()}`
                   }
                 />
@@ -316,8 +319,16 @@ export default function BacktestDetailPage() {
                 />
                 <MetricCard
                   label="Open Positions Value"
-                  value={openTradesValue > 0 ? `$${openTradesValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '—'}
-                  sub={openTradesValue > 0 ? `${openTrades.length} position${openTrades.length !== 1 ? 's' : ''}` : undefined}
+                  value={
+                    openTradesValue > 0
+                      ? `$${openTradesValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+                      : '—'
+                  }
+                  sub={
+                    openTradesValue > 0
+                      ? `${openTrades.length} position${openTrades.length !== 1 ? 's' : ''}`
+                      : undefined
+                  }
                 />
               </div>
             </div>
