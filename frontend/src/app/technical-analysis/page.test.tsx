@@ -209,7 +209,7 @@ describe('TechnicalAnalysisPage', () => {
 
     expect(symbolInput).toHaveValue('SPY');
     expect(screen.queryByTestId('price-chart')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '90 days' })).toHaveClass('bg-slate-900');
+    expect(screen.getByRole('button', { name: '90 days' })).toHaveClass('bg-blue-500');
   });
 
   it('shows other-pane indicators in Others dropdown, not Oscillators', async () => {
