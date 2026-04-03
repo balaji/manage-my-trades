@@ -2,11 +2,11 @@
 Market data service for caching and retrieving OHLCV data.
 """
 
-from datetime import date
+from datetime import date, timedelta
 from typing import List, Dict, Any, Optional
 import logging
 
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.market_data import MarketData
@@ -29,17 +29,15 @@ class MarketDataService:
         start: date,
         end: date,
         timeframe: str = "1d",
-        use_cache: bool = True,
     ) -> Dict[str, List[Dict[str, Any]]]:
         """
-        Get OHLCV bars for symbols, using cache when possible.
+        Get OHLCV bars for symbols, fetching and caching stale data as needed.
 
         Args:
             symbols: List of ticker symbols
             start: Start date
             end: End date
             timeframe: Timeframe string
-            use_cache: Whether to use cached data
 
         Returns:
             Dictionary mapping symbols to list of bars
@@ -47,28 +45,51 @@ class MarketDataService:
         result = {}
 
         for symbol in symbols:
-            if use_cache:
-                # Try to get from cache first
-                cached_bars = await self._get_cached_bars(symbol, start, end, timeframe)
-                if cached_bars:
-                    result[symbol] = cached_bars
-                    logger.info(f"Using cached data for {symbol}")
-                    continue
+            # Check if we have stale data and need to refresh
+            latest_date = await self._get_latest_date(symbol, timeframe)
+            cutoff_date = date.today() - timedelta(days=1)
 
-            # Fetch from Alpaca and cache
-            logger.info(f"Fetching fresh data for {symbol}")
-            alpaca_data = await self.alpaca_service.get_bars([symbol], start, end, timeframe)
+            if latest_date is None or latest_date < cutoff_date:
+                # Fetch missing data from Alpaca
+                fetch_start = latest_date + timedelta(days=1) if latest_date else start
+                fetch_end = cutoff_date
 
-            if symbol in alpaca_data and alpaca_data[symbol]:
-                bars = alpaca_data[symbol]
-                result[symbol] = bars
+                logger.info(f"Refreshing stale data for {symbol} from {fetch_start} to {fetch_end}")
+                alpaca_data = await self.alpaca_service.get_bars([symbol], fetch_start, fetch_end, timeframe)
 
-                # Cache the data
-                await self._cache_bars(symbol, timeframe, bars)
-            else:
-                result[symbol] = []
+                if symbol in alpaca_data and alpaca_data[symbol]:
+                    bars = alpaca_data[symbol]
+                    await self._cache_bars(symbol, timeframe, bars)
+
+            # Fetch from cache
+            cached_bars = await self._get_cached_bars(symbol, start, end, timeframe)
+            result[symbol] = cached_bars if cached_bars else []
 
         return result
+
+    async def _get_latest_date(self, symbol: str, timeframe: str) -> Optional[date]:
+        """
+        Get the latest trade date for a symbol/timeframe in the database.
+
+        Args:
+            symbol: Ticker symbol
+            timeframe: Timeframe string
+
+        Returns:
+            Latest trade date or None if no data exists
+        """
+        try:
+            query = select(func.max(MarketData.trade_date)).where(
+                and_(
+                    MarketData.symbol == symbol,
+                    MarketData.timeframe == timeframe,
+                )
+            )
+            result = await self.db.execute(query)
+            return result.scalar()
+        except Exception as e:
+            logger.error(f"Error getting latest date for {symbol}/{timeframe}: {e}")
+            return None
 
     async def _get_cached_bars(
         self, symbol: str, start: date, end: date, timeframe: str

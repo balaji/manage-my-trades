@@ -50,7 +50,6 @@ class TechnicalAnalysisService:
                 start=start,
                 end=end,
                 timeframe=timeframe,
-                use_cache=True,
             )
 
             return self.calculate_indicators_with_bars(bars_data[symbol], symbol, timeframe, indicators)

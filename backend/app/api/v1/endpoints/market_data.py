@@ -53,22 +53,19 @@ router = APIRouter()
 )
 async def get_market_data(
     request: MarketDataRequest,
-    use_cache: bool = Query(True, description="Use cached data if available"),
     market_db: AsyncSession = Depends(get_market_db),
 ):
     """
     Get OHLCV (Open, High, Low, Close, Volume) bar data for one or more symbols.
 
-    Fetches historical market data from Alpaca Markets API with optional caching.
+    Fetches historical market data from Alpaca Markets API, automatically refreshing
+    stale data. Data is always cached locally for future requests.
 
     **Request Body:**
     - **symbols**: List of ticker symbols (e.g., ["SPY", "QQQ", "IWM"])
     - **start_date**: Start date for data (ISO 8601 format)
     - **end_date**: End date for data (ISO 8601 format)
     - **timeframe**: Data timeframe - Options: 1m, 5m, 15m, 1h, 1d
-
-    **Query Parameters:**
-    - **use_cache**: Whether to use cached data if available (default: true)
 
     **Returns:**
     - List of market data responses, one per symbol with OHLCV bars
@@ -80,7 +77,6 @@ async def get_market_data(
             start=request.start_date,
             end=request.end_date,
             timeframe=request.timeframe,
-            use_cache=use_cache,
         )
 
         response = []
