@@ -1,534 +1,72 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { IChartApi } from 'lightweight-charts';
 import { PriceChart } from '@/components/charts/PriceChart';
-import { marketDataApi, technicalAnalysisApi } from '@/lib/api';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import type { OHLCVBar } from '@/lib/types/market-data';
-import type { IndicatorResult } from '@/lib/api/technical-analysis';
-import {
-  buildChartSeries,
-  buildIndicatorPresetOptions,
-  serializeIndicatorKey,
-} from '@/lib/technical-analysis/chart-model';
-
-const RANGES = [
-  { label: '90 days', days: 90 },
-  { label: '6 months', days: 180 },
-  { label: '1 year', days: 365 },
-  { label: '3 years', days: 1095 },
-  { label: '10 years', days: 3650 },
-];
-
-interface IndicatorDropdownProps {
-  buttonLabel: string;
-  open: boolean;
-  onToggle: () => void;
-  options: Array<{ id: string; color: string; label: string }>;
-  enabledIndicatorIds: Set<string>;
-  loadingIndicatorIds: Set<string>;
-  loading: boolean;
-  onSelect: (id: string) => void | Promise<void>;
-}
-
-function IndicatorDropdown({
-  buttonLabel,
-  open,
-  onToggle,
-  options,
-  enabledIndicatorIds,
-  loadingIndicatorIds,
-  loading,
-  onSelect,
-}: IndicatorDropdownProps) {
-  const [filterText, setFilterText] = useState('');
-
-  if (options.length === 0) {
-    return null;
-  }
-
-  const filteredOptions = filterText
-    ? options.filter(({ label }) => label.toLowerCase().includes(filterText.toLowerCase()))
-    : options;
-
-  return (
-    <div className="relative">
-      <Button variant="outline" size="sm" onClick={onToggle}>
-        {buttonLabel}
-        <svg
-          className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </Button>
-      {open && (
-        <div className="absolute left-0 top-full z-10 mt-1 min-w-[260px] rounded-lg border bg-white shadow-lg">
-          <div className="border-b px-3 py-2">
-            <Input
-              type="text"
-              value={filterText}
-              onChange={(e) => setFilterText(e.target.value)}
-              placeholder="Filter..."
-              className="w-full"
-              autoFocus
-            />
-          </div>
-          <div className="max-h-80 overflow-y-auto">
-            {filteredOptions.length === 0 ? (
-              <div className="px-3 py-2 text-sm text-gray-400">No matches</div>
-            ) : (
-              filteredOptions.map(({ id, color, label }) => (
-                <label
-                  key={id}
-                  className="flex cursor-pointer select-none items-center gap-2.5 px-3 py-2 hover:bg-gray-50"
-                >
-                  <input
-                    type="checkbox"
-                    checked={enabledIndicatorIds.has(id)}
-                    onChange={() => void onSelect(id)}
-                    disabled={loadingIndicatorIds.has(id) || loading}
-                    className="h-4 w-4"
-                    style={{ accentColor: color }}
-                  />
-                  <span className="inline-block h-0.5 w-5 rounded" style={{ backgroundColor: color }} />
-                  <span className="text-sm">{label}</span>
-                </label>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+import { IndicatorToolbar } from './components/IndicatorToolbar';
+import { TechnicalAnalysisControls } from './components/TechnicalAnalysisControls';
+import { useTechnicalAnalysisChart } from './hooks/useTechnicalAnalysisChart';
 
 export default function TechnicalAnalysisPage() {
-  const [symbol, setSymbol] = useState('SPY');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [chartData, setChartData] = useState<OHLCVBar[]>([]);
-  const [indicatorResults, setIndicatorResults] = useState<IndicatorResult[]>([]);
-  const [supportedIndicators, setSupportedIndicators] = useState<
-    Awaited<ReturnType<typeof technicalAnalysisApi.getSupportedIndicators>>['indicators']
-  >([]);
-  const [enabledIndicatorIds, setEnabledIndicatorIds] = useState<Set<string>>(new Set());
-  const [overlayDropdownOpen, setOverlayDropdownOpen] = useState(false);
-  const [overlayDropdownOpenCount, setOverlayDropdownOpenCount] = useState(0);
-  const [oscillatorDropdownOpen, setOscillatorDropdownOpen] = useState(false);
-  const [oscillatorDropdownOpenCount, setOscillatorDropdownOpenCount] = useState(0);
-  const [otherDropdownOpen, setOtherDropdownOpen] = useState(false);
-  const [otherDropdownOpenCount, setOtherDropdownOpenCount] = useState(0);
-  const [rangeDays, setRangeDays] = useState(90);
-  const [loadedRequest, setLoadedRequest] = useState<{
-    symbol: string;
-    startDate: string;
-    indicatorStartDate: string;
-    endDate: string;
-  } | null>(null);
-  const [loadingIndicatorIds, setLoadingIndicatorIds] = useState<Set<string>>(new Set());
-  const [mounted, setMounted] = useState(false);
-
-  const overlayDropdownRef = useRef<HTMLDivElement>(null);
-  const oscillatorDropdownRef = useRef<HTMLDivElement>(null);
-  const otherDropdownRef = useRef<HTMLDivElement>(null);
-  const priceChartRef = useRef<IChartApi | null>(null);
-  const chartRequestVersionRef = useRef(0);
-
-  const indicatorOptions = useMemo(() => buildIndicatorPresetOptions(supportedIndicators), [supportedIndicators]);
-  const overlayOptions = useMemo(
-    () => indicatorOptions.filter((option) => option.pane === 'overlay'),
-    [indicatorOptions]
-  );
-  const oscillatorOptions = useMemo(
-    () => indicatorOptions.filter((option) => option.pane === 'oscillator'),
-    [indicatorOptions]
-  );
-  const otherOptions = useMemo(() => indicatorOptions.filter((option) => option.pane === 'other'), [indicatorOptions]);
-  const chartSeries = useMemo(
-    () =>
-      buildChartSeries(
-        indicatorResults,
-        supportedIndicators,
-        indicatorOptions.map(({ id, name, params, label, color }) => ({ id, name, params, label, color })),
-        loadedRequest?.startDate
-      ),
-    [indicatorOptions, indicatorResults, loadedRequest?.startDate, supportedIndicators]
-  );
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      const target = e.target as Node;
-
-      if (overlayDropdownRef.current && !overlayDropdownRef.current.contains(target)) {
-        setOverlayDropdownOpen(false);
-      }
-
-      if (oscillatorDropdownRef.current && !oscillatorDropdownRef.current.contains(target)) {
-        setOscillatorDropdownOpen(false);
-      }
-
-      if (otherDropdownRef.current && !otherDropdownRef.current.contains(target)) {
-        setOtherDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadSupportedIndicators = async () => {
-      try {
-        const response = await technicalAnalysisApi.getSupportedIndicators();
-        if (!cancelled) {
-          setSupportedIndicators(response.indicators);
-        }
-      } catch (err: any) {
-        if (!cancelled) {
-          setError(err.message || 'Failed to load supported indicators');
-        }
-      }
-    };
-
-    loadSupportedIndicators();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const handleLoadData = useCallback(
-    async (days: number = rangeDays) => {
-      if (indicatorOptions.length === 0) {
-        setError('No chartable indicators are configured');
-        return;
-      }
-
-      const requestVersion = ++chartRequestVersionRef.current;
-
-      const selectedIndicatorRequests = indicatorOptions
-        .filter((option) => enabledIndicatorIds.has(option.id))
-        .map(({ name, params }) => ({ name, params }));
-
-      setLoading(true);
-      setError(null);
-      setLoadingIndicatorIds(new Set());
-
-      try {
-        const endDate = new Date();
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - days);
-        endDate.setDate(endDate.getDate() - 1);
-
-        const indicatorStartDate = new Date(startDate);
-        indicatorStartDate.setDate(indicatorStartDate.getDate() - 30);
-        const startDateStr = startDate.toISOString().split('T')[0];
-        const indicatorStartDateStr = indicatorStartDate.toISOString().split('T')[0];
-        const endDateStr = endDate.toISOString().split('T')[0];
-
-        const [marketData, indicatorResult] = await Promise.all([
-          marketDataApi.getBars({
-            symbols: [symbol],
-            start_date: startDateStr,
-            end_date: endDateStr,
-            timeframe: '1d',
-          }),
-          selectedIndicatorRequests.length > 0
-            ? technicalAnalysisApi.calculateIndicators({
-                symbol,
-                timeframe: '1d',
-                start_date: indicatorStartDateStr,
-                end_date: endDateStr,
-                indicators: selectedIndicatorRequests,
-              })
-            : Promise.resolve({
-                symbol,
-                timeframe: '1d',
-                indicators: [],
-              }),
-        ]);
-
-        if (requestVersion !== chartRequestVersionRef.current) {
-          return;
-        }
-
-        if (marketData.length > 0 && marketData[0].bars.length > 0) {
-          setChartData(marketData[0].bars);
-          setIndicatorResults(indicatorResult.indicators);
-          setLoadedRequest({
-            symbol,
-            startDate: startDateStr,
-            indicatorStartDate: indicatorStartDateStr,
-            endDate: endDateStr,
-          });
-        } else {
-          setError('No data available for this symbol');
-          setChartData([]);
-          setIndicatorResults([]);
-          setLoadedRequest(null);
-        }
-      } catch (err: any) {
-        if (requestVersion !== chartRequestVersionRef.current) {
-          return;
-        }
-        setError(err.message || 'Failed to load data');
-      } finally {
-        if (requestVersion === chartRequestVersionRef.current) {
-          setLoading(false);
-        }
-      }
-    },
-    [enabledIndicatorIds, indicatorOptions, rangeDays, symbol]
-  );
-
-  const toggleIndicator = useCallback(
-    async (id: string) => {
-      const isEnabled = enabledIndicatorIds.has(id);
-      if (isEnabled) {
-        setEnabledIndicatorIds((prev) => {
-          const next = new Set(prev);
-          next.delete(id);
-          return next;
-        });
-        return;
-      }
-
-      const option = indicatorOptions.find((candidate) => candidate.id === id);
-      if (!option) {
-        return;
-      }
-
-      setEnabledIndicatorIds((prev) => new Set(prev).add(id));
-
-      const isAlreadyLoaded = indicatorResults.some(
-        (result) => serializeIndicatorKey(result.name, result.params ?? {}) === id
-      );
-      if (isAlreadyLoaded || !loadedRequest) {
-        return;
-      }
-
-      setLoadingIndicatorIds((prev) => new Set(prev).add(id));
-      const requestVersion = chartRequestVersionRef.current;
-
-      try {
-        const response = await technicalAnalysisApi.calculateIndicators({
-          symbol: loadedRequest.symbol,
-          timeframe: '1d',
-          start_date: loadedRequest.indicatorStartDate,
-          end_date: loadedRequest.endDate,
-          indicators: [{ name: option.name, params: option.params }],
-        });
-
-        if (requestVersion !== chartRequestVersionRef.current) {
-          return;
-        }
-
-        setIndicatorResults((prev) => [
-          ...prev.filter((result) => serializeIndicatorKey(result.name, result.params ?? {}) !== id),
-          ...response.indicators,
-        ]);
-      } catch (err: any) {
-        if (requestVersion !== chartRequestVersionRef.current) {
-          return;
-        }
-        setEnabledIndicatorIds((prev) => {
-          const next = new Set(prev);
-          next.delete(id);
-          return next;
-        });
-        setError(err.message || `Failed to load ${option.displayName}`);
-      } finally {
-        setLoadingIndicatorIds((prev) => {
-          const next = new Set(prev);
-          next.delete(id);
-          return next;
-        });
-      }
-    },
-    [enabledIndicatorIds, indicatorOptions, indicatorResults, loadedRequest]
-  );
-
-  const handleClear = useCallback(() => {
-    chartRequestVersionRef.current++;
-    setSymbol('SPY');
-    setLoading(false);
-    setError(null);
-    setChartData([]);
-    setIndicatorResults([]);
-    setEnabledIndicatorIds(new Set());
-    setOverlayDropdownOpen(false);
-    setOscillatorDropdownOpen(false);
-    setOtherDropdownOpen(false);
-    setRangeDays(90);
-    setLoadedRequest(null);
-    setLoadingIndicatorIds(new Set());
-  }, []);
-
-  const handlePriceChartReady = useCallback((chart: IChartApi) => {
-    priceChartRef.current = chart;
-  }, []);
-
-  const activeOverlaySeries = useMemo(
-    () => chartSeries.overlays.filter((series) => enabledIndicatorIds.has(series.selectionId)),
-    [chartSeries.overlays, enabledIndicatorIds]
-  );
-  const activeOscillatorSeries = useMemo(
-    () => chartSeries.oscillators.filter((series) => enabledIndicatorIds.has(series.selectionId)),
-    [chartSeries.oscillators, enabledIndicatorIds]
-  );
-  const activeOverlayLegend = useMemo(
-    () => overlayOptions.filter((option) => enabledIndicatorIds.has(option.id)),
-    [enabledIndicatorIds, overlayOptions]
-  );
+  const {
+    symbol,
+    rangeDays,
+    loading,
+    error,
+    chartData,
+    enabledIndicatorIds,
+    loadingIndicatorIds,
+    overlayOptions,
+    oscillatorOptions,
+    otherOptions,
+    activeOverlayLegend,
+    activeOverlaySeries,
+    activeOscillatorSeries,
+    loadDisabled,
+    hasChartData,
+    timeRange,
+    setSymbol,
+    loadData,
+    clear,
+    selectRange,
+    toggleIndicator,
+  } = useTechnicalAnalysisChart();
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-slate-50 text-slate-900">
       <div className="border-b border-slate-200 bg-white px-5 py-4">
-        <div className="flex flex-wrap items-end gap-4">
-          <div className="min-w-56 flex-1">
-            <Input
-              type="text"
-              value={symbol}
-              onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-              onKeyDown={(e) => e.key === 'Enter' && !loading && handleLoadData(rangeDays)}
-              placeholder="Enter symbol (e.g., SPY)"
-              className="w-full"
-            />
-          </div>
-          <Button
-            onClick={() => handleLoadData(rangeDays)}
-            disabled={loading || (mounted && indicatorOptions.length === 0)}
-          >
-            {loading ? 'Loading...' : 'Load Chart'}
-          </Button>
-          <Button variant="outline" onClick={handleClear} disabled={loading}>
-            Clear
-          </Button>
-          <div className="flex flex-wrap items-center gap-2">
-            {RANGES.map(({ label, days }) => (
-              <Button
-                key={days}
-                size="sm"
-                variant={rangeDays === days ? 'default' : 'ghost'}
-                onClick={() => {
-                  setRangeDays(days);
-                  handleLoadData(days);
-                }}
-                disabled={loading}
-              >
-                {label}
-              </Button>
-            ))}
-          </div>
-        </div>
+        <TechnicalAnalysisControls
+          symbol={symbol}
+          rangeDays={rangeDays}
+          loading={loading}
+          loadDisabled={loadDisabled}
+          onSymbolChange={setSymbol}
+          onLoad={loadData}
+          onClear={clear}
+          onRangeChange={selectRange}
+        />
 
         {error && <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-red-700">{error}</div>}
 
-        {chartData.length > 0 && (
-          <div className="mt-4 flex flex-wrap items-center gap-4">
-            {overlayOptions.length > 0 && (
-              <div ref={overlayDropdownRef}>
-                <IndicatorDropdown
-                  key={overlayDropdownOpenCount}
-                  buttonLabel="Technicals"
-                  open={overlayDropdownOpen}
-                  onToggle={() => {
-                    setOverlayDropdownOpen((prev) => {
-                      if (!prev) setOverlayDropdownOpenCount((c) => c + 1);
-                      return !prev;
-                    });
-                    setOscillatorDropdownOpen(false);
-                    setOtherDropdownOpen(false);
-                  }}
-                  options={overlayOptions}
-                  enabledIndicatorIds={enabledIndicatorIds}
-                  loadingIndicatorIds={loadingIndicatorIds}
-                  loading={loading}
-                  onSelect={toggleIndicator}
-                />
-              </div>
-            )}
-
-            {oscillatorOptions.length > 0 && (
-              <div ref={oscillatorDropdownRef}>
-                <IndicatorDropdown
-                  key={oscillatorDropdownOpenCount}
-                  buttonLabel="Oscillators"
-                  open={oscillatorDropdownOpen}
-                  onToggle={() => {
-                    setOscillatorDropdownOpen((prev) => {
-                      if (!prev) setOscillatorDropdownOpenCount((c) => c + 1);
-                      return !prev;
-                    });
-                    setOverlayDropdownOpen(false);
-                    setOtherDropdownOpen(false);
-                  }}
-                  options={oscillatorOptions}
-                  enabledIndicatorIds={enabledIndicatorIds}
-                  loadingIndicatorIds={loadingIndicatorIds}
-                  loading={loading}
-                  onSelect={toggleIndicator}
-                />
-              </div>
-            )}
-
-            {otherOptions.length > 0 && (
-              <div ref={otherDropdownRef}>
-                <IndicatorDropdown
-                  key={otherDropdownOpenCount}
-                  buttonLabel="Others"
-                  open={otherDropdownOpen}
-                  onToggle={() => {
-                    setOtherDropdownOpen((prev) => {
-                      if (!prev) setOtherDropdownOpenCount((c) => c + 1);
-                      return !prev;
-                    });
-                    setOverlayDropdownOpen(false);
-                    setOscillatorDropdownOpen(false);
-                  }}
-                  options={otherOptions}
-                  enabledIndicatorIds={enabledIndicatorIds}
-                  loadingIndicatorIds={loadingIndicatorIds}
-                  loading={loading}
-                  onSelect={toggleIndicator}
-                />
-              </div>
-            )}
-
-            {activeOverlayLegend.map(({ id, color, label }) => (
-              <span key={id} className="flex items-center gap-1.5 text-sm text-slate-600">
-                <span className="inline-block h-0.5 w-6 rounded" style={{ backgroundColor: color }} />
-                {label}
-              </span>
-            ))}
-          </div>
+        {hasChartData && (
+          <IndicatorToolbar
+            overlayOptions={overlayOptions}
+            oscillatorOptions={oscillatorOptions}
+            otherOptions={otherOptions}
+            activeOverlayLegend={activeOverlayLegend}
+            enabledIndicatorIds={enabledIndicatorIds}
+            loadingIndicatorIds={loadingIndicatorIds}
+            loading={loading}
+            onSelect={toggleIndicator}
+          />
         )}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {chartData.length > 0 ? (
+        {hasChartData ? (
           <PriceChart
             data={chartData}
             indicators={activeOverlaySeries}
             oscillators={activeOscillatorSeries}
-            timeRange={
-              loadedRequest
-                ? {
-                    from: `${loadedRequest.startDate}T00:00:00Z`,
-                    to: `${loadedRequest.endDate}T23:59:59Z`,
-                  }
-                : undefined
-            }
-            onChartReady={handlePriceChartReady}
+            timeRange={timeRange}
           />
         ) : (
           !loading &&
