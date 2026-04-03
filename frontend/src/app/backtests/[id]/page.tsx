@@ -192,6 +192,14 @@ export default function BacktestDetailPage() {
 
   const r = backtest.results;
 
+  // Compute open positions value: latest bar close price × quantity for each open trade
+  const latestPrices: Record<string, number> = {};
+  for (const { symbol, bars } of priceData) {
+    if (bars.length > 0) latestPrices[symbol] = bars[bars.length - 1].close;
+  }
+  const openTrades = trades.filter((t) => t.status === 'open');
+  const openTradesValue = openTrades.reduce((sum, t) => sum + (latestPrices[t.symbol] ?? t.entry_price) * t.quantity, 0);
+
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-7xl mx-auto">
@@ -288,7 +296,11 @@ export default function BacktestDetailPage() {
                 <MetricCard
                   label="Final Capital"
                   value={`$${r.final_capital.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
-                  sub={`Initial: $${backtest.initial_capital.toLocaleString()}`}
+                  sub={
+                    openTradesValue > 0
+                      ? `Initial: $${backtest.initial_capital.toLocaleString()} · Open: $${openTradesValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+                      : `Initial: $${backtest.initial_capital.toLocaleString()}`
+                  }
                 />
                 <MetricCard
                   label="Profit Factor"
@@ -301,6 +313,11 @@ export default function BacktestDetailPage() {
                 <MetricCard
                   label="Avg Trade Duration"
                   value={r.avg_trade_duration != null ? `${(r.avg_trade_duration / 24).toFixed(1)}d` : '—'}
+                />
+                <MetricCard
+                  label="Open Positions Value"
+                  value={openTradesValue > 0 ? `$${openTradesValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '—'}
+                  sub={openTradesValue > 0 ? `${openTrades.length} position${openTrades.length !== 1 ? 's' : ''}` : undefined}
                 />
               </div>
             </div>
