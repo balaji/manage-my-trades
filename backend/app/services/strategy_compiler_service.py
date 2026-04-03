@@ -6,7 +6,7 @@ import json
 import logging
 from typing import Any
 
-from langfuse import observe
+from langfuse import get_client, observe
 from langfuse.openai import AsyncOpenAI
 
 from app.config import get_settings
@@ -15,6 +15,8 @@ from app.services.indicator_registry import get_all_indicators
 from app.services.strategy_prompt_guard_service import StrategyPromptGuardService
 
 logger = logging.getLogger(__name__)
+
+langfuse = get_client()
 
 
 class StrategyCompilerService:
@@ -34,7 +36,8 @@ class StrategyCompilerService:
         if guard_result.decision == "reject":
             raise ValueError("; ".join(guard_result.reasons))
 
-        payload = await self._request_llm(guard_result.normalized_prompt, name=name, description=description)
+        compiled_prompt = await self._compiled_prompt(prompt, name=name, description=description)
+        payload = await self._request_llm(compiled_prompt)
         spec = StrategySpec.model_validate(payload)
 
         return {
@@ -44,11 +47,8 @@ class StrategyCompilerService:
             "prompt_warnings": guard_result.warnings,
         }
 
-    async def _request_llm(
-        self, prompt: str, name: str | None = None, description: str | None = None
-    ) -> dict[str, Any]:
-        """Send a structured completion request to OpenAI."""
-        schema = StrategySpec.model_json_schema()
+    @observe(name="compile.compiled_prompt")
+    async def _compiled_prompt(self, prompt: str, name: str | None = None, description: str | None = None):
         indicators = get_all_indicators()
         indicator_names = ", ".join(indicator["name"] for indicator in indicators)
         multi_output_examples = ", ".join(
@@ -56,20 +56,22 @@ class StrategyCompilerService:
             for indicator in indicators
             if len(indicator["output_names"]) > 1
         )
-        system_prompt = (
-            "You convert user requests into a strict technical trading strategy specification. "
-            "Only produce strategies using supported indicators and long-only technical rules. "
-            f"Supported indicators: {indicator_names}. "
-            f"Use TA-Lib function names and parameter names exactly. Multi-output indicator fields include: {multi_output_examples}. "
-            "Use the schema exactly, including compare/cross rules and indicator fields where required. "
-            "Do not create ML, options, shorts, or unsupported indicators. "
-            "If the request is ambiguous, choose conservative defaults and encode them explicitly."
+        system_prompt = langfuse.get_prompt("mmt_json_rule", label="production")
+        return system_prompt.compile(
+            indicator_names=indicator_names,
+            multi_output_examples=multi_output_examples,
+            user_payload=json.dumps(
+                {
+                    "prompt": prompt,
+                    "name": name,
+                    "description": description,
+                }
+            ),
         )
-        user_payload = {
-            "prompt": prompt,
-            "name": name,
-            "description": description,
-        }
+
+    @observe(name="compile.llm_response")
+    async def _request_llm(self, compiled_prompt) -> dict[str, Any]:
+        """Send a structured completion request to OpenAI."""
         async with AsyncOpenAI(
             api_key=self.settings.OPENAI_API_KEY,
             base_url=self.settings.OPENAI_BASE_URL.rstrip("/"),
@@ -77,13 +79,10 @@ class StrategyCompilerService:
         ) as client:
             response = await client.chat.completions.create(
                 model=self.settings.OPENAI_MODEL,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": json.dumps(user_payload)},
-                ],
+                messages=compiled_prompt,  # type: ignore
                 response_format={
                     "type": "json_schema",
-                    "json_schema": {"name": "strategy_spec", "schema": schema},
+                    "json_schema": {"name": "strategy_spec", "schema": StrategySpec.model_json_schema()},
                 },
             )
 
