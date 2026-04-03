@@ -6,9 +6,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   BarChart3,
-  BrainCircuit,
-  CandlestickChart,
-  ChevronRight,
+  ChessQueen,
+  ChartNoAxesCombined,
+  Flower2,
   LayoutDashboard,
   Menu,
   ScrollText,
@@ -47,18 +47,18 @@ export const navigationItems: NavItem[] = [
     href: '/strategies',
     label: 'Strategies',
     description: 'Build and manage setups',
-    icon: BrainCircuit,
+    icon: ChessQueen,
   },
   {
     href: '/technical-analysis',
     label: 'Technical Analysis',
     description: 'Charts and indicators',
-    icon: CandlestickChart,
+    icon: ChartNoAxesCombined,
   },
   {
     label: 'ML Models',
     description: 'Model workflows',
-    icon: ChevronRight,
+    icon: Flower2,
   },
 ];
 
