@@ -22,6 +22,10 @@ import {
   IndicatorSeriesConfig,
   OscillatorSeriesConfig,
 } from '@/lib/technical-analysis/chart-model';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 
 function MetricCard({
   label,
@@ -36,27 +40,27 @@ function MetricCard({
 }) {
   const colorClass = positive === true ? 'text-green-600' : positive === false ? 'text-red-600' : '';
   return (
-    <div className="bg-white rounded-lg shadow p-4">
-      <div className="text-sm text-gray-500 mb-1">{label}</div>
-      <div className={`text-2xl font-bold ${colorClass}`}>{value}</div>
-      {sub && <div className="text-xs text-gray-400 mt-0.5">{sub}</div>}
-    </div>
+    <Card size="sm">
+      <CardContent className="pt-3">
+        <div className="text-xs text-muted-foreground mb-1">{label}</div>
+        <div className={`text-2xl font-bold ${colorClass}`}>{value}</div>
+        {sub && <div className="text-xs text-muted-foreground mt-0.5">{sub}</div>}
+      </CardContent>
+    </Card>
   );
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    pending: 'bg-yellow-100 text-yellow-800',
-    running: 'bg-blue-100 text-blue-800',
-    completed: 'bg-green-100 text-green-800',
-    failed: 'bg-red-100 text-red-800',
+  const variantMap: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+    pending: 'outline',
+    running: 'secondary',
+    completed: 'default',
+    failed: 'destructive',
   };
   return (
-    <span
-      className={`px-3 py-1 text-sm font-semibold rounded capitalize ${styles[status] ?? 'bg-gray-100 text-gray-800'}`}
-    >
+    <Badge variant={variantMap[status] ?? 'outline'} className="capitalize">
       {status}
-    </span>
+    </Badge>
   );
 }
 
@@ -222,9 +226,9 @@ export default function BacktestDetailPage() {
                 {new Date(backtest.end_date).toLocaleDateString()} &middot; {backtest.timeframe} timeframe
               </p>
             </div>
-            <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+            <Button variant="destructive" onClick={handleDelete}>
               Delete
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -237,19 +241,18 @@ export default function BacktestDetailPage() {
 
         {/* Strategy & Re-run Actions */}
         <div className="mb-6 flex gap-3">
-          <Link
-            href={`/strategies/${backtest.strategy_id}`}
-            className="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-          >
+          <Button nativeButton={false} render={<Link href={`/strategies/${backtest.strategy_id}`} />}>
             View Strategy
-          </Link>
-          <Link
-            href={`/strategies/${backtest.strategy_id}/edit`}
-            className="inline-block px-4 py-2 border border-blue-600 text-blue-600 rounded hover:bg-blue-50 transition-colors"
+          </Button>
+          <Button
+            variant="outline"
+            nativeButton={false}
+            render={<Link href={`/strategies/${backtest.strategy_id}/edit`} />}
           >
             Edit Strategy
-          </Link>
-          <button
+          </Button>
+          <Button
+            variant="secondary"
             onClick={() => {
               const params = new URLSearchParams({
                 strategyId: String(backtest.strategy_id),
@@ -263,10 +266,9 @@ export default function BacktestDetailPage() {
               });
               router.push(`/backtests/new?${params.toString()}`);
             }}
-            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
           >
             Re-run Backtest
-          </button>
+          </Button>
         </div>
 
         {/* Metrics & Equity Curve */}
@@ -335,153 +337,167 @@ export default function BacktestDetailPage() {
 
             {/* Right: Equity Curve */}
             {equityData.length > 0 && (
-              <div className="bg-white rounded-lg shadow p-6">
-                <h2 className="text-xl font-semibold mb-4">Equity Curve</h2>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={equityData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis
-                      dataKey="date"
-                      tickFormatter={(d) =>
-                        new Date(d).toLocaleDateString(undefined, {
-                          month: 'short',
-                          year: '2-digit',
-                        })
-                      }
-                      tick={{ fontSize: 11 }}
-                      interval={Math.ceil(equityData.length / 8)}
-                    />
-                    <YAxis
-                      tickFormatter={(v) => `$${(v as number).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
-                      tick={{ fontSize: 11 }}
-                      width={80}
-                    />
-                    <Tooltip
-                      formatter={(v) => [
-                        `$${(v as number).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
-                        'Portfolio Value',
-                      ]}
-                      labelFormatter={(l) => new Date(l as string).toLocaleDateString()}
-                    />
-                    <Line type="monotone" dataKey="value" stroke="#2563eb" dot={false} strokeWidth={2} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Equity Curve</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={equityData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis
+                        dataKey="date"
+                        tickFormatter={(d) =>
+                          new Date(d).toLocaleDateString(undefined, {
+                            month: 'short',
+                            year: '2-digit',
+                          })
+                        }
+                        tick={{ fontSize: 11 }}
+                        interval={Math.ceil(equityData.length / 8)}
+                      />
+                      <YAxis
+                        tickFormatter={(v) =>
+                          `$${(v as number).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                        }
+                        tick={{ fontSize: 11 }}
+                        width={80}
+                      />
+                      <Tooltip
+                        formatter={(v) => [
+                          `$${(v as number).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+                          'Portfolio Value',
+                        ]}
+                        labelFormatter={(l) => new Date(l as string).toLocaleDateString()}
+                      />
+                      <Line type="monotone" dataKey="value" stroke="#2563eb" dot={false} strokeWidth={2} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
             )}
           </div>
         )}
 
         {/* Price History Chart */}
         {priceData.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-6 mb-6">
-            <h2 className="text-xl font-semibold mb-4">Price History</h2>
-            {priceData.map(({ symbol, bars }) => (
-              <div key={symbol} className={priceData.length > 1 ? 'mb-6' : ''}>
-                {priceData.length > 1 && <h3 className="text-base font-medium text-gray-700 mb-2">{symbol}</h3>}
-                <PriceChart
-                  data={bars}
-                  indicators={symbolIndicators[symbol]?.overlays ?? []}
-                  oscillators={symbolIndicators[symbol]?.oscillators ?? []}
-                  markers={buildSignalMarkers(symbol, signals)}
-                  timeRange={{
-                    from: `${backtest.start_date}T00:00:00Z`,
-                    to: `${backtest.end_date}T23:59:59Z`,
-                  }}
-                />
-              </div>
-            ))}
-          </div>
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Price History</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {priceData.map(({ symbol, bars }) => (
+                <div key={symbol} className={priceData.length > 1 ? 'mb-6' : ''}>
+                  {priceData.length > 1 && <h3 className="text-base font-medium text-gray-700 mb-2">{symbol}</h3>}
+                  <PriceChart
+                    data={bars}
+                    indicators={symbolIndicators[symbol]?.overlays ?? []}
+                    oscillators={symbolIndicators[symbol]?.oscillators ?? []}
+                    markers={buildSignalMarkers(symbol, signals)}
+                    timeRange={{
+                      from: `${backtest.start_date}T00:00:00Z`,
+                      to: `${backtest.end_date}T23:59:59Z`,
+                    }}
+                  />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         )}
 
         {/* Signals & Trades Tables - Side by Side */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           {/* Signals Section */}
           {signals.length > 0 && (
-            <div className="bg-white rounded-lg shadow p-6 lg:col-span-1">
-              <h2 className="text-xl font-semibold mb-4">Signals ({signals.length})</h2>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b">
-                    <tr>
-                      <th className="text-left py-2 px-3 font-semibold text-gray-600">Symbol</th>
-                      <th className="text-left py-2 px-3 font-semibold text-gray-600">Type</th>
-                      <th className="text-left py-2 px-3 font-semibold text-gray-600">Timestamp</th>
-                      <th className="text-right py-2 px-3 font-semibold text-gray-600">Price</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+            <Card className="lg:col-span-1">
+              <CardHeader>
+                <CardTitle>Signals ({signals.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Symbol</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Timestamp</TableHead>
+                      <TableHead className="text-right">Price</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {signals.map((signal) => (
-                      <tr key={signal.id} className="border-b hover:bg-gray-50">
-                        <td className="py-2 px-3 font-mono">{signal.symbol}</td>
-                        <td className="py-2 px-3">
+                      <TableRow key={signal.id}>
+                        <TableCell className="font-mono">{signal.symbol}</TableCell>
+                        <TableCell>
                           <span
                             className={`capitalize font-semibold ${
                               signal.signal_type === 'buy'
                                 ? 'text-green-600'
                                 : signal.signal_type === 'sell'
                                   ? 'text-red-600'
-                                  : 'text-gray-600'
+                                  : 'text-muted-foreground'
                             }`}
                           >
                             {signal.signal_type}
                           </span>
-                        </td>
-                        <td className="py-2 px-3 text-gray-600">
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
                           {new Date(signal.timestamp).toLocaleDateString('en-GB', {
                             day: '2-digit',
                             month: '2-digit',
                             year: '2-digit',
                           })}
-                        </td>
-                        <td className="py-2 px-3 text-right font-mono">${signal.price.toFixed(2)}</td>
-                      </tr>
+                        </TableCell>
+                        <TableCell className="text-right font-mono">${signal.price.toFixed(2)}</TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
           )}
 
           {/* Trades Table */}
           {trades.length > 0 && (
-            <div className="bg-white rounded-lg shadow p-6 lg:col-span-2">
-              <h2 className="text-xl font-semibold mb-4">Trades ({trades.length})</h2>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b">
-                    <tr>
-                      <th className="text-left py-2 px-3 font-semibold text-gray-600">Symbol</th>
-                      <th className="text-left py-2 px-3 font-semibold text-gray-600">Side</th>
-                      <th className="text-left py-2 px-3 font-semibold text-gray-600">Entry Date</th>
-                      <th className="text-right py-2 px-3 font-semibold text-gray-600">Entry Price</th>
-                      <th className="text-left py-2 px-3 font-semibold text-gray-600">Exit Date</th>
-                      <th className="text-right py-2 px-3 font-semibold text-gray-600">Exit Price</th>
-                      <th className="text-right py-2 px-3 font-semibold text-gray-600">Qty</th>
-                      <th className="text-right py-2 px-3 font-semibold text-gray-600">P&amp;L</th>
-                      <th className="text-right py-2 px-3 font-semibold text-gray-600">P&amp;L %</th>
-                      <th className="text-left py-2 px-3 font-semibold text-gray-600">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle>Trades ({trades.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Symbol</TableHead>
+                      <TableHead>Side</TableHead>
+                      <TableHead>Entry Date</TableHead>
+                      <TableHead className="text-right">Entry Price</TableHead>
+                      <TableHead>Exit Date</TableHead>
+                      <TableHead className="text-right">Exit Price</TableHead>
+                      <TableHead className="text-right">Qty</TableHead>
+                      <TableHead className="text-right">P&amp;L</TableHead>
+                      <TableHead className="text-right">P&amp;L %</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {trades.map((trade) => (
-                      <tr key={trade.id} className="border-b hover:bg-gray-50">
-                        <td className="py-2 px-3 font-mono">{trade.symbol}</td>
-                        <td className="py-2 px-3">
+                      <TableRow key={trade.id}>
+                        <TableCell className="font-mono">{trade.symbol}</TableCell>
+                        <TableCell>
                           <span
                             className={`capitalize font-semibold ${trade.side === 'buy' ? 'text-green-600' : 'text-red-600'}`}
                           >
                             {trade.side}
                           </span>
-                        </td>
-                        <td className="py-2 px-3 text-gray-600">
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
                           {new Date(trade.entry_date).toLocaleDateString('en-GB', {
                             day: '2-digit',
                             month: '2-digit',
                             year: 'numeric',
                           })}
-                        </td>
-                        <td className="py-2 px-3 text-right font-mono">${trade.entry_price.toFixed(2)}</td>
-                        <td className="py-2 px-3 text-gray-600">
+                        </TableCell>
+                        <TableCell className="text-right font-mono">${trade.entry_price.toFixed(2)}</TableCell>
+                        <TableCell className="text-muted-foreground">
                           {trade.exit_date
                             ? new Date(trade.exit_date).toLocaleDateString('en-GB', {
                                 day: '2-digit',
@@ -489,12 +505,12 @@ export default function BacktestDetailPage() {
                                 year: 'numeric',
                               })
                             : '—'}
-                        </td>
-                        <td className="py-2 px-3 text-right font-mono">
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
                           {trade.exit_price != null ? `$${trade.exit_price.toFixed(2)}` : '—'}
-                        </td>
-                        <td className="py-2 px-3 text-right font-mono">{trade.quantity.toFixed(2)}</td>
-                        <td className="py-2 px-3 text-right font-mono">
+                        </TableCell>
+                        <TableCell className="text-right font-mono">{trade.quantity.toFixed(2)}</TableCell>
+                        <TableCell className="text-right font-mono">
                           {trade.pnl != null ? (
                             <span className={trade.pnl >= 0 ? 'text-green-600' : 'text-red-600'}>
                               {trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(2)}
@@ -502,8 +518,8 @@ export default function BacktestDetailPage() {
                           ) : (
                             '—'
                           )}
-                        </td>
-                        <td className="py-2 px-3 text-right font-mono">
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
                           {trade.pnl_pct != null ? (
                             <span className={trade.pnl_pct >= 0 ? 'text-green-600' : 'text-red-600'}>
                               {trade.pnl_pct >= 0 ? '+' : ''}
@@ -512,24 +528,18 @@ export default function BacktestDetailPage() {
                           ) : (
                             '—'
                           )}
-                        </td>
-                        <td className="py-2 px-3">
-                          <span
-                            className={`capitalize text-xs font-semibold px-2 py-0.5 rounded ${
-                              trade.status === 'closed'
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-yellow-100 text-yellow-700'
-                            }`}
-                          >
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={trade.status === 'closed' ? 'default' : 'outline'} className="capitalize">
                             {trade.status}
-                          </span>
-                        </td>
-                      </tr>
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
           )}
         </div>
 

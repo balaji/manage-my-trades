@@ -8,6 +8,9 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getStrategy, activateStrategy, deactivateStrategy, deleteStrategy } from '@/lib/api/strategies';
 import { Strategy, StrategyType, getStrategyTypeLabel } from '@/lib/types/strategy';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 function getSpecIndicators(strategy: Strategy) {
   return Array.isArray(strategy.spec?.indicators) ? strategy.spec.indicators : [];
@@ -132,33 +135,20 @@ export default function StrategyDetailPage() {
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-3xl font-bold">{strategy.name}</h1>
-                <span
-                  className={`px-3 py-1 text-sm font-semibold rounded ${
-                    strategy.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                  }`}
-                >
+                <Badge variant={strategy.is_active ? 'default' : 'outline'}>
                   {strategy.is_active ? 'Active' : 'Inactive'}
-                </span>
-                <span className="px-3 py-1 text-sm font-semibold rounded bg-blue-100 text-blue-800">
-                  {getStrategyTypeLabel(strategy.strategy_type as StrategyType)}
-                </span>
+                </Badge>
+                <Badge variant="secondary">{getStrategyTypeLabel(strategy.strategy_type as StrategyType)}</Badge>
               </div>
-              <p className="text-gray-600">{strategy.description || 'No description'}</p>
+              <p className="text-muted-foreground">{strategy.description || 'No description'}</p>
             </div>
             <div className="flex gap-2">
-              <button
-                onClick={handleToggleActive}
-                className={`px-4 py-2 rounded ${
-                  strategy.is_active
-                    ? 'bg-yellow-600 text-white hover:bg-yellow-700'
-                    : 'bg-green-600 text-white hover:bg-green-700'
-                }`}
-              >
+              <Button variant={strategy.is_active ? 'outline' : 'secondary'} onClick={handleToggleActive}>
                 {strategy.is_active ? 'Deactivate' : 'Activate'}
-              </button>
-              <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+              </Button>
+              <Button variant="destructive" onClick={handleDelete}>
                 Delete
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -167,82 +157,97 @@ export default function StrategyDetailPage() {
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Strategy Configuration */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold mb-4">Strategy Spec</h2>
-              <pre className="bg-gray-50 p-4 rounded overflow-x-auto text-sm">
-                {JSON.stringify(strategy.spec, null, 2)}
-              </pre>
-            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Strategy Spec</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <pre className="bg-muted p-4 rounded overflow-x-auto text-sm">
+                  {JSON.stringify(strategy.spec, null, 2)}
+                </pre>
+              </CardContent>
+            </Card>
 
             {/* Indicators */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold mb-4">Indicators</h2>
-              {specIndicators.length === 0 ? (
-                <p className="text-gray-500">No indicators configured</p>
-              ) : (
-                <div className="space-y-3">
-                  {specIndicators.map((indicator, index) => (
-                    <div key={`${indicator.alias}-${index}`} className="border rounded-lg p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <h3 className="font-semibold text-lg">{indicator.alias}</h3>
-                        <span className="px-2 py-1 text-xs font-semibold rounded bg-purple-100 text-purple-800">
-                          {indicator.indicator}
-                        </span>
+            <Card>
+              <CardHeader>
+                <CardTitle>Indicators</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {specIndicators.length === 0 ? (
+                  <p className="text-muted-foreground">No indicators configured</p>
+                ) : (
+                  <div className="space-y-3">
+                    {specIndicators.map((indicator, index) => (
+                      <div key={`${indicator.alias}-${index}`} className="border rounded-lg p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <h3 className="font-semibold text-lg">{indicator.alias}</h3>
+                          <Badge variant="secondary">{indicator.indicator}</Badge>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          <span className="font-medium">Parameters: </span>
+                          {JSON.stringify(indicator.params || {})}
+                        </div>
                       </div>
-                      <div className="text-sm text-gray-600">
-                        <span className="font-medium">Parameters: </span>
-                        {JSON.stringify(indicator.params || {})}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Quick Stats */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold mb-4">Stats</h2>
-              <div className="space-y-3">
-                <div>
-                  <div className="text-sm text-gray-600">Indicators</div>
-                  <div className="text-2xl font-bold">{specIndicators.length}</div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Stats</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div>
+                    <div className="text-sm text-muted-foreground">Indicators</div>
+                    <div className="text-2xl font-bold">{specIndicators.length}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground">Created</div>
+                    <div className="text-sm">{new Date(strategy.created_at).toLocaleDateString()}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground">Last Updated</div>
+                    <div className="text-sm">{new Date(strategy.updated_at).toLocaleDateString()}</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-sm text-gray-600">Created</div>
-                  <div className="text-sm">{new Date(strategy.created_at).toLocaleDateString()}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-600">Last Updated</div>
-                  <div className="text-sm">{new Date(strategy.updated_at).toLocaleDateString()}</div>
-                </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
             {/* Actions */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold mb-4">Actions</h2>
-              <div className="space-y-2">
-                <button
-                  onClick={() => router.push(`/backtests/new?strategyId=${strategy.id}`)}
-                  disabled={!strategy.is_active}
-                  className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                >
-                  Run Backtest
-                </button>
-                <button
-                  onClick={() => router.push(`/strategies/${strategy.id}/edit`)}
-                  className="w-full px-4 py-2 border rounded hover:bg-gray-50"
-                >
-                  Edit Strategy
-                </button>
-                <button onClick={handleExportConfig} className="w-full px-4 py-2 border rounded hover:bg-gray-50">
-                  Export Configuration
-                </button>
-              </div>
-            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Actions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <Button
+                    className="w-full"
+                    onClick={() => router.push(`/backtests/new?strategyId=${strategy.id}`)}
+                    disabled={!strategy.is_active}
+                  >
+                    Run Backtest
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => router.push(`/strategies/${strategy.id}/edit`)}
+                  >
+                    Edit Strategy
+                  </Button>
+                  <Button variant="outline" className="w-full" onClick={handleExportConfig}>
+                    Export Configuration
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>

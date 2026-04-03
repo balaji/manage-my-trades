@@ -4,6 +4,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { IChartApi } from 'lightweight-charts';
 import { PriceChart } from '@/components/charts/PriceChart';
 import { marketDataApi, technicalAnalysisApi } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import type { OHLCVBar } from '@/lib/types/market-data';
 import type { IndicatorResult } from '@/lib/api/technical-analysis';
 import {
@@ -53,10 +55,7 @@ function IndicatorDropdown({
 
   return (
     <div className="relative">
-      <button
-        onClick={onToggle}
-        className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm hover:bg-gray-50"
-      >
+      <Button variant="outline" size="sm" onClick={onToggle}>
         {buttonLabel}
         <svg
           className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`}
@@ -66,16 +65,16 @@ function IndicatorDropdown({
         >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
-      </button>
+      </Button>
       {open && (
         <div className="absolute left-0 top-full z-10 mt-1 min-w-[260px] rounded-lg border bg-white shadow-lg">
           <div className="border-b px-3 py-2">
-            <input
+            <Input
               type="text"
               value={filterText}
               onChange={(e) => setFilterText(e.target.value)}
               placeholder="Filter..."
-              className="w-full rounded border border-gray-200 px-2 py-1 text-sm focus:border-sky-400 focus:outline-none"
+              className="w-full"
               autoFocus
             />
           </div>
@@ -132,6 +131,7 @@ export default function TechnicalAnalysisPage() {
     endDate: string;
   } | null>(null);
   const [loadingIndicatorIds, setLoadingIndicatorIds] = useState<Set<string>>(new Set());
+  const [mounted, setMounted] = useState(false);
 
   const overlayDropdownRef = useRef<HTMLDivElement>(null);
   const oscillatorDropdownRef = useRef<HTMLDivElement>(null);
@@ -159,6 +159,10 @@ export default function TechnicalAnalysisPage() {
       ),
     [indicatorOptions, indicatorResults, loadedRequest?.startDate, supportedIndicators]
   );
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -391,46 +395,38 @@ export default function TechnicalAnalysisPage() {
       <div className="border-b border-slate-200 bg-white px-5 py-4">
         <div className="flex flex-wrap items-end gap-4">
           <div className="min-w-56 flex-1">
-            <input
+            <Input
               type="text"
               value={symbol}
               onChange={(e) => setSymbol(e.target.value.toUpperCase())}
               onKeyDown={(e) => e.key === 'Enter' && !loading && handleLoadData(rangeDays)}
-              className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-slate-900 placeholder:text-slate-400 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20"
               placeholder="Enter symbol (e.g., SPY)"
+              className="w-full"
             />
           </div>
-          <button
+          <Button
             onClick={() => handleLoadData(rangeDays)}
-            disabled={loading || indicatorOptions.length === 0}
-            className="rounded-lg bg-sky-600 px-5 py-2 font-medium text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:bg-slate-300"
+            disabled={loading || (mounted && indicatorOptions.length === 0)}
           >
             {loading ? 'Loading...' : 'Load Chart'}
-          </button>
-          <button
-            onClick={handleClear}
-            disabled={loading}
-            className="rounded-lg border border-slate-300 px-5 py-2 font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-          >
+          </Button>
+          <Button variant="outline" onClick={handleClear} disabled={loading}>
             Clear
-          </button>
+          </Button>
           <div className="flex flex-wrap items-center gap-2">
             {RANGES.map(({ label, days }) => (
-              <button
+              <Button
                 key={days}
+                size="sm"
+                variant={rangeDays === days ? 'default' : 'ghost'}
                 onClick={() => {
                   setRangeDays(days);
                   handleLoadData(days);
                 }}
                 disabled={loading}
-                className={`rounded px-3 py-1 text-sm transition ${
-                  rangeDays === days
-                    ? 'bg-slate-900 text-white'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                }`}
               >
                 {label}
-              </button>
+              </Button>
             ))}
           </div>
         </div>

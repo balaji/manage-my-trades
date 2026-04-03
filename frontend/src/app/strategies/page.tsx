@@ -7,6 +7,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { getStrategies, deleteStrategy, activateStrategy, deactivateStrategy } from '@/lib/api/strategies';
 import { Strategy, StrategyType, getStrategyTypeLabel } from '@/lib/types/strategy';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 
 function getIndicatorCount(strategy: Strategy): number {
   return Array.isArray(strategy.spec?.indicators) ? strategy.spec.indicators.length : 0;
@@ -74,114 +78,122 @@ export default function StrategiesPage() {
         </Link>
         <div className="flex justify-between items-center mb-8 mt-1">
           <h1 className="text-3xl font-bold">Trading Strategies</h1>
-          <Link href="/strategies/new" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+          <Button nativeButton={false} render={<Link href="/strategies/new" />}>
             Create Strategy
-          </Link>
+          </Button>
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <label className="block text-sm font-medium mb-2">Status</label>
-              <select
-                value={filterActive === undefined ? '' : filterActive ? 'active' : 'inactive'}
-                onChange={(e) => {
-                  if (e.target.value === '') setFilterActive(undefined);
-                  else setFilterActive(e.target.value === 'active');
-                }}
-                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">All Strategies</option>
-                <option value="active">Active Only</option>
-                <option value="inactive">Inactive Only</option>
-              </select>
+        <Card className="mb-6">
+          <CardContent className="pt-4">
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-2">Status</label>
+                <Select
+                  value={filterActive === undefined ? '' : filterActive ? 'active' : 'inactive'}
+                  onValueChange={(v) => {
+                    if (v === '') setFilterActive(undefined);
+                    else setFilterActive(v === 'active');
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="All Strategies" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All Strategies</SelectItem>
+                    <SelectItem value="active">Active Only</SelectItem>
+                    <SelectItem value="inactive">Inactive Only</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex-1">
+                <label className="block text-sm font-medium mb-2">Type</label>
+                <Select value={filterType} onValueChange={setFilterType}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="All Types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All Types</SelectItem>
+                    <SelectItem value={StrategyType.TECHNICAL}>Technical</SelectItem>
+                    <SelectItem value={StrategyType.ML}>Machine Learning</SelectItem>
+                    <SelectItem value={StrategyType.COMBINED}>Combined</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div className="flex-1">
-              <label className="block text-sm font-medium mb-2">Type</label>
-              <select
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
-                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">All Types</option>
-                <option value={StrategyType.TECHNICAL}>Technical</option>
-                <option value={StrategyType.ML}>Machine Learning</option>
-                <option value={StrategyType.COMBINED}>Combined</option>
-              </select>
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {error && <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">{error}</div>}
 
         {/* Strategies List */}
-        <div className="bg-white rounded-lg shadow">
-          {loading ? (
-            <div className="p-12 text-center text-gray-500">Loading strategies...</div>
-          ) : strategies.length === 0 ? (
-            <div className="p-12 text-center text-gray-500">
-              <p className="mb-4">No strategies found</p>
-              <Link
-                href="/strategies/new"
-                className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                Create Your First Strategy
-              </Link>
-            </div>
-          ) : (
-            <div className="divide-y">
-              {strategies.map((strategy) => (
-                <Link
-                  key={strategy.id}
-                  href={`/strategies/${strategy.id}`}
-                  className="block p-6 hover:bg-gray-50 cursor-pointer"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-xl font-semibold">{strategy.name}</h3>
-                        <span
-                          className={`px-2 py-1 text-xs font-semibold rounded ${
-                            strategy.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                          }`}
-                        >
-                          {strategy.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                        <span className="px-2 py-1 text-xs font-semibold rounded bg-blue-100 text-blue-800">
-                          {getStrategyTypeLabel(strategy.strategy_type as StrategyType)}
-                        </span>
-                      </div>
-                      <p className="text-gray-600 mb-2">{strategy.description || 'No description'}</p>
-                      <div className="text-sm text-gray-500">
-                        <span className="mr-4">Indicators: {getIndicatorCount(strategy)}</span>
-                        <span>Created: {new Date(strategy.created_at).toLocaleDateString()}</span>
+        <Card>
+          <CardContent className="p-0">
+            {loading ? (
+              <div className="p-12 text-center text-muted-foreground">Loading strategies...</div>
+            ) : strategies.length === 0 ? (
+              <div className="p-12 text-center text-muted-foreground">
+                <p className="mb-4">No strategies found</p>
+                <Button nativeButton={false} render={<Link href="/strategies/new" />}>
+                  Create Your First Strategy
+                </Button>
+              </div>
+            ) : (
+              <div className="divide-y">
+                {strategies.map((strategy) => (
+                  <Link
+                    key={strategy.id}
+                    href={`/strategies/${strategy.id}`}
+                    className="block p-6 hover:bg-muted/50 cursor-pointer"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-xl font-semibold">{strategy.name}</h3>
+                          <Badge variant={strategy.is_active ? 'default' : 'outline'}>
+                            {strategy.is_active ? 'Active' : 'Inactive'}
+                          </Badge>
+                          <Badge variant="secondary">
+                            {getStrategyTypeLabel(strategy.strategy_type as StrategyType)}
+                          </Badge>
+                        </div>
+                        <p className="text-muted-foreground mb-2">{strategy.description || 'No description'}</p>
+                        <div className="text-sm text-muted-foreground">
+                          <span className="mr-4">Indicators: {getIndicatorCount(strategy)}</span>
+                          <span>Created: {new Date(strategy.created_at).toLocaleDateString()}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Quick Stats */}
         {!loading && strategies.length > 0 && (
           <div className="mt-6 grid grid-cols-3 gap-4">
-            <div className="bg-white rounded-lg shadow p-4">
-              <div className="text-2xl font-bold text-blue-600">{strategies.length}</div>
-              <div className="text-sm text-gray-600">Total Strategies</div>
-            </div>
-            <div className="bg-white rounded-lg shadow p-4">
-              <div className="text-2xl font-bold text-green-600">{strategies.filter((s) => s.is_active).length}</div>
-              <div className="text-sm text-gray-600">Active Strategies</div>
-            </div>
-            <div className="bg-white rounded-lg shadow p-4">
-              <div className="text-2xl font-bold text-gray-600">
-                {strategies.reduce((sum, strategy) => sum + getIndicatorCount(strategy), 0)}
-              </div>
-              <div className="text-sm text-gray-600">Total Indicators</div>
-            </div>
+            <Card size="sm">
+              <CardContent className="pt-3">
+                <div className="text-2xl font-bold text-primary">{strategies.length}</div>
+                <div className="text-sm text-muted-foreground">Total Strategies</div>
+              </CardContent>
+            </Card>
+            <Card size="sm">
+              <CardContent className="pt-3">
+                <div className="text-2xl font-bold text-green-600">{strategies.filter((s) => s.is_active).length}</div>
+                <div className="text-sm text-muted-foreground">Active Strategies</div>
+              </CardContent>
+            </Card>
+            <Card size="sm">
+              <CardContent className="pt-3">
+                <div className="text-2xl font-bold">
+                  {strategies.reduce((sum, strategy) => sum + getIndicatorCount(strategy), 0)}
+                </div>
+                <div className="text-sm text-muted-foreground">Total Indicators</div>
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>
