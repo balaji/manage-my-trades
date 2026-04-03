@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -11,6 +12,7 @@ import {
   LayoutDashboard,
   Menu,
   ScrollText,
+  ChevronLeft,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -68,14 +70,23 @@ function isActivePath(pathname: string, href?: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function SidebarNav({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+function SidebarNav({
+  pathname,
+  onNavigate,
+  isMinimized,
+}: {
+  pathname: string;
+  onNavigate?: () => void;
+  isMinimized?: boolean;
+}) {
   return (
     <nav aria-label="Primary" className="space-y-2">
       {navigationItems.map((item) => {
         const active = isActivePath(pathname, item.href);
         const Icon = item.icon;
         const className = cn(
-          'flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition-colors',
+          'flex w-full items-center rounded-2xl py-3 text-left transition-colors',
+          isMinimized ? 'justify-center px-3' : 'gap-3 px-4',
           active
             ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/10'
             : 'text-slate-600 hover:bg-white hover:text-slate-900',
@@ -84,12 +95,14 @@ function SidebarNav({ pathname, onNavigate }: { pathname: string; onNavigate?: (
 
         if (!item.href) {
           return (
-            <div key={item.label} aria-disabled="true" className={className}>
+            <div key={item.label} aria-disabled="true" className={className} title={item.label}>
               <Icon className="size-4 shrink-0" />
-              <div className="min-w-0 flex-1">
-                <div className="font-medium">{item.label}</div>
-                <div className="text-xs opacity-80">{item.description}</div>
-              </div>
+              {!isMinimized && (
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium">{item.label}</div>
+                  <div className="text-xs opacity-80">{item.description}</div>
+                </div>
+              )}
             </div>
           );
         }
@@ -101,12 +114,15 @@ function SidebarNav({ pathname, onNavigate }: { pathname: string; onNavigate?: (
             onClick={onNavigate}
             aria-current={active ? 'page' : undefined}
             className={className}
+            title={item.label}
           >
             <Icon className="size-4 shrink-0" />
-            <div className="min-w-0 flex-1">
-              <div className="font-medium">{item.label}</div>
-              <div className={cn('text-xs', active ? 'text-slate-300' : 'text-slate-500')}>{item.description}</div>
-            </div>
+            {!isMinimized && (
+              <div className="min-w-0 flex-1">
+                <div className="font-medium">{item.label}</div>
+                <div className={cn('text-xs', active ? 'text-slate-300' : 'text-slate-500')}>{item.description}</div>
+              </div>
+            )}
           </Link>
         );
       })}
@@ -126,18 +142,37 @@ function CurrentSectionLabel({ pathname }: { pathname: string }) {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const [isMinimized, setIsMinimized] = useState(false);
   const pathname = usePathname() ?? '/';
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.14),_transparent_30%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] text-slate-900">
       <div className="flex min-h-screen">
-        <aside className="hidden w-64 shrink-0 border-r border-slate-200/70 bg-slate-100/85 px-6 py-8 backdrop-blur md:flex md:flex-col">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">algotrading 101</p>
+        <aside
+          className={cn(
+            'hidden shrink-0 border-r border-slate-200/70 bg-slate-100/85 backdrop-blur md:flex md:flex-col transition-all duration-300',
+            isMinimized ? 'w-20' : 'w-64',
+            isMinimized ? 'px-2' : 'px-6',
+            'py-8'
+          )}
+        >
+          <div className="flex items-center justify-between">
+            {!isMinimized && (
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">algotrading 101</p>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsMinimized(!isMinimized)}
+              className="ml-auto"
+              title={isMinimized ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              <ChevronLeft className={cn('size-4 transition-transform duration-300', isMinimized && 'rotate-180')} />
+            </Button>
           </div>
 
-          <div className="mt-10 flex-1">
-            <SidebarNav pathname={pathname} />
+          <div className={cn('flex-1', isMinimized ? 'mt-8' : 'mt-10')}>
+            <SidebarNav pathname={pathname} isMinimized={isMinimized} />
           </div>
         </aside>
 
