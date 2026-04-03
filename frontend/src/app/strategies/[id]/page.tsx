@@ -77,7 +77,11 @@ export default function StrategyDetailPage() {
   const handleDelete = async () => {
     if (!strategy) return;
 
-    if (!confirm(`Are you sure you want to delete "${strategy.name}"? This cannot be undone.`)) {
+    if (
+      !confirm(
+        `Are you sure you want to delete "${strategy.name}"?\n\nThis will also permanently delete all associated backtest results. This action cannot be undone.`
+      )
+    ) {
       return;
     }
 
