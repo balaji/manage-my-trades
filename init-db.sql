@@ -1,6 +1,9 @@
 -- Initialize TimescaleDB extension
 CREATE EXTENSION IF NOT EXISTS timescaledb;
 
+-- Create UUID-ossp extension for generating UUIDs
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 -- Grant necessary privileges
 GRANT ALL PRIVILEGES ON DATABASE trading_db TO trading_user;
 

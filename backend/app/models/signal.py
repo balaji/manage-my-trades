@@ -2,7 +2,8 @@
 Signal models.
 """
 
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, JSON
+from sqlalchemy import Column, String, Float, DateTime, ForeignKey, JSON, text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.db.session import Base
 from app.models.base import TimestampMixin
@@ -13,8 +14,10 @@ class Signal(Base, TimestampMixin):
 
     __tablename__ = "signals"
 
-    id = Column(Integer, primary_key=True, index=True)
-    backtest_result_id = Column(Integer, ForeignKey("backtest_results.id", ondelete="CASCADE"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, index=True, server_default=text("uuid_generate_v4()"))
+    backtest_result_id = Column(
+        UUID(as_uuid=True), ForeignKey("backtest_results.id", ondelete="CASCADE"), nullable=False
+    )
     symbol = Column(String(20), nullable=False, index=True)
     signal_type = Column(String(20), nullable=False)  # buy, sell, hold
     timestamp = Column(DateTime, nullable=False, index=True)

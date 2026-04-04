@@ -2,7 +2,8 @@
 Market data models.
 """
 
-from sqlalchemy import Column, Integer, String, Float, Date, DateTime, Index, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Float, Date, DateTime, Index, UniqueConstraint, text
+from sqlalchemy.dialects.postgresql import UUID
 from app.db.session import MarketDataBase, Base
 
 
@@ -44,7 +45,7 @@ class IndicatorCache(MarketDataBase):
 
     __tablename__ = "indicator_cache"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True)  # Keep as Integer - market_data_db unchanged
     symbol = Column(String(20), nullable=False, index=True)
     timeframe = Column(String(10), nullable=False, index=True)
     indicator_name = Column(String(100), nullable=False, index=True)
@@ -69,7 +70,7 @@ class PortfolioHistory(Base):
 
     __tablename__ = "portfolio_history"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, index=True, server_default=text("uuid_generate_v4()"))
     timestamp = Column(DateTime, nullable=False, index=True)
     equity = Column(Float, nullable=False)
     cash = Column(Float, nullable=False)

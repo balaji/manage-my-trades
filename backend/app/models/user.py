@@ -1,6 +1,7 @@
 """User model."""
 
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, String, text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 from app.db.session import Base
@@ -12,7 +13,7 @@ class User(Base, TimestampMixin):
 
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, index=True, server_default=text("uuid_generate_v4()"))
     google_sub = Column(String(255), nullable=False, unique=True, index=True)
     name = Column(String(255), nullable=True)
     picture = Column(String(512), nullable=True)

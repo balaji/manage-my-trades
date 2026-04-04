@@ -2,7 +2,8 @@
 Machine learning model metadata.
 """
 
-from sqlalchemy import Column, Integer, String, Float, DateTime, JSON, Text, Boolean
+from sqlalchemy import Column, String, Float, DateTime, JSON, Text, Boolean, text
+from sqlalchemy.dialects.postgresql import UUID
 from app.db.session import Base
 from app.models.base import TimestampMixin
 
@@ -12,7 +13,7 @@ class MLModel(Base, TimestampMixin):
 
     __tablename__ = "ml_models"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, index=True, server_default=text("uuid_generate_v4()"))
     name = Column(String(255), nullable=False, unique=True, index=True)
     model_type = Column(String(100), nullable=False)  # random_forest, gradient_boosting, svm
     task_type = Column(String(50), nullable=False)  # classification, regression
@@ -37,8 +38,8 @@ class MLModelMetrics(Base, TimestampMixin):
 
     __tablename__ = "ml_model_metrics"
 
-    id = Column(Integer, primary_key=True, index=True)
-    model_id = Column(Integer, nullable=False, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, index=True, server_default=text("uuid_generate_v4()"))
+    model_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     dataset_type = Column(String(20), nullable=False)  # train, validation, test
 
     # Classification metrics

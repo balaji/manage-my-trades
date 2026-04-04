@@ -2,6 +2,7 @@
 Strategy schemas for API requests and responses.
 """
 
+import uuid
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from typing import Optional, List
 from datetime import datetime, date
@@ -144,7 +145,7 @@ class StrategyUpdate(BaseModel):
 class StrategyResponse(BaseModel):
     """Response schema for strategy."""
 
-    id: int
+    id: uuid.UUID
     name: str
     description: Optional[str]
     strategy_type: str
@@ -206,8 +207,8 @@ class StrategyListResponse(BaseModel):
 class SignalResponse(BaseModel):
     """Response schema for trading signal."""
 
-    id: int
-    backtest_result_id: int
+    id: uuid.UUID
+    backtest_result_id: uuid.UUID
     symbol: str
     signal_type: str
     timestamp: date
