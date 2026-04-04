@@ -21,7 +21,7 @@ format-backend:
 	uv --directory backend run ruff format
 
 format-frontend:
-	npm run format --prefix frontend
+	npm run format --prefix frontend .
 
 format: format-backend format-frontend
 
