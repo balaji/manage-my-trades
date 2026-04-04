@@ -24,9 +24,7 @@ export function StrategyForm({
   const [name, setName] = useState(initialData?.name || '');
   const [description, setDescription] = useState(initialData?.description || '');
   const [prompt, setPrompt] = useState('');
-  const [specJson, setSpecJson] = useState(() =>
-    JSON.stringify(initialData?.spec || buildEmptySpec(initialData?.name, initialData?.description), null, 2)
-  );
+  const [specJson, setSpecJson] = useState(() => (initialData ? JSON.stringify(initialData.spec, null, 2) : null));
   const [compileSummary, setCompileSummary] = useState<string | null>(null);
   const [promptWarnings, setPromptWarnings] = useState<string[]>([]);
   const [compileWarnings, setCompileWarnings] = useState<string[]>([]);
@@ -35,7 +33,7 @@ export function StrategyForm({
   const [savingAsNew, setSavingAsNew] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const buildFormData = (): StrategyCreate => {
+  const buildFormData = (specJson: string): StrategyCreate => {
     const spec = parseSpecJson(specJson);
     if (!spec.metadata) spec.metadata = {};
     spec.metadata.name = name.trim() || spec.metadata.name || 'Unnamed Strategy';
@@ -49,7 +47,7 @@ export function StrategyForm({
     };
   };
 
-  const validate = (): string | null => {
+  const validate = (specJson: string): string | null => {
     if (!name.trim()) return 'Strategy name is required';
     try {
       parseSpecJson(specJson);
@@ -92,43 +90,40 @@ export function StrategyForm({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const validationError = validate();
+  const handleSave = async (
+    saveCallback: (data: StrategyCreate) => Promise<void>,
+    progressFunc: (message: boolean) => void,
+    errMsg?: string
+  ) => {
+    if (!specJson) {
+      setError('Compile the strategy to generate a specification before submitting');
+      return;
+    }
+    const validationError = validate(specJson);
     if (validationError) {
       setError(validationError);
       return;
     }
 
     setError(null);
-    setSubmitting(true);
+    progressFunc(true);
     try {
-      await onSubmit(buildFormData());
+      await saveCallback(buildFormData(specJson));
     } catch (err: any) {
-      setError(err.message || 'Failed to submit strategy');
+      setError(err.message || errMsg || 'Failed to save');
     } finally {
-      setSubmitting(false);
+      progressFunc(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await handleSave(onSubmit, setSubmitting, 'Failed to submit strategy');
   };
 
   const handleSaveAsNew = async () => {
     if (!onSaveAsNew) return;
-
-    const validationError = validate();
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-
-    setError(null);
-    setSavingAsNew(true);
-    try {
-      await onSaveAsNew(buildFormData());
-    } catch (err: any) {
-      setError(err.message || 'Failed to save as new strategy');
-    } finally {
-      setSavingAsNew(false);
-    }
+    await handleSave(onSaveAsNew, setSavingAsNew, 'Failed to save copy');
   };
 
   return (
@@ -163,23 +158,17 @@ export function StrategyForm({
                 placeholder="Describe your trading strategy..."
               />
             </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium">Strategy Type</label>
-              <Input type="text" value="Technical" disabled className="w-full" />
-            </div>
           </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Natural Language Compiler</CardTitle>
+          <CardTitle>Describe the Strategy</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div>
-              <label className="mb-2 block text-sm font-medium">Describe the Strategy</label>
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
@@ -188,12 +177,12 @@ export function StrategyForm({
                 placeholder="Buy SPY when 14-day RSI falls below 30, sell when it rises above 70, use 10% position sizing on daily bars."
               />
               <p className="mt-2 text-sm text-muted-foreground">
-                The compiler returns a draft technical strategy spec. Review the generated JSON before saving.
+                Creates a draft technical strategy spec. Review the generated JSON before saving.
               </p>
             </div>
 
             <Button type="button" onClick={handleCompile} disabled={compiling}>
-              {compiling ? 'Compiling...' : 'Compile Strategy'}
+              {compiling ? 'Compiling...' : 'Compile'}
             </Button>
 
             {compileSummary && (
@@ -225,74 +214,39 @@ export function StrategyForm({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Strategy Spec</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <textarea
-            value={specJson}
-            onChange={(e) => setSpecJson(e.target.value)}
-            className="w-full rounded-lg border border-input bg-transparent px-2.5 py-2 font-mono text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-            rows={24}
-          />
-        </CardContent>
-      </Card>
+      {specJson && (
+        <React.Fragment>
+          <Card>
+            <CardHeader>
+              <CardTitle>Strategy Spec</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <textarea
+                value={specJson}
+                onChange={(e) => setSpecJson(e.target.value)}
+                className="w-full rounded-lg border border-input bg-transparent px-2.5 py-2 font-mono text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                rows={24}
+              />
+            </CardContent>
+          </Card>
 
-      <div className="flex gap-3">
-        <Button type="submit" disabled={submitting} size="lg">
-          {submitting ? 'Saving...' : submitLabel}
-        </Button>
+          <div className="flex gap-3">
+            <Button type="submit" disabled={submitting} size="lg">
+              {submitting ? 'Saving...' : submitLabel}
+            </Button>
 
-        {onSaveAsNew && (
-          <Button type="button" variant="outline" size="lg" onClick={handleSaveAsNew} disabled={savingAsNew}>
-            {savingAsNew ? 'Saving Copy...' : 'Save As New'}
-          </Button>
-        )}
-      </div>
+            {onSaveAsNew && (
+              <Button type="button" variant="outline" size="lg" onClick={handleSaveAsNew} disabled={savingAsNew}>
+                {savingAsNew ? 'Saving Copy...' : 'Save As New'}
+              </Button>
+            )}
+          </div>
+        </React.Fragment>
+      )}
     </form>
   );
 }
 
 function parseSpecJson(specJson: string): StrategySpec {
   return JSON.parse(specJson) as StrategySpec;
-}
-
-function buildEmptySpec(name?: string, description?: string): StrategySpec {
-  return {
-    kind: 'technical',
-    metadata: {
-      name: name || 'New Strategy',
-      description: description || '',
-      version: 1,
-    },
-    market: {
-      timeframe: '1d',
-      symbols: [],
-    },
-    indicators: [],
-    rules: {
-      entry: {
-        type: 'compare',
-        left: { type: 'price', field: 'close' },
-        operator: '>',
-        right: { type: 'constant', value: 0 },
-      },
-      exit: {
-        type: 'compare',
-        left: { type: 'price', field: 'close' },
-        operator: '<',
-        right: { type: 'constant', value: 0 },
-      },
-      filters: [],
-    },
-    risk: {
-      position_sizing: {
-        method: 'fixed_percentage',
-        percentage: 0.1,
-      },
-      long_only: true,
-    },
-    execution: {},
-  };
 }

@@ -43,8 +43,13 @@ export default function StrategiesPage() {
   }, [filterActive, filterType]);
 
   useEffect(() => {
-    loadStrategies();
-  }, [loadStrategies]);
+    if (user) {
+      loadStrategies();
+      setError(null);
+    } else {
+      setError('Please sign in to view strategies.');
+    }
+  }, [loadStrategies, user]);
 
   return (
     <div className="min-h-full p-8">
@@ -146,34 +151,6 @@ export default function StrategiesPage() {
               )}
             </CardContent>
           </Card>
-
-          {/* Quick Stats */}
-          {!loading && strategies.length > 0 && (
-            <div className="mt-6 grid grid-cols-3 gap-4">
-              <Card size="sm">
-                <CardContent className="pt-3">
-                  <div className="text-2xl font-bold text-primary">{strategies.length}</div>
-                  <div className="text-sm text-muted-foreground">Total Strategies</div>
-                </CardContent>
-              </Card>
-              <Card size="sm">
-                <CardContent className="pt-3">
-                  <div className="text-2xl font-bold text-green-600">
-                    {strategies.filter((s) => s.is_active).length}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Active Strategies</div>
-                </CardContent>
-              </Card>
-              <Card size="sm">
-                <CardContent className="pt-3">
-                  <div className="text-2xl font-bold">
-                    {strategies.reduce((sum, strategy) => sum + getIndicatorCount(strategy), 0)}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Total Indicators</div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
         </div>
       )}
     </div>

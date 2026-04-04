@@ -18,12 +18,46 @@ describe('StrategyForm', () => {
   it('shows a validation error and blocks submit when the JSON spec is invalid', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn().mockResolvedValue(undefined);
-    const { container } = render(<StrategyForm onSubmit={onSubmit} />);
+    vi.mocked(compileStrategy).mockResolvedValue({
+      normalized_spec: {
+        kind: 'technical',
+        metadata: { name: 'Mean Reversion', description: '', version: 1 },
+        market: { timeframe: '1d', symbols: [] },
+        indicators: [],
+        rules: {
+          entry: {
+            type: 'compare',
+            left: { type: 'price', field: 'close' },
+            operator: '>',
+            right: { type: 'constant', value: 0 },
+          },
+          exit: {
+            type: 'compare',
+            left: { type: 'price', field: 'close' },
+            operator: '<',
+            right: { type: 'constant', value: 0 },
+          },
+          filters: [],
+        },
+        risk: { position_sizing: { method: 'fixed_percentage', percentage: 0.1 }, long_only: true },
+        execution: {},
+      },
+      summary: 'Compiled strategy summary',
+      warnings: [],
+      prompt_warnings: [],
+    });
+    render(<StrategyForm onSubmit={onSubmit} />);
 
     await user.type(screen.getByPlaceholderText('e.g., RSI Mean Reversion'), 'Mean Reversion');
-
-    const textareas = container.querySelectorAll('textarea');
-    fireEvent.change(textareas[2], { target: { value: '{invalid json' } });
+    await user.type(
+      screen.getByPlaceholderText(
+        'Buy SPY when 14-day RSI falls below 30, sell when it rises above 70, use 10% position sizing on daily bars.'
+      ),
+      'Generate a momentum strategy'
+    );
+    await user.click(screen.getByRole('button', { name: 'Compile' }));
+    const specTextarea = await screen.findByDisplayValue(/"kind": "technical"/);
+    fireEvent.change(specTextarea, { target: { value: '{invalid json' } });
 
     await user.click(screen.getByRole('button', { name: 'Create Strategy' }));
 
@@ -34,43 +68,48 @@ describe('StrategyForm', () => {
   it('submits normalized form data with metadata updated from the form fields', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn().mockResolvedValue(undefined);
-    const { container } = render(<StrategyForm onSubmit={onSubmit} />);
+    vi.mocked(compileStrategy).mockResolvedValue({
+      normalized_spec: {
+        kind: 'technical',
+        metadata: { name: 'Compiled Name', description: 'Compiled description', version: 1 },
+        market: { timeframe: '1d', symbols: [] },
+        indicators: [],
+        rules: {
+          entry: {
+            type: 'compare',
+            left: { type: 'price', field: 'close' },
+            operator: '>',
+            right: { type: 'constant', value: 0 },
+          },
+          exit: {
+            type: 'compare',
+            left: { type: 'price', field: 'close' },
+            operator: '<',
+            right: { type: 'constant', value: 0 },
+          },
+          filters: [],
+        },
+        risk: { position_sizing: { method: 'fixed_percentage', percentage: 0.1 }, long_only: true },
+        execution: {},
+      },
+      summary: 'Compiled strategy summary',
+      warnings: [],
+      prompt_warnings: [],
+    });
+
+    render(<StrategyForm onSubmit={onSubmit} />);
 
     await user.type(screen.getByPlaceholderText('e.g., RSI Mean Reversion'), 'Trend Follower');
     await user.type(screen.getByPlaceholderText('Describe your trading strategy...'), 'Follows breakouts');
+    await user.type(
+      screen.getByPlaceholderText(
+        'Buy SPY when 14-day RSI falls below 30, sell when it rises above 70, use 10% position sizing on daily bars.'
+      ),
+      'Generate a momentum strategy'
+    );
 
-    const specTextarea = container.querySelectorAll('textarea')[2];
-    fireEvent.change(specTextarea, {
-      target: {
-        value: JSON.stringify(
-          {
-            kind: 'technical',
-            metadata: { name: 'Old Name', description: 'Old description', version: 1 },
-            market: { timeframe: '1d', symbols: [] },
-            indicators: [],
-            rules: {
-              entry: {
-                type: 'compare',
-                left: { type: 'price', field: 'close' },
-                operator: '>',
-                right: { type: 'constant', value: 0 },
-              },
-              exit: {
-                type: 'compare',
-                left: { type: 'price', field: 'close' },
-                operator: '<',
-                right: { type: 'constant', value: 0 },
-              },
-              filters: [],
-            },
-            risk: { position_sizing: { method: 'fixed_percentage', percentage: 0.1 }, long_only: true },
-            execution: {},
-          },
-          null,
-          2
-        ),
-      },
-    });
+    await user.click(screen.getByRole('button', { name: 'Compile' }));
+    expect(await screen.findByText('Compiled strategy summary')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Create Strategy' }));
 
@@ -113,7 +152,7 @@ describe('StrategyForm', () => {
       'Generate a momentum strategy'
     );
 
-    await user.click(screen.getByRole('button', { name: 'Compile Strategy' }));
+    await user.click(screen.getByRole('button', { name: 'Compile' }));
 
     expect(await screen.findByText('Compiled strategy summary')).toBeInTheDocument();
     expect(screen.getByText('Prompt warning')).toBeInTheDocument();

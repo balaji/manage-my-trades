@@ -46,8 +46,13 @@ export default function BacktestsPage() {
   };
 
   useEffect(() => {
-    load();
-  }, []);
+    if (user) {
+      load();
+      setError(null);
+    } else {
+      setError('Please sign in to view backtests.');
+    }
+  }, [user]);
 
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Delete backtest "${name}"? This cannot be undone.`)) return;
