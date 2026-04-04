@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     GOOGLE_AUTH_BASE_URL: str = "https://accounts.google.com/o/oauth2/v2/auth"
     GOOGLE_TOKEN_URL: str = "https://oauth2.googleapis.com/token"
     GOOGLE_USERINFO_URL: str = "https://openidconnect.googleapis.com/v1/userinfo"
-    FRONTEND_CALLBACK_URL: str = "http://localhost:3000/auth/callback"
+    FRONTEND_CALLBACK_URL: str = "http://myapp.net:3000/auth/callback"
 
     # Trading Configuration
     DEFAULT_COMMISSION: float = 0.0  # Alpaca has no commission

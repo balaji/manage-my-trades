@@ -31,7 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(() => {
-    const loginUrl = `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1'}/auth/google/login`;
+    const loginUrl = `${process.env.NEXT_PUBLIC_API_URL ?? 'http://myapp.net:8000/api/v1'}/auth/google/login`;
     const width = 500;
     const height = 600;
     const left = window.screenX + (window.outerWidth - width) / 2;

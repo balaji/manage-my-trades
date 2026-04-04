@@ -1,109 +1,140 @@
-# Frontend — Manage My Trades
+# Manage My Trades Frontend
 
-Next.js 16 (App Router) web application for managing trading strategies, running backtests, and performing technical analysis.
+Next.js 16 frontend for the Manage My Trades platform. The app provides a UI for trading strategy management, backtesting, and technical analysis, with Google-based authentication and a shared API client for the backend service.
+
+## What this app does
+
+- Technical analysis workspace for loading chart data and enabling indicators
+- Strategy management for creating, listing, editing, activating, and deactivating strategies
+- Backtest management for creating, running, listing, and deleting backtests
+- Authenticated app shell with Google sign-in and sign-out
+
+The home route redirects to `/technical-analysis`.
 
 ## Tech Stack
 
-| Layer              | Technology                                                           |
-| ------------------ | -------------------------------------------------------------------- |
-| Framework          | Next.js 16 (App Router), React 19, TypeScript 5.3                    |
-| Styling            | Tailwind CSS 3, CSS design tokens (shadcn/ui-compatible theming)     |
-| Charting           | `lightweight-charts` v4 (candlestick), `recharts` v2 (equity curves) |
-| HTTP               | Axios — singleton client configured via env var                      |
-| Icons              | `lucide-react`                                                       |
-| Utilities          | `clsx`, `tailwind-merge`, `class-variance-authority`, `date-fns`     |
-| Installed (unused) | `@tanstack/react-query` v5, `zustand` v4                             |
+- Next.js 16 App Router
+- React 19
+- TypeScript
+- Tailwind CSS
+- Axios for backend requests
+- TanStack Query, Zustand, Recharts, and lightweight-charts where needed
+- Vitest and Testing Library for tests
 
 ## Project Structure
 
-```
-src/
-├── app/                        # Next.js App Router pages
-│   ├── layout.tsx              # Root layout (Inter font, metadata)
-│   ├── page.tsx                # Home / navigation hub
-│   ├── strategies/
-│   │   ├── page.tsx            # Strategy list with filters & actions
-│   │   ├── new/page.tsx        # Create strategy form
-│   │   └── [id]/page.tsx       # Strategy detail, signals, actions
-│   ├── backtests/
-│   │   ├── page.tsx            # Backtest list table
-│   │   ├── new/page.tsx        # Configure & run backtest
-│   │   └── [id]/page.tsx       # Backtest results & trade log
-│   └── technical-analysis/
-│       └── page.tsx            # Interactive candlestick + indicator chart
-├── components/
-│   ├── charts/
-│   │   ├── PriceChart.tsx      # Candlestick chart with indicator overlays
-│   │   └── OscillatorChart.tsx # RSI / BB% sub-panel (synchronized axis)
-│   └── strategies/
-│       └── StrategyForm.tsx    # Strategy create/edit form
-└── lib/
-    ├── api/
-    │   ├── client.ts           # Axios instance + error normalization
-    │   ├── strategies.ts       # Strategy CRUD + signals
-    │   ├── market-data.ts      # OHLCV bars, symbol search, quotes
-    │   ├── technical-analysis.ts # Indicator calculation
-    │   └── backtests.ts        # Backtest CRUD + trades
-    └── types/
-        ├── strategy.ts         # Strategy/Signal enums & interfaces
-        ├── market-data.ts      # OHLCV interfaces
-        └── backtest.ts         # Backtest & trade interfaces
+- `src/app` - App Router pages and layouts
+- `src/components` - Shared UI, layout, and chart components
+- `src/lib/api` - API client and endpoint wrappers
+- `src/lib/types` - Shared TypeScript types
+- `src/lib/technical-analysis` - Chart and indicator modeling helpers
+- `src/test` - Test setup
+
+## Requirements
+
+- Node.js 20+ recommended
+- npm
+- A running backend service
+
+## Environment Variables
+
+Create a `.env` file in the frontend root if you need to override defaults:
+
+```env
+BACKEND_URL=http://myapp.net:8000
+NEXT_PUBLIC_API_URL=http://myapp.net:8000/api/v1
 ```
 
-## Pages
+- `BACKEND_URL` is used by `next.config.js` to rewrite `/api/v1/*` requests to the backend
+- `NEXT_PUBLIC_API_URL` is used by the browser-side API client and auth flow
 
-| Route                 | Description                                                                 |
-| --------------------- | --------------------------------------------------------------------------- |
-| `/`                   | Navigation hub; links to Strategies, Backtests, Technical Analysis          |
-| `/strategies`         | List strategies; filter by status/type; activate, deactivate, delete        |
-| `/strategies/new`     | Create strategy with indicators and raw JSON config                         |
-| `/strategies/[id]`    | Strategy detail: indicators, signals, run backtest, export config           |
-| `/backtests`          | Table of all backtests with key metrics and delete action                   |
-| `/backtests/new`      | Configure backtest (strategy, symbols, date range, capital, fees)           |
-| `/backtests/[id]`     | Results: 8 metric cards, equity curve chart, full trade log                 |
-| `/technical-analysis` | Interactive chart: candlestick + SMA/EMA/Bollinger overlays + RSI/BB% panel |
+If you do not set these values, the app falls back to `http://myapp.net:8000` and `http://myapp.net:8000/api/v1`.
 
-## Development
+## Local Development
+
+### Without Docker
+
+1. Install dependencies:
 
 ```bash
 npm install
-npm run dev       # http://localhost:3000
-npm run build
-npm run lint
 ```
 
-### Environment Variables
+2. Start the frontend:
 
-| Variable              | Default                           | Description          |
-| --------------------- | --------------------------------- | -------------------- |
-| `NEXT_PUBLIC_API_URL` | `http://bigmac.local:8000/api/v1` | Backend API base URL |
-
-Create a `.env.local` to override:
-
-```env
-NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+```bash
+npm run dev
 ```
 
-### Docker
+This expects the backend and database to already be running.
 
-A `Dockerfile` is included at the root of this directory for containerized deployment. See `docker-compose.yml` at the repo root.
+### With Docker
 
-## API Integration
+Use the repository-level Docker setup described in the parent project if you prefer containerized development:
 
-All API calls go through a single Axios instance in `src/lib/api/client.ts` with a 30-second timeout. Each domain has its own module (`strategies.ts`, `market-data.ts`, etc.) that exports typed async functions. Errors are normalized via `handleApiError` before propagating to components.
+```bash
+docker-compose up -d database backend
+docker-compose up --build --watch frontend
+```
 
-Data fetching currently uses manual `useEffect` + `useState` patterns. `@tanstack/react-query` and `zustand` are installed and ready to adopt.
+## Common Scripts
 
-## Key Components
+- `npm run dev` - Start the Next.js development server
+- `npm run build` - Build the app for production
+- `npm run start` - Start the production server
+- `npm run test` - Run the test suite once
+- `npm run test:watch` - Run tests in watch mode
+- `npm run test:coverage` - Run tests with coverage output
+- `npm run lint` - Lint and auto-fix supported issues
+- `npm run format` - Format files with Prettier
 
-**`PriceChart`** — TradingView `lightweight-charts` candlestick chart. Accepts an `indicators` array for overlay series (SMA, EMA, Bollinger Bands). Exposes `onChartReady` for axis synchronization with the oscillator panel.
+## Authentication
 
-**`OscillatorChart`** — Sub-chart panel for RSI and BB% rendered below the price chart with a synchronized time axis. Supports configurable reference lines (e.g., overbought/oversold levels).
+- The app loads the current user from `/auth/me`
+- Sign-in opens the backend Google OAuth flow in a popup
+- A successful login sends an `AUTH_SUCCESS` message back to the app window
+- Sign-out calls `/auth/logout`
 
-**`StrategyForm`** — Controlled form for strategy creation supporting dynamic indicator add/remove. Supports 7 indicator types: SMA, EMA, RSI, MACD, Bollinger Bands, Stochastic, ATR.
+## Backend API Surface
+
+The frontend uses a single configured Axios client in `src/lib/api/client.ts`. Notable modules:
+
+- `src/lib/api/auth.ts` - Current user and logout
+- `src/lib/api/strategies.ts` - Strategy CRUD and activation
+- `src/lib/api/backtests.ts` - Backtest CRUD, run, trades, and signals
+- `src/lib/api/technical-analysis.ts` - Indicator discovery and calculation
+- `src/lib/api/market-data.ts` - Market data access
+
+## Main Pages
+
+- `/technical-analysis` - Load a symbol, select a date range, and toggle supported indicators
+- `/strategies` - Browse strategies with filters and quick stats
+- `/strategies/new` - Create a new strategy
+- `/strategies/[id]` - View a strategy
+- `/strategies/[id]/edit` - Edit a strategy
+- `/backtests` - View and delete backtests
+- `/backtests/new` - Create a backtest
+- `/backtests/[id]` - Inspect backtest details
+- `/auth/callback` - OAuth callback handling
+
+## Testing
+
+Tests use Vitest with Testing Library and `jsdom`.
+
+Useful patterns in the current suite:
+
+- Route behavior is tested with mocked `next/navigation`
+- Layout behavior is tested through rendered sidebar and auth state
+- API and technical-analysis helpers have unit coverage
+
+Run the full suite with:
+
+```bash
+npm run test
+```
 
 ## Notes
 
-- No global navigation shell; each page handles its own back-links.
-- No authentication or protected routes.
-- Theming infrastructure (CSS design tokens, dark mode class strategy) is shadcn/ui-ready but no shadcn components are installed yet.
+- The app uses `src/app/page.tsx` as a redirect to the technical analysis workspace.
+- `next.config.js` rewrites `/api/v1/:path*` to the backend URL, which keeps local browser requests simple.
+- The codebase is strict TypeScript and expects API responses to match the shared type definitions.

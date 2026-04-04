@@ -4,7 +4,7 @@
 
 import axios, { AxiosError } from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://bigmac.local:8000/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://myapp.net:8000/api/v1';
 
 /**
  * Configured axios instance for API calls.
