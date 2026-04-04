@@ -17,7 +17,7 @@ export async function createBacktest(data: BacktestCreate): Promise<Backtest> {
   }
 }
 
-export async function runBacktest(backtestId: number): Promise<Backtest> {
+export async function runBacktest(backtestId: string): Promise<Backtest> {
   try {
     const response = await apiClient.post<Backtest>(`${BACKTESTS_BASE}/${backtestId}/run`);
     return response.data;
@@ -26,7 +26,7 @@ export async function runBacktest(backtestId: number): Promise<Backtest> {
   }
 }
 
-export async function getBacktest(backtestId: number): Promise<Backtest> {
+export async function getBacktest(backtestId: string): Promise<Backtest> {
   try {
     const response = await apiClient.get<Backtest>(`${BACKTESTS_BASE}/${backtestId}`);
     return response.data;
@@ -36,7 +36,7 @@ export async function getBacktest(backtestId: number): Promise<Backtest> {
 }
 
 export async function listBacktests(params?: {
-  strategy_id?: number;
+  strategy_id?: string;
   status?: string;
   skip?: number;
   limit?: number;
@@ -57,7 +57,7 @@ export async function listBacktests(params?: {
 }
 
 export async function getBacktestTrades(
-  backtestId: number,
+  backtestId: string,
   params?: { skip?: number; limit?: number }
 ): Promise<BacktestTradesResponse> {
   try {
@@ -74,7 +74,7 @@ export async function getBacktestTrades(
 }
 
 export async function getBacktestSignals(
-  backtestId: number,
+  backtestId: string,
   params?: { skip?: number; limit?: number }
 ): Promise<BacktestSignalsResponse> {
   try {
@@ -90,7 +90,7 @@ export async function getBacktestSignals(
   }
 }
 
-export async function deleteBacktest(backtestId: number): Promise<void> {
+export async function deleteBacktest(backtestId: string): Promise<void> {
   try {
     await apiClient.delete(`${BACKTESTS_BASE}/${backtestId}`);
   } catch (error) {

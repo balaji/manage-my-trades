@@ -49,7 +49,7 @@ export default function BacktestsPage() {
     load();
   }, []);
 
-  const handleDelete = async (id: number, name: string) => {
+  const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Delete backtest "${name}"? This cannot be undone.`)) return;
     try {
       await deleteBacktest(id);

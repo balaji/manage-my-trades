@@ -3,7 +3,7 @@
  */
 
 export interface Signal {
-  id: number;
+  id: string;
   symbol: string;
   signal_type: string; // buy, sell, hold
   timestamp: string;

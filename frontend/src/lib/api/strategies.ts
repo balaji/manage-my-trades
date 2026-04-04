@@ -61,7 +61,7 @@ export async function getStrategies(params?: GetStrategiesParams): Promise<Strat
 /**
  * Get a specific strategy by ID.
  */
-export async function getStrategy(strategyId: number): Promise<Strategy> {
+export async function getStrategy(strategyId: string): Promise<Strategy> {
   try {
     const response = await apiClient.get<Strategy>(`${STRATEGIES_BASE}/${strategyId}`);
     return response.data;
@@ -73,7 +73,7 @@ export async function getStrategy(strategyId: number): Promise<Strategy> {
 /**
  * Update an existing strategy.
  */
-export async function updateStrategy(strategyId: number, data: StrategyUpdate): Promise<Strategy> {
+export async function updateStrategy(strategyId: string, data: StrategyUpdate): Promise<Strategy> {
   try {
     const response = await apiClient.put<Strategy>(`${STRATEGIES_BASE}/${strategyId}`, data);
     return response.data;
@@ -85,7 +85,7 @@ export async function updateStrategy(strategyId: number, data: StrategyUpdate): 
 /**
  * Delete a strategy by ID.
  */
-export async function deleteStrategy(strategyId: number): Promise<void> {
+export async function deleteStrategy(strategyId: string): Promise<void> {
   try {
     await apiClient.delete(`${STRATEGIES_BASE}/${strategyId}`);
   } catch (error) {
@@ -96,7 +96,7 @@ export async function deleteStrategy(strategyId: number): Promise<void> {
 /**
  * Activate a strategy to start generating signals.
  */
-export async function activateStrategy(strategyId: number): Promise<Strategy> {
+export async function activateStrategy(strategyId: string): Promise<Strategy> {
   try {
     const response = await apiClient.post<Strategy>(`${STRATEGIES_BASE}/${strategyId}/activate`);
     return response.data;
@@ -108,7 +108,7 @@ export async function activateStrategy(strategyId: number): Promise<Strategy> {
 /**
  * Deactivate a strategy to stop generating signals.
  */
-export async function deactivateStrategy(strategyId: number): Promise<Strategy> {
+export async function deactivateStrategy(strategyId: string): Promise<Strategy> {
   try {
     const response = await apiClient.post<Strategy>(`${STRATEGIES_BASE}/${strategyId}/deactivate`);
     return response.data;

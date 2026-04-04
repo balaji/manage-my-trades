@@ -80,7 +80,7 @@ function buildSignalMarkers(symbol: string, signals: Signal[]): SeriesMarker<Tim
 export default function BacktestDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const backtestId = parseInt(params.id as string);
+  const backtestId = params.id as string;
 
   const [backtest, setBacktest] = useState<Backtest | null>(null);
   const [trades, setTrades] = useState<BacktestTrade[]>([]);

@@ -1,9 +1,11 @@
 """Strategy API endpoints."""
 
+import uuid
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from openai import APIError
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional
 
 from app.db.session import get_db
 from app.deps import get_current_user
@@ -156,7 +158,7 @@ async def list_strategies(
     description="Get detailed information about a specific trading strategy.",
 )
 async def get_strategy(
-    strategy_id: int,
+    strategy_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -182,7 +184,7 @@ async def get_strategy(
     description="Update an existing trading strategy's configuration.",
 )
 async def update_strategy(
-    strategy_id: int,
+    strategy_id: uuid.UUID,
     strategy_data: StrategyUpdate,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -228,7 +230,7 @@ async def update_strategy(
     description="Permanently delete a trading strategy and all its associated data.",
 )
 async def delete_strategy(
-    strategy_id: int,
+    strategy_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -259,7 +261,7 @@ async def delete_strategy(
     description="Activate a strategy to start generating signals.",
 )
 async def activate_strategy(
-    strategy_id: int,
+    strategy_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -290,7 +292,7 @@ async def activate_strategy(
     description="Deactivate a strategy to stop generating signals.",
 )
 async def deactivate_strategy(
-    strategy_id: int,
+    strategy_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):

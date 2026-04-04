@@ -1,5 +1,6 @@
 """API endpoints for backtesting."""
 
+import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -50,7 +51,7 @@ async def create_backtest(
 
 @router.post("/{backtest_id}/run", response_model=BacktestResponse)
 async def run_backtest(
-    backtest_id: int,
+    backtest_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     market_db: AsyncSession = Depends(get_market_db),
     current_user=Depends(get_current_user),
@@ -85,7 +86,7 @@ async def run_backtest(
 
 @router.get("/", response_model=BacktestListResponse)
 async def list_backtests(
-    strategy_id: Optional[int] = None,
+    strategy_id: Optional[uuid.UUID] = None,
     status: Optional[str] = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
@@ -112,7 +113,7 @@ async def list_backtests(
 
 @router.get("/{backtest_id}", response_model=BacktestResponse)
 async def get_backtest(
-    backtest_id: int,
+    backtest_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     market_db: AsyncSession = Depends(get_market_db),
     current_user=Depends(get_current_user),
@@ -138,7 +139,7 @@ async def get_backtest(
 
 @router.get("/{backtest_id}/trades", response_model=BacktestTradesResponse)
 async def get_backtest_trades(
-    backtest_id: int,
+    backtest_id: uuid.UUID,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     db: AsyncSession = Depends(get_db),
@@ -163,7 +164,7 @@ async def get_backtest_trades(
 
 @router.get("/{backtest_id}/signals", response_model=BacktestSignalsResponse)
 async def get_backtest_signals(
-    backtest_id: int,
+    backtest_id: uuid.UUID,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     db: AsyncSession = Depends(get_db),
@@ -202,7 +203,7 @@ async def get_backtest_signals(
 
 @router.delete("/{backtest_id}", status_code=204)
 async def delete_backtest(
-    backtest_id: int,
+    backtest_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     market_db: AsyncSession = Depends(get_market_db),
     current_user=Depends(get_current_user),
