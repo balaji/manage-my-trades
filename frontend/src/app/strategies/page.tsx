@@ -5,7 +5,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { getStrategies, deleteStrategy, activateStrategy, deactivateStrategy } from '@/lib/api/strategies';
+import { getStrategies } from '@/lib/api/strategies';
 import { useAuth } from '@/lib/auth-context';
 import { Strategy, StrategyType, getStrategyTypeLabel } from '@/lib/types/strategy';
 import { Badge } from '@/components/ui/badge';
