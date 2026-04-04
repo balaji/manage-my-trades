@@ -98,25 +98,21 @@ export default function StrategyDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-full p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center py-12">Loading strategy...</div>
-        </div>
+      <div className="max-w-7xl mx-auto">
+        <div className="text-center py-12">Loading strategy...</div>
       </div>
     );
   }
 
   if (error || !strategy) {
     return (
-      <div className="min-h-full p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
-            {error || 'Strategy not found'}
-          </div>
-          <Link href="/strategies" className="inline-block mt-4 text-blue-600 hover:underline">
-            ← Back to Strategies
-          </Link>
+      <div className="max-w-7xl mx-auto">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+          {error || 'Strategy not found'}
         </div>
+        <Link href="/strategies" className="inline-block mt-4 text-blue-600 hover:underline">
+          ← Back to Strategies
+        </Link>
       </div>
     );
   }
@@ -124,131 +120,129 @@ export default function StrategyDetailPage() {
   const specIndicators = getSpecIndicators(strategy);
 
   return (
-    <div className="min-h-full p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
-          <Link href="/strategies" className="text-blue-600 hover:underline mb-2 inline-block">
-            ← Back to Strategies
-          </Link>
-          <div className="flex justify-between items-start">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-3xl font-bold">{strategy.name}</h1>
-                <Badge variant={strategy.is_active ? 'default' : 'outline'}>
-                  {strategy.is_active ? 'Active' : 'Inactive'}
-                </Badge>
-                <Badge variant="secondary">{getStrategyTypeLabel(strategy.strategy_type as StrategyType)}</Badge>
-              </div>
-              <p className="text-muted-foreground">{strategy.description || 'No description'}</p>
+    <div className="max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="mb-6">
+        <Link href="/strategies" className="text-blue-600 hover:underline mb-2 inline-block">
+          ← Back to Strategies
+        </Link>
+        <div className="flex justify-between items-start">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-3xl font-bold">{strategy.name}</h1>
+              <Badge variant={strategy.is_active ? 'default' : 'outline'}>
+                {strategy.is_active ? 'Active' : 'Inactive'}
+              </Badge>
+              <Badge variant="secondary">{getStrategyTypeLabel(strategy.strategy_type as StrategyType)}</Badge>
             </div>
-            <div className="flex gap-2">
-              <Button variant={strategy.is_active ? 'outline' : 'secondary'} onClick={handleToggleActive}>
-                {strategy.is_active ? 'Deactivate' : 'Activate'}
-              </Button>
-              <Button variant="destructive" onClick={handleDelete}>
-                Delete
-              </Button>
-            </div>
+            <p className="text-muted-foreground">{strategy.description || 'No description'}</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant={strategy.is_active ? 'outline' : 'secondary'} onClick={handleToggleActive}>
+              {strategy.is_active ? 'Deactivate' : 'Activate'}
+            </Button>
+            <Button variant="destructive" onClick={handleDelete}>
+              Delete
+            </Button>
           </div>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Strategy Configuration */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Strategy Spec</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <pre className="bg-muted p-4 rounded overflow-x-auto text-sm">
-                  {JSON.stringify(strategy.spec, null, 2)}
-                </pre>
-              </CardContent>
-            </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Content */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Strategy Configuration */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Strategy Spec</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <pre className="bg-muted p-4 rounded overflow-x-auto text-sm">
+                {JSON.stringify(strategy.spec, null, 2)}
+              </pre>
+            </CardContent>
+          </Card>
 
-            {/* Indicators */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Indicators</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {specIndicators.length === 0 ? (
-                  <p className="text-muted-foreground">No indicators configured</p>
-                ) : (
-                  <div className="space-y-3">
-                    {specIndicators.map((indicator, index) => (
-                      <div key={`${indicator.alias}-${index}`} className="border rounded-lg p-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <h3 className="font-semibold text-lg">{indicator.alias}</h3>
-                          <Badge variant="secondary">{indicator.indicator}</Badge>
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          <span className="font-medium">Parameters: </span>
-                          {JSON.stringify(indicator.params || {})}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Quick Stats */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Stats</CardTitle>
-              </CardHeader>
-              <CardContent>
+          {/* Indicators */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Indicators</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {specIndicators.length === 0 ? (
+                <p className="text-muted-foreground">No indicators configured</p>
+              ) : (
                 <div className="space-y-3">
-                  <div>
-                    <div className="text-sm text-muted-foreground">Indicators</div>
-                    <div className="text-2xl font-bold">{specIndicators.length}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground">Created</div>
-                    <div className="text-sm">{new Date(strategy.created_at).toLocaleDateString()}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground">Last Updated</div>
-                    <div className="text-sm">{new Date(strategy.updated_at).toLocaleDateString()}</div>
-                  </div>
+                  {specIndicators.map((indicator, index) => (
+                    <div key={`${indicator.alias}-${index}`} className="border rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-semibold text-lg">{indicator.alias}</h3>
+                        <Badge variant="secondary">{indicator.indicator}</Badge>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        <span className="font-medium">Parameters: </span>
+                        {JSON.stringify(indicator.params || {})}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </CardContent>
-            </Card>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
-            {/* Actions */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Actions</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <Button
-                    className="w-full"
-                    onClick={() => router.push(`/backtests/new?strategyId=${strategy.id}`)}
-                    disabled={!strategy.is_active}
-                  >
-                    Run Backtest
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => router.push(`/strategies/${strategy.id}/edit`)}
-                  >
-                    Edit Strategy
-                  </Button>
-                  <Button variant="outline" className="w-full" onClick={handleExportConfig}>
-                    Export Configuration
-                  </Button>
+        {/* Sidebar */}
+        <div className="space-y-6">
+          {/* Quick Stats */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Stats</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div>
+                  <div className="text-sm text-muted-foreground">Indicators</div>
+                  <div className="text-2xl font-bold">{specIndicators.length}</div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Created</div>
+                  <div className="text-sm">{new Date(strategy.created_at).toLocaleDateString()}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Last Updated</div>
+                  <div className="text-sm">{new Date(strategy.updated_at).toLocaleDateString()}</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Actions */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Actions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <Button
+                  className="w-full"
+                  onClick={() => router.push(`/backtests/new?strategyId=${strategy.id}`)}
+                  disabled={!strategy.is_active}
+                >
+                  Run Backtest
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => router.push(`/strategies/${strategy.id}/edit`)}
+                >
+                  Edit Strategy
+                </Button>
+                <Button variant="outline" className="w-full" onClick={handleExportConfig}>
+                  Export Configuration
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

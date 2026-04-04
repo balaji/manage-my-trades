@@ -19,20 +19,18 @@ export default function NewStrategyPage() {
   };
 
   return (
-    <div className="min-h-full p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-6">
-          <Link href="/strategies" className="text-blue-600 hover:underline mb-2 inline-block">
-            ← Back to Strategies
-          </Link>
-          <h1 className="text-3xl font-bold">Create New Strategy</h1>
-          <p className="text-gray-600 mt-2">
-            Describe a strategy, compile it into a validated spec, then review the JSON before saving.
-          </p>
-        </div>
-
-        <StrategyForm onSubmit={handleSubmit} />
+    <div className="max-w-4xl mx-auto">
+      <div className="mb-6">
+        <Link href="/strategies" className="text-blue-600 hover:underline mb-2 inline-block">
+          ← Back to Strategies
+        </Link>
+        <h1 className="text-3xl font-bold">Create New Strategy</h1>
+        <p className="text-gray-600 mt-2">
+          Describe a strategy, compile it into a validated spec, then review the JSON before saving.
+        </p>
       </div>
+
+      <StrategyForm onSubmit={handleSubmit} />
     </div>
   );
 }
