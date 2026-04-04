@@ -8,16 +8,19 @@ import {
   BarChart3,
   ChessQueen,
   ChartNoAxesCombined,
+  ChevronLeft,
   Flower2,
   LayoutDashboard,
+  LogIn,
+  LogOut,
   Menu,
   ScrollText,
-  ChevronLeft,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { useAuth, type UserInfo } from '@/lib/auth-context';
 
 type NavItem = {
   href?: string;
@@ -130,6 +133,83 @@ function SidebarNav({
   );
 }
 
+function getInitials(name: string | null | undefined): string {
+  if (!name) return '?';
+  const parts = name.split(' ');
+  return parts
+    .map((p) => p[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+function SidebarFooter({
+  isMinimized,
+  user,
+  authLoading,
+  onLogin,
+  onLogout,
+}: {
+  isMinimized?: boolean;
+  user: UserInfo | null;
+  authLoading: boolean;
+  onLogin: () => void;
+  onLogout: () => void;
+}) {
+  if (authLoading) {
+    return <div className={cn('mt-auto pt-6', isMinimized ? 'flex justify-center' : '')} />;
+  }
+
+  if (user) {
+    return (
+      <div className={cn('mt-auto pt-6', isMinimized ? 'flex flex-col items-center gap-2' : 'space-y-2')}>
+        <div className={cn('flex items-center', isMinimized ? 'flex-col gap-2' : 'gap-3 px-4')}>
+          {user.picture ? (
+            <img
+              src={user.picture}
+              alt={user.name ?? 'User'}
+              className="size-8 rounded-full object-cover"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className="flex size-8 items-center justify-center rounded-full bg-slate-300 text-xs font-semibold text-slate-700">
+              {getInitials(user.name)}
+            </div>
+          )}
+          {!isMinimized && <p className="min-w-0 truncate text-sm font-medium text-slate-900">{user.name ?? 'User'}</p>}
+        </div>
+        <button
+          onClick={onLogout}
+          className={cn(
+            'flex w-full items-center rounded-2xl text-slate-600 transition-colors hover:bg-white hover:text-slate-900',
+            isMinimized ? 'justify-center px-3 py-3' : 'gap-3 px-4 py-3'
+          )}
+          title="Sign out"
+        >
+          <LogOut className="size-4 shrink-0" />
+          {!isMinimized && <span className="text-sm font-medium">Sign out</span>}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn('mt-auto pt-6', isMinimized ? 'flex justify-center' : '')}>
+      <button
+        onClick={onLogin}
+        className={cn(
+          'flex w-full items-center rounded-2xl text-slate-600 transition-colors hover:bg-white hover:text-slate-900',
+          isMinimized ? 'justify-center px-3 py-3' : 'gap-3 px-4 py-3'
+        )}
+        title="Sign in with Google"
+      >
+        <LogIn className="size-4 shrink-0" />
+        {!isMinimized && <span className="text-sm font-medium">Sign in with Google</span>}
+      </button>
+    </div>
+  );
+}
+
 function CurrentSectionLabel({ pathname }: { pathname: string }) {
   const currentItem = navigationItems.find((item) => isActivePath(pathname, item.href));
 
@@ -143,6 +223,7 @@ function CurrentSectionLabel({ pathname }: { pathname: string }) {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [isMinimized, setIsMinimized] = useState(false);
+  const { user, authLoading, login, logout } = useAuth();
   const pathname = usePathname() ?? '/';
 
   return (
@@ -174,6 +255,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className={cn('flex-1', isMinimized ? 'mt-8' : 'mt-10')}>
             <SidebarNav pathname={pathname} isMinimized={isMinimized} />
           </div>
+          <SidebarFooter
+            isMinimized={isMinimized}
+            user={user}
+            authLoading={authLoading}
+            onLogin={login}
+            onLogout={logout}
+          />
         </aside>
 
         <div className="flex min-h-screen min-w-0 flex-1 flex-col">
@@ -191,6 +279,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     <div className="mt-6">
                       <SidebarNav pathname={pathname} />
                     </div>
+                    <SidebarFooter user={user} authLoading={authLoading} onLogin={login} onLogout={logout} />
                   </div>
                 </DialogContent>
               </Dialog>

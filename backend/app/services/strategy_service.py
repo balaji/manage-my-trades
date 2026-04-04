@@ -4,11 +4,12 @@ Strategy service for managing trading strategies.
 
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 import logging
 
 from app.core.strategies.legacy import build_legacy_spec
 from app.models.strategy import Strategy
+from app.models import User
 from app.schemas.strategy import StrategyCreate, StrategyUpdate
 
 logger = logging.getLogger(__name__)
@@ -21,7 +22,7 @@ class StrategyService:
         """Initialize strategy service."""
         self.db = db
 
-    async def create_strategy(self, strategy_data: StrategyCreate) -> Strategy:
+    async def create_strategy(self, strategy_data: StrategyCreate, user: User) -> Strategy:
         """
         Create a new trading strategy with indicators.
 
@@ -35,13 +36,16 @@ class StrategyService:
             ValueError: If strategy name already exists
         """
         # Check if strategy name already exists
-        existing = await self.db.execute(select(Strategy).where(Strategy.name == strategy_data.name))
+        existing = await self.db.execute(
+            select(Strategy).where(Strategy.user_id == user.id, Strategy.name == strategy_data.name)
+        )
         if existing.scalar_one_or_none():
             raise ValueError(f"Strategy with name '{strategy_data.name}' already exists")
 
         # Create strategy
         strategy = Strategy(
             name=strategy_data.name,
+            user_id=user.id,
             description=strategy_data.description,
             strategy_type="technical",
             is_active=False,  # New strategies start inactive
@@ -54,7 +58,7 @@ class StrategyService:
         await self.db.refresh(strategy)
         return strategy
 
-    async def get_strategy(self, strategy_id: int) -> Optional[Strategy]:
+    async def get_strategy(self, strategy_id: int, user: User | None = None) -> Optional[Strategy]:
         """
         Get a strategy by ID.
 
@@ -64,7 +68,10 @@ class StrategyService:
         Returns:
             Strategy if found, None otherwise
         """
-        result = await self.db.execute(select(Strategy).where(Strategy.id == strategy_id))
+        query = select(Strategy).where(Strategy.id == strategy_id)
+        if user is not None:
+            query = query.where(Strategy.user_id == user.id)
+        result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
     async def list_strategies(
@@ -73,6 +80,7 @@ class StrategyService:
         limit: int = 100,
         is_active: Optional[bool] = None,
         strategy_type: Optional[str] = None,
+        user: User | None = None,
     ) -> tuple[List[Strategy], int]:
         """
         List all strategies with optional filtering.
@@ -88,22 +96,21 @@ class StrategyService:
         """
         # Build query
         query = select(Strategy)
+        count_query = select(func.count()).select_from(Strategy)
 
         # Apply filters
         if is_active is not None:
             query = query.where(Strategy.is_active == is_active)
-        if strategy_type:
-            query = query.where(Strategy.strategy_type == strategy_type)
-
-        # Get total count
-        count_query = select(Strategy)
-        if is_active is not None:
             count_query = count_query.where(Strategy.is_active == is_active)
         if strategy_type:
+            query = query.where(Strategy.strategy_type == strategy_type)
             count_query = count_query.where(Strategy.strategy_type == strategy_type)
+        if user is not None:
+            query = query.where(Strategy.user_id == user.id)
+            count_query = count_query.where(Strategy.user_id == user.id)
 
         count_result = await self.db.execute(count_query)
-        total = len(count_result.scalars().all())
+        total = count_result.scalar_one()
 
         # Apply pagination and execute
         query = query.offset(skip).limit(limit)
@@ -112,7 +119,7 @@ class StrategyService:
 
         return list(strategies), total
 
-    async def update_strategy(self, strategy_id: int, strategy_data: StrategyUpdate) -> Optional[Strategy]:
+    async def update_strategy(self, strategy_id: int, strategy_data: StrategyUpdate, user: User) -> Optional[Strategy]:
         """
         Update an existing strategy.
 
@@ -127,14 +134,18 @@ class StrategyService:
             ValueError: If updated name conflicts with another strategy
         """
         # Get existing strategy
-        strategy = await self.get_strategy(strategy_id)
+        strategy = await self.get_strategy(strategy_id, user)
         if not strategy:
             return None
 
         # Check name uniqueness if name is being updated
         if strategy_data.name and strategy_data.name != strategy.name:
             existing = await self.db.execute(
-                select(Strategy).where(Strategy.name == strategy_data.name, Strategy.id != strategy_id)
+                select(Strategy).where(
+                    Strategy.user_id == user.id,
+                    Strategy.name == strategy_data.name,
+                    Strategy.id != strategy_id,
+                )
             )
             if existing.scalar_one_or_none():
                 raise ValueError(f"Strategy with name '{strategy_data.name}' already exists")
@@ -158,9 +169,9 @@ class StrategyService:
         await self.db.refresh(strategy)
 
         # Reload with relationships
-        return await self.get_strategy(strategy_id)
+        return await self.get_strategy(strategy_id, user)
 
-    async def delete_strategy(self, strategy_id: int) -> bool:
+    async def delete_strategy(self, strategy_id: int, user: User) -> bool:
         """
         Delete a strategy.
 
@@ -170,7 +181,7 @@ class StrategyService:
         Returns:
             True if deleted, False if not found
         """
-        strategy = await self.get_strategy(strategy_id)
+        strategy = await self.get_strategy(strategy_id, user)
         if not strategy:
             return False
 
@@ -179,7 +190,7 @@ class StrategyService:
         logger.info(f"Deleted strategy {strategy_id}: {strategy.name}")
         return True
 
-    async def activate_strategy(self, strategy_id: int) -> Optional[Strategy]:
+    async def activate_strategy(self, strategy_id: int, user: User) -> Optional[Strategy]:
         """
         Activate a strategy.
 
@@ -189,7 +200,7 @@ class StrategyService:
         Returns:
             Updated strategy if found, None otherwise
         """
-        strategy = await self.get_strategy(strategy_id)
+        strategy = await self.get_strategy(strategy_id, user)
         if not strategy:
             return None
 
@@ -198,9 +209,9 @@ class StrategyService:
         await self.db.refresh(strategy)
         logger.info(f"Activated strategy {strategy_id}: {strategy.name}")
 
-        return await self.get_strategy(strategy_id)
+        return await self.get_strategy(strategy_id, user)
 
-    async def deactivate_strategy(self, strategy_id: int) -> Optional[Strategy]:
+    async def deactivate_strategy(self, strategy_id: int, user: User) -> Optional[Strategy]:
         """
         Deactivate a strategy.
 
@@ -210,7 +221,7 @@ class StrategyService:
         Returns:
             Updated strategy if found, None otherwise
         """
-        strategy = await self.get_strategy(strategy_id)
+        strategy = await self.get_strategy(strategy_id, user)
         if not strategy:
             return None
 
@@ -219,4 +230,4 @@ class StrategyService:
         await self.db.refresh(strategy)
         logger.info(f"Deactivated strategy {strategy_id}: {strategy.name}")
 
-        return await self.get_strategy(strategy_id)
+        return await self.get_strategy(strategy_id, user)
