@@ -2,7 +2,7 @@
 Strategy models.
 """
 
-from sqlalchemy import Column, Integer, String, Text, Boolean, JSON
+from sqlalchemy import Column, Integer, String, Text, Boolean, JSON, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import TypeDecorator
 from app.db.session import Base
@@ -33,11 +33,14 @@ class Strategy(Base, TimestampMixin):
     """Strategy model."""
 
     __tablename__ = "strategies"
+    __table_args__ = (UniqueConstraint("user_id", "name", name="uq_strategies_user_id_name"),)
 
     id: int = Column(Integer, primary_key=True, index=True)  # type: ignore[assignment]
-    name: str = Column(String(255), nullable=False, unique=True, index=True)  # type: ignore[assignment]
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    name: str = Column(String(255), nullable=False, index=True)  # type: ignore[assignment]
     description: str = Column(Text, nullable=True)  # type: ignore[assignment]
     strategy_type: str = Column(String(50), nullable=False)  # type: ignore[assignment]  # technical, ml, combined
     is_active: bool = Column(Boolean, default=False)  # type: ignore[assignment]
     config: StrategySpec = Column(StrategySpecType, nullable=False)  # type: ignore[assignment]
     backtests = relationship("Backtest", back_populates="strategy", cascade="all, delete-orphan")
+    user = relationship("User", back_populates="strategies")

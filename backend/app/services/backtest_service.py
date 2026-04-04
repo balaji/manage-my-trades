@@ -11,6 +11,7 @@ from app.core.backtesting.engine import BacktestEngine
 from app.models.backtest import Backtest
 from app.models.signal import Signal
 from app.models.trade import Trade
+from app.models import User
 from app.schemas.backtest import BacktestCreate
 from app.services.strategy_service import StrategyService
 
@@ -26,7 +27,7 @@ class BacktestService:
         self.market_db = market_db
         self.strategy_service = StrategyService(db)
 
-    async def create_backtest(self, backtest_data: BacktestCreate) -> Backtest:
+    async def create_backtest(self, backtest_data: BacktestCreate, user: User) -> Backtest:
         """
         Create backtest record with status='pending'.
 
@@ -40,7 +41,7 @@ class BacktestService:
             ValueError: If validation fails
         """
         # Validate strategy exists
-        strategy = await self.strategy_service.get_strategy(backtest_data.strategy_id)
+        strategy = await self.strategy_service.get_strategy(backtest_data.strategy_id, user)
         if not strategy:
             raise ValueError(f"Strategy {backtest_data.strategy_id} not found")
 
@@ -54,6 +55,7 @@ class BacktestService:
 
         # Create backtest record
         backtest = Backtest(
+            user_id=user.id,
             strategy_id=backtest_data.strategy_id,
             name=backtest_data.name,
             symbols=backtest_data.symbols,
@@ -72,9 +74,9 @@ class BacktestService:
 
         logger.info(f"Created backtest {backtest.id}: {backtest.name}")
 
-        return await self.get_backtest(backtest.id)
+        return await self.get_backtest(backtest.id, user)
 
-    async def run_backtest(self, backtest_id: int) -> Backtest:
+    async def run_backtest(self, backtest_id: int, user: User) -> Backtest:
         """
         Execute backtest simulation.
 
@@ -88,7 +90,7 @@ class BacktestService:
             ValueError: If backtest not found or in invalid state
         """
         # Load backtest with strategy
-        backtest = await self.get_backtest(backtest_id)
+        backtest = await self.get_backtest(backtest_id, user)
         if not backtest:
             raise ValueError(f"Backtest {backtest_id} not found")
 
@@ -142,10 +144,10 @@ class BacktestService:
             raise
 
         # Reload with results
-        backtest = await self.get_backtest(backtest_id)
+        backtest = await self.get_backtest(backtest_id, user)
         return backtest
 
-    async def get_backtest(self, backtest_id: int) -> Optional[Backtest]:
+    async def get_backtest(self, backtest_id: int, user: User | None = None) -> Optional[Backtest]:
         """
         Get backtest with results and strategy.
 
@@ -155,6 +157,14 @@ class BacktestService:
         Returns:
             Backtest object or None if not found
         """
+        if user is not None:
+            result = await self.db.execute(
+                select(Backtest)
+                .options(selectinload(Backtest.results))
+                .options(selectinload(Backtest.strategy))
+                .where(Backtest.id == backtest_id, Backtest.user_id == user.id)
+            )
+            return result.scalar_one_or_none()
         result = await self.db.execute(
             select(Backtest)
             .options(selectinload(Backtest.results))
@@ -169,6 +179,7 @@ class BacktestService:
         status: Optional[str] = None,
         skip: int = 0,
         limit: int = 100,
+        user: User | None = None,
     ) -> Tuple[List[Backtest], int]:
         """
         List backtests with filtering and pagination.
@@ -191,6 +202,8 @@ class BacktestService:
             filters.append(Backtest.strategy_id == strategy_id)
         if status is not None:
             filters.append(Backtest.status == status)
+        if user is not None:
+            filters.append(Backtest.user_id == user.id)
 
         if filters:
             query = query.where(and_(*filters))
@@ -212,7 +225,7 @@ class BacktestService:
 
         return list(backtests), total
 
-    async def delete_backtest(self, backtest_id: int) -> bool:
+    async def delete_backtest(self, backtest_id: int, user: User) -> bool:
         """
         Delete backtest (cascade deletes results and trades).
 
@@ -222,7 +235,7 @@ class BacktestService:
         Returns:
             True if deleted, False if not found
         """
-        backtest = await self.get_backtest(backtest_id)
+        backtest = await self.get_backtest(backtest_id, user)
         if not backtest:
             return False
 
@@ -233,7 +246,9 @@ class BacktestService:
 
         return True
 
-    async def get_backtest_trades(self, backtest_id: int, skip: int = 0, limit: int = 100) -> Tuple[List[Trade], int]:
+    async def get_backtest_trades(
+        self, backtest_id: int, skip: int = 0, limit: int = 100, user: User | None = None
+    ) -> Tuple[List[Trade], int]:
         """
         Get trades for a backtest.
 
@@ -247,6 +262,10 @@ class BacktestService:
         """
         # Get total count
         count_query = select(func.count()).select_from(Trade).where(Trade.backtest_id == backtest_id)
+        if user is not None:
+            count_query = count_query.join(Backtest, Trade.backtest_id == Backtest.id).where(
+                Backtest.user_id == user.id
+            )
         total_result = await self.db.execute(count_query)
         total = total_result.scalar_one()
 
@@ -258,13 +277,15 @@ class BacktestService:
             .offset(skip)
             .limit(limit)
         )
+        if user is not None:
+            query = query.join(Backtest, Trade.backtest_id == Backtest.id).where(Backtest.user_id == user.id)
 
         result = await self.db.execute(query)
         trades = result.scalars().all()
 
         return list(trades), total
 
-    async def get_backtest_equity_curve(self, backtest_id: int) -> Optional[dict]:
+    async def get_backtest_equity_curve(self, backtest_id: int, user: User | None = None) -> Optional[dict]:
         """
         Get equity curve data for a backtest.
 
@@ -274,13 +295,15 @@ class BacktestService:
         Returns:
             Equity curve data dict or None if not found
         """
-        backtest = await self.get_backtest(backtest_id)
+        backtest = await self.get_backtest(backtest_id, user)
         if not backtest or not backtest.results:
             return None
 
         return backtest.results.equity_curve
 
-    async def get_backtest_signals(self, backtest_id: int, skip: int = 0, limit: int = 100) -> Tuple[List[Signal], int]:
+    async def get_backtest_signals(
+        self, backtest_id: int, skip: int = 0, limit: int = 100, user: User | None = None
+    ) -> Tuple[List[Signal], int]:
         """
         Get signals for a backtest.
 
@@ -293,7 +316,7 @@ class BacktestService:
             Tuple of (signals list, total count)
         """
         # Get backtest to find its result id
-        backtest = await self.get_backtest(backtest_id)
+        backtest = await self.get_backtest(backtest_id, user)
         if not backtest or not backtest.results:
             return [], 0
 

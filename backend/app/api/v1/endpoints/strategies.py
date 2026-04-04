@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
 from app.db.session import get_db
+from app.deps import get_current_user
 from app.services.strategy_service import StrategyService
 from app.services.strategy_compiler_service import StrategyCompilerService
 from app.schemas.strategy import (
@@ -79,6 +80,7 @@ async def compile_strategy(
 async def create_strategy(
     strategy_data: StrategyCreate,
     db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     """
     Create a new trading strategy.
@@ -93,7 +95,7 @@ async def create_strategy(
     """
     service = StrategyService(db)
     try:
-        strategy = await service.create_strategy(strategy_data)
+        strategy = await service.create_strategy(strategy_data, current_user)
         return serialize_strategy(strategy)
     except ValueError as e:
         raise HTTPException(
@@ -119,6 +121,7 @@ async def list_strategies(
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     strategy_type: Optional[str] = Query(None, description="Filter by strategy type"),
     db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     """
     List all trading strategies.
@@ -136,6 +139,7 @@ async def list_strategies(
             limit=limit,
             is_active=is_active,
             strategy_type=strategy_type,
+            user=current_user,
         )
         return StrategyListResponse(strategies=[serialize_strategy(strategy) for strategy in strategies], total=total)
     except Exception as e:
@@ -154,6 +158,7 @@ async def list_strategies(
 async def get_strategy(
     strategy_id: int,
     db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     """
     Get a strategy by ID.
@@ -161,7 +166,7 @@ async def get_strategy(
     Returns the complete strategy configuration including all indicators.
     """
     service = StrategyService(db)
-    strategy = await service.get_strategy(strategy_id)
+    strategy = await service.get_strategy(strategy_id, current_user)
     if not strategy:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -180,6 +185,7 @@ async def update_strategy(
     strategy_id: int,
     strategy_data: StrategyUpdate,
     db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     """
     Update an existing strategy.
@@ -196,7 +202,7 @@ async def update_strategy(
     """
     service = StrategyService(db)
     try:
-        strategy = await service.update_strategy(strategy_id, strategy_data)
+        strategy = await service.update_strategy(strategy_id, strategy_data, current_user)
         if not strategy:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -224,6 +230,7 @@ async def update_strategy(
 async def delete_strategy(
     strategy_id: int,
     db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     """
     Delete a strategy by ID.
@@ -237,7 +244,7 @@ async def delete_strategy(
     This action cannot be undone.
     """
     service = StrategyService(db)
-    deleted = await service.delete_strategy(strategy_id)
+    deleted = await service.delete_strategy(strategy_id, current_user)
     if not deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -254,6 +261,7 @@ async def delete_strategy(
 async def activate_strategy(
     strategy_id: int,
     db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     """
     Activate a strategy.
@@ -266,7 +274,7 @@ async def activate_strategy(
     Returns the updated strategy.
     """
     service = StrategyService(db)
-    strategy = await service.activate_strategy(strategy_id)
+    strategy = await service.activate_strategy(strategy_id, current_user)
     if not strategy:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -284,6 +292,7 @@ async def activate_strategy(
 async def deactivate_strategy(
     strategy_id: int,
     db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     """
     Deactivate a strategy.
@@ -296,7 +305,7 @@ async def deactivate_strategy(
     Returns the updated strategy.
     """
     service = StrategyService(db)
-    strategy = await service.deactivate_strategy(strategy_id)
+    strategy = await service.deactivate_strategy(strategy_id, current_user)
     if not strategy:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

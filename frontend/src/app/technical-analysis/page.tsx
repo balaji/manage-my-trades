@@ -31,7 +31,7 @@ export default function TechnicalAnalysisPage() {
   } = useTechnicalAnalysisChart();
 
   return (
-    <div className="flex min-h-full flex-col overflow-hidden bg-slate-50 text-slate-900 md:m-5 md:rounded-[28px] md:border md:border-slate-200 md:bg-white md:shadow-sm">
+    <div className="flex min-h-0 flex-col overflow-hidden bg-slate-50 text-slate-900 md:m-5 md:min-h-[calc(100dvh-2.5rem)] md:rounded-[28px] md:border md:border-slate-200 md:bg-white md:shadow-sm">
       <div className="border-b border-slate-200 bg-white px-5 py-4">
         <TechnicalAnalysisControls
           symbol={symbol}

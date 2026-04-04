@@ -5,6 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.deps import get_current_user
 from app.db.session import get_db, get_market_db
 from app.schemas.backtest import (
     BacktestCreate,
@@ -24,6 +25,7 @@ async def create_backtest(
     backtest_data: BacktestCreate,
     db: AsyncSession = Depends(get_db),
     market_db: AsyncSession = Depends(get_market_db),
+    current_user=Depends(get_current_user),
 ):
     """
     Create a new backtest (status='pending').
@@ -40,7 +42,7 @@ async def create_backtest(
     """
     service = BacktestService(db, market_db)
     try:
-        backtest = await service.create_backtest(backtest_data)
+        backtest = await service.create_backtest(backtest_data, current_user)
         return backtest
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -51,6 +53,7 @@ async def run_backtest(
     backtest_id: int,
     db: AsyncSession = Depends(get_db),
     market_db: AsyncSession = Depends(get_market_db),
+    current_user=Depends(get_current_user),
 ):
     """
     Execute a backtest. Updates status to 'running', then 'completed' or 'failed'.
@@ -68,7 +71,7 @@ async def run_backtest(
     """
     service = BacktestService(db, market_db)
     try:
-        backtest = await service.run_backtest(backtest_id)
+        backtest = await service.run_backtest(backtest_id, current_user)
         return backtest
     except ValueError as e:
         # Check if it's a "not found" error
@@ -88,6 +91,7 @@ async def list_backtests(
     limit: int = Query(100, ge=1, le=1000),
     db: AsyncSession = Depends(get_db),
     market_db: AsyncSession = Depends(get_market_db),
+    current_user=Depends(get_current_user),
 ):
     """
     List all backtests with optional filtering.
@@ -102,7 +106,7 @@ async def list_backtests(
         List of backtests with total count
     """
     service = BacktestService(db, market_db)
-    backtests, total = await service.list_backtests(strategy_id, status, skip, limit)
+    backtests, total = await service.list_backtests(strategy_id, status, skip, limit, current_user)
     return {"backtests": backtests, "total": total}
 
 
@@ -111,6 +115,7 @@ async def get_backtest(
     backtest_id: int,
     db: AsyncSession = Depends(get_db),
     market_db: AsyncSession = Depends(get_market_db),
+    current_user=Depends(get_current_user),
 ):
     """
     Get backtest details with results.
@@ -125,7 +130,7 @@ async def get_backtest(
         404: Backtest not found
     """
     service = BacktestService(db, market_db)
-    backtest = await service.get_backtest(backtest_id)
+    backtest = await service.get_backtest(backtest_id, current_user)
     if not backtest:
         raise HTTPException(status_code=404, detail="Backtest not found")
     return backtest
@@ -138,6 +143,7 @@ async def get_backtest_trades(
     limit: int = Query(100, ge=1, le=1000),
     db: AsyncSession = Depends(get_db),
     market_db: AsyncSession = Depends(get_market_db),
+    current_user=Depends(get_current_user),
 ):
     """
     Get all trades for a backtest.
@@ -151,7 +157,7 @@ async def get_backtest_trades(
         List of trades with total count
     """
     service = BacktestService(db, market_db)
-    trades, total = await service.get_backtest_trades(backtest_id, skip, limit)
+    trades, total = await service.get_backtest_trades(backtest_id, skip, limit, current_user)
     return {"trades": trades, "total": total}
 
 
@@ -162,6 +168,7 @@ async def get_backtest_signals(
     limit: int = Query(100, ge=1, le=1000),
     db: AsyncSession = Depends(get_db),
     market_db: AsyncSession = Depends(get_market_db),
+    current_user=Depends(get_current_user),
 ):
     """
     Get all signals generated in a backtest.
@@ -175,7 +182,7 @@ async def get_backtest_signals(
         List of signals with total count
     """
     service = BacktestService(db, market_db)
-    signals, total = await service.get_backtest_signals(backtest_id, skip, limit)
+    signals, total = await service.get_backtest_signals(backtest_id, skip, limit, current_user)
     # Convert ORM objects to dictionaries, ensuring metadata_ is a proper dict
     signal_responses = []
     for signal in signals:
@@ -198,6 +205,7 @@ async def delete_backtest(
     backtest_id: int,
     db: AsyncSession = Depends(get_db),
     market_db: AsyncSession = Depends(get_market_db),
+    current_user=Depends(get_current_user),
 ):
     """
     Delete a backtest and all associated data (results, trades).
@@ -209,6 +217,6 @@ async def delete_backtest(
         404: Backtest not found
     """
     service = BacktestService(db, market_db)
-    deleted = await service.delete_backtest(backtest_id)
+    deleted = await service.delete_backtest(backtest_id, current_user)
     if not deleted:
         raise HTTPException(status_code=404, detail="Backtest not found")

@@ -17,6 +17,7 @@ class Backtest(Base, TimestampMixin):
     __tablename__ = "backtests"
 
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     strategy_id = Column(Integer, ForeignKey("strategies.id", ondelete="CASCADE"), nullable=False)
     name = Column(String(255), nullable=False)
     symbols = Column(JSON, nullable=False)  # List of symbols
@@ -31,6 +32,7 @@ class Backtest(Base, TimestampMixin):
 
     # Relationships
     strategy = relationship("Strategy", back_populates="backtests")
+    user = relationship("User", back_populates="backtests")
     results = relationship(
         "BacktestResult",
         back_populates="backtest",

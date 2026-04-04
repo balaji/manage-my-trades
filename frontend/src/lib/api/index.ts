@@ -3,6 +3,7 @@
  * Centralized exports for all API modules.
  */
 
+export * from './auth';
 export * from './client';
 export * from './strategies';
 export * from './market-data';

@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
+from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import get_settings
 from app.db.session import init_db, init_market_db
@@ -111,6 +112,12 @@ Future versions will include API key authentication for endpoints.
     license_info={
         "name": "MIT",
     },
+)
+
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.SESSION_SECRET_KEY,
+    session_cookie=settings.SESSION_COOKIE_NAME,
 )
 
 # Configure CORS

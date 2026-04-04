@@ -29,6 +29,7 @@ dependencies = [
     "TA-Lib>=0.6.7",
     "uvicorn[standard]>=0.40.0",
     "websockets>=16.0",
+    "itsdangerous>=2.2.0",
 ]
 
 [tool.pytest.ini_options]
