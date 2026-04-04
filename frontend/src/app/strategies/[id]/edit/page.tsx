@@ -10,7 +10,7 @@ import { StrategyForm } from '@/components/strategies/StrategyForm';
 export default function EditStrategyPage() {
   const params = useParams();
   const router = useRouter();
-  const strategyId = parseInt(params.id as string);
+  const strategyId = params.id as string;
 
   const [strategy, setStrategy] = useState<Strategy | null>(null);
   const [loading, setLoading] = useState(true);

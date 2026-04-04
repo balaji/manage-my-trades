@@ -1,7 +1,7 @@
 import { apiClient, handleApiError } from './client';
 
 export interface UserInfo {
-  id: number;
+  id: string;
   name: string | null;
   picture: string | null;
 }

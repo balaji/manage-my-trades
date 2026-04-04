@@ -2,10 +2,11 @@
 Strategy service for managing trading strategies.
 """
 
+import uuid
+import logging
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-import logging
 
 from app.core.strategies.legacy import build_legacy_spec
 from app.models.strategy import Strategy
@@ -58,7 +59,7 @@ class StrategyService:
         await self.db.refresh(strategy)
         return strategy
 
-    async def get_strategy(self, strategy_id: int, user: User | None = None) -> Optional[Strategy]:
+    async def get_strategy(self, strategy_id: uuid.UUID, user: User | None = None) -> Optional[Strategy]:
         """
         Get a strategy by ID.
 
@@ -119,7 +120,9 @@ class StrategyService:
 
         return list(strategies), total
 
-    async def update_strategy(self, strategy_id: int, strategy_data: StrategyUpdate, user: User) -> Optional[Strategy]:
+    async def update_strategy(
+        self, strategy_id: uuid.UUID, strategy_data: StrategyUpdate, user: User
+    ) -> Optional[Strategy]:
         """
         Update an existing strategy.
 
@@ -171,7 +174,7 @@ class StrategyService:
         # Reload with relationships
         return await self.get_strategy(strategy_id, user)
 
-    async def delete_strategy(self, strategy_id: int, user: User) -> bool:
+    async def delete_strategy(self, strategy_id: uuid.UUID, user: User) -> bool:
         """
         Delete a strategy.
 
@@ -190,7 +193,7 @@ class StrategyService:
         logger.info(f"Deleted strategy {strategy_id}: {strategy.name}")
         return True
 
-    async def activate_strategy(self, strategy_id: int, user: User) -> Optional[Strategy]:
+    async def activate_strategy(self, strategy_id: uuid.UUID, user: User) -> Optional[Strategy]:
         """
         Activate a strategy.
 
@@ -211,7 +214,7 @@ class StrategyService:
 
         return await self.get_strategy(strategy_id, user)
 
-    async def deactivate_strategy(self, strategy_id: int, user: User) -> Optional[Strategy]:
+    async def deactivate_strategy(self, strategy_id: uuid.UUID, user: User) -> Optional[Strategy]:
         """
         Deactivate a strategy.
 

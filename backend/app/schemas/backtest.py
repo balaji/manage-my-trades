@@ -1,5 +1,6 @@
 """Pydantic schemas for backtest endpoints."""
 
+import uuid
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Dict, Any
 from datetime import datetime, date
@@ -8,7 +9,7 @@ from datetime import datetime, date
 class BacktestCreate(BaseModel):
     """Schema for creating a backtest."""
 
-    strategy_id: int
+    strategy_id: uuid.UUID
     name: str
     symbols: List[str]
     start_date: date
@@ -47,7 +48,7 @@ class BacktestCreate(BaseModel):
 class TradeResponse(BaseModel):
     """Response schema for trade."""
 
-    id: int
+    id: uuid.UUID
     symbol: str
     side: str
     entry_date: date
@@ -88,8 +89,8 @@ class BacktestResultResponse(BaseModel):
 class BacktestResponse(BaseModel):
     """Response schema for backtest."""
 
-    id: int
-    strategy_id: int
+    id: uuid.UUID
+    strategy_id: uuid.UUID
     name: str
     symbols: List[str]
     start_date: date
@@ -124,7 +125,7 @@ class BacktestTradesResponse(BaseModel):
 class SignalResponse(BaseModel):
     """Response schema for signal."""
 
-    id: int
+    id: uuid.UUID
     symbol: str
     signal_type: str
     timestamp: datetime

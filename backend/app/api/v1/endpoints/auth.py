@@ -62,7 +62,7 @@ async def google_callback(code: str, request: Request, db: AsyncSession = Depend
     user = await UserService(db).get_or_create_google_user(
         google_sub, name=userinfo.get("name"), picture=userinfo.get("picture")
     )
-    request.session["user_id"] = user.id
+    request.session["user_id"] = str(user.id)
     return RedirectResponse(url=settings.FRONTEND_CALLBACK_URL)
 
 
@@ -74,4 +74,4 @@ async def logout(request: Request):
 
 @router.get("/me")
 async def get_me(current_user: User = Depends(get_current_user)):
-    return {"id": current_user.id, "name": current_user.name, "picture": current_user.picture}
+    return {"id": str(current_user.id), "name": current_user.name, "picture": current_user.picture}

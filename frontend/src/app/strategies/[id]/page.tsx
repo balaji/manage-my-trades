@@ -19,7 +19,7 @@ function getSpecIndicators(strategy: Strategy) {
 export default function StrategyDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const strategyId = parseInt(params.id as string);
+  const strategyId = params.id as string;
 
   const [strategy, setStrategy] = useState<Strategy | null>(null);
   const [loading, setLoading] = useState(true);

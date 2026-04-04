@@ -2,7 +2,8 @@
 Paper trading models.
 """
 
-from sqlalchemy import Column, Integer, String, Float, DateTime, JSON, Text
+from sqlalchemy import Column, String, Float, DateTime, JSON, Text, text
+from sqlalchemy.dialects.postgresql import UUID
 from app.db.session import Base
 from app.models.base import TimestampMixin
 
@@ -12,7 +13,7 @@ class Position(Base, TimestampMixin):
 
     __tablename__ = "positions"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, index=True, server_default=text("uuid_generate_v4()"))
     symbol = Column(String(20), nullable=False, unique=True, index=True)
     quantity = Column(Float, nullable=False)
     avg_entry_price = Column(Float, nullable=False)
@@ -29,7 +30,7 @@ class Order(Base, TimestampMixin):
 
     __tablename__ = "orders"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, index=True, server_default=text("uuid_generate_v4()"))
     alpaca_order_id = Column(String(100), unique=True, index=True)
     symbol = Column(String(20), nullable=False, index=True)
     quantity = Column(Float, nullable=False)

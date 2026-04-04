@@ -10,7 +10,7 @@ export enum BacktestStatus {
 }
 
 export interface BacktestCreate {
-  strategy_id: number;
+  strategy_id: string;
   name: string;
   symbols: string[];
   start_date: string;
@@ -40,8 +40,8 @@ export interface BacktestResult {
 }
 
 export interface Backtest {
-  id: number;
-  strategy_id: number;
+  id: string;
+  strategy_id: string;
   name: string;
   symbols: string[];
   start_date: string;
@@ -63,7 +63,7 @@ export interface BacktestListResponse {
 }
 
 export interface BacktestTrade {
-  id: number;
+  id: string;
   symbol: string;
   side: string;
   entry_date: string;

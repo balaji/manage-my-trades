@@ -4,7 +4,8 @@ Backtest models.
 
 import json
 
-from sqlalchemy import JSON, Column, Date, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Column, Date, Float, ForeignKey, Integer, String, Text, text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 from app.db.session import Base
@@ -16,9 +17,9 @@ class Backtest(Base, TimestampMixin):
 
     __tablename__ = "backtests"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    strategy_id = Column(Integer, ForeignKey("strategies.id", ondelete="CASCADE"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, index=True, server_default=text("uuid_generate_v4()"))
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    strategy_id = Column(UUID(as_uuid=True), ForeignKey("strategies.id", ondelete="CASCADE"), nullable=False)
     name = Column(String(255), nullable=False)
     symbols = Column(JSON, nullable=False)  # List of symbols
     start_date = Column(Date, nullable=False, index=True)
@@ -68,9 +69,9 @@ class BacktestResult(Base, TimestampMixin):
 
     __tablename__ = "backtest_results"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, index=True, server_default=text("uuid_generate_v4()"))
     backtest_id = Column(
-        Integer,
+        UUID(as_uuid=True),
         ForeignKey("backtests.id", ondelete="CASCADE"),
         nullable=False,
         unique=True,

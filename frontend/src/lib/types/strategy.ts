@@ -15,7 +15,7 @@ export enum SignalType {
 }
 
 export interface Strategy {
-  id: number;
+  id: string;
   name: string;
   description: string | null;
   strategy_type: string;
@@ -53,8 +53,8 @@ export interface StrategyListResponse {
 }
 
 export interface Signal {
-  id: number;
-  backtest_result_id: number;
+  id: string;
+  backtest_result_id: string;
   symbol: string;
   signal_type: string;
   timestamp: string;

@@ -48,7 +48,7 @@ function NewBacktestPage() {
         setStrategies(data.strategies);
         // Auto-set name based on pre-filled strategy
         if (prefillStrategyId && data.strategies.length > 0) {
-          const strategy = data.strategies.find((s) => s.id === parseInt(prefillStrategyId));
+          const strategy = data.strategies.find((s) => s.id === prefillStrategyId);
           if (strategy) {
             setForm((f) => ({
               ...f,
@@ -69,7 +69,7 @@ function NewBacktestPage() {
     const nextStrategyId = strategyId ?? '';
 
     setForm((f) => {
-      const strategy = strategies.find((s) => s.id === parseInt(nextStrategyId));
+      const strategy = strategies.find((s) => s.id === nextStrategyId);
       return {
         ...f,
         strategy_id: nextStrategyId,
@@ -90,7 +90,7 @@ function NewBacktestPage() {
         .filter(Boolean);
 
       const backtest = await createBacktest({
-        strategy_id: parseInt(form.strategy_id),
+        strategy_id: form.strategy_id,
         name: form.name,
         symbols,
         start_date: form.start_date,

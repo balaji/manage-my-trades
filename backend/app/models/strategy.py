@@ -2,7 +2,10 @@
 Strategy models.
 """
 
-from sqlalchemy import Column, Integer, String, Text, Boolean, JSON, ForeignKey, UniqueConstraint
+import uuid
+
+from sqlalchemy import Column, String, Text, Boolean, JSON, ForeignKey, UniqueConstraint, text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import TypeDecorator
 from app.db.session import Base
@@ -35,8 +38,8 @@ class Strategy(Base, TimestampMixin):
     __tablename__ = "strategies"
     __table_args__ = (UniqueConstraint("user_id", "name", name="uq_strategies_user_id_name"),)
 
-    id: int = Column(Integer, primary_key=True, index=True)  # type: ignore[assignment]
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    id: uuid.UUID = Column(UUID(as_uuid=True), primary_key=True, index=True, server_default=text("uuid_generate_v4()"))  # type: ignore[assignment]
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     name: str = Column(String(255), nullable=False, index=True)  # type: ignore[assignment]
     description: str = Column(Text, nullable=True)  # type: ignore[assignment]
     strategy_type: str = Column(String(50), nullable=False)  # type: ignore[assignment]  # technical, ml, combined

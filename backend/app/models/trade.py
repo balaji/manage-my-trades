@@ -7,10 +7,11 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
-    Integer,
     String,
     Text,
+    text,
 )
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 from app.db.session import Base
@@ -22,14 +23,14 @@ class Trade(Base, TimestampMixin):
 
     __tablename__ = "trades"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, index=True, server_default=text("uuid_generate_v4()"))
     backtest_id = Column(
-        Integer,
+        UUID(as_uuid=True),
         ForeignKey("backtests.id", ondelete="CASCADE"),
         nullable=True,
         index=True,
     )
-    strategy_id = Column(Integer, ForeignKey("strategies.id", ondelete="CASCADE"), nullable=False)
+    strategy_id = Column(UUID(as_uuid=True), ForeignKey("strategies.id", ondelete="CASCADE"), nullable=False)
     symbol = Column(String(20), nullable=False, index=True)
     side = Column(String(10), nullable=False)  # buy, sell
     trade_type = Column(String(20), nullable=False)  # backtest, paper

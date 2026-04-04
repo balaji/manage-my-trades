@@ -44,7 +44,11 @@ describe('AppShell', () => {
     vi.mocked(usePathname).mockReturnValue('/');
 
     useAuthMock.mockReturnValue({
-      user: { id: 1, name: 'Ada Lovelace', picture: 'https://example.com/avatar.jpg' },
+      user: {
+        id: '7b3d8f5f-6c65-4b54-bbd5-3c8dd66dd8c0',
+        name: 'Ada Lovelace',
+        picture: 'https://example.com/avatar.jpg',
+      },
       authLoading: false,
       login: vi.fn(),
       logout: vi.fn(),

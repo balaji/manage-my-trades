@@ -1,5 +1,6 @@
 """Service for managing backtests."""
 
+import uuid
 import logging
 from typing import List, Optional, Tuple
 
@@ -76,7 +77,7 @@ class BacktestService:
 
         return await self.get_backtest(backtest.id, user)
 
-    async def run_backtest(self, backtest_id: int, user: User) -> Backtest:
+    async def run_backtest(self, backtest_id: uuid.UUID, user: User) -> Backtest:
         """
         Execute backtest simulation.
 
@@ -147,7 +148,7 @@ class BacktestService:
         backtest = await self.get_backtest(backtest_id, user)
         return backtest
 
-    async def get_backtest(self, backtest_id: int, user: User | None = None) -> Optional[Backtest]:
+    async def get_backtest(self, backtest_id: uuid.UUID, user: User | None = None) -> Optional[Backtest]:
         """
         Get backtest with results and strategy.
 
@@ -175,7 +176,7 @@ class BacktestService:
 
     async def list_backtests(
         self,
-        strategy_id: Optional[int] = None,
+        strategy_id: Optional[uuid.UUID] = None,
         status: Optional[str] = None,
         skip: int = 0,
         limit: int = 100,
@@ -225,7 +226,7 @@ class BacktestService:
 
         return list(backtests), total
 
-    async def delete_backtest(self, backtest_id: int, user: User) -> bool:
+    async def delete_backtest(self, backtest_id: uuid.UUID, user: User) -> bool:
         """
         Delete backtest (cascade deletes results and trades).
 
@@ -247,7 +248,7 @@ class BacktestService:
         return True
 
     async def get_backtest_trades(
-        self, backtest_id: int, skip: int = 0, limit: int = 100, user: User | None = None
+        self, backtest_id: uuid.UUID, skip: int = 0, limit: int = 100, user: User | None = None
     ) -> Tuple[List[Trade], int]:
         """
         Get trades for a backtest.
@@ -285,7 +286,7 @@ class BacktestService:
 
         return list(trades), total
 
-    async def get_backtest_equity_curve(self, backtest_id: int, user: User | None = None) -> Optional[dict]:
+    async def get_backtest_equity_curve(self, backtest_id: uuid.UUID, user: User | None = None) -> Optional[dict]:
         """
         Get equity curve data for a backtest.
 
@@ -302,7 +303,7 @@ class BacktestService:
         return backtest.results.equity_curve
 
     async def get_backtest_signals(
-        self, backtest_id: int, skip: int = 0, limit: int = 100, user: User | None = None
+        self, backtest_id: uuid.UUID, skip: int = 0, limit: int = 100, user: User | None = None
     ) -> Tuple[List[Signal], int]:
         """
         Get signals for a backtest.
