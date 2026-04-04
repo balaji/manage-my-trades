@@ -3,7 +3,6 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
   BarChart3,
@@ -166,7 +165,8 @@ function SidebarFooter({
       <div className={cn('mt-auto pt-6', isMinimized ? 'flex flex-col items-center gap-2' : 'space-y-2')}>
         <div className={cn('flex items-center', isMinimized ? 'flex-col gap-2' : 'gap-3 px-4')}>
           {user.picture ? (
-            <Image
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
               src={user.picture}
               alt={user.name ?? 'User'}
               className="size-8 rounded-full object-cover"
