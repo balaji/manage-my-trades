@@ -208,353 +208,345 @@ export default function BacktestDetailPage() {
   );
 
   return (
-    <div className="min-h-full p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
-          <Link href="/backtests" className="text-blue-600 hover:underline text-sm">
-            ← Back to Backtests
-          </Link>
-          <div className="flex justify-between items-start mt-1">
-            <div>
-              <div className="flex items-center gap-3 mb-1">
-                <h1 className="text-3xl font-bold">{backtest.name}</h1>
-                <StatusBadge status={backtest.status} />
-              </div>
-              <p className="text-gray-500 text-sm">
-                {backtest.symbols.join(', ')} &middot; {new Date(backtest.start_date).toLocaleDateString()} –{' '}
-                {new Date(backtest.end_date).toLocaleDateString()} &middot; {backtest.timeframe} timeframe
-              </p>
+    <div className="max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="mb-6">
+        <Link href="/backtests" className="text-blue-600 hover:underline text-sm">
+          ← Back to Backtests
+        </Link>
+        <div className="flex justify-between items-start mt-1">
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <h1 className="text-3xl font-bold">{backtest.name}</h1>
+              <StatusBadge status={backtest.status} />
             </div>
-            <Button variant="destructive" onClick={handleDelete}>
-              Delete
-            </Button>
+            <p className="text-gray-500 text-sm">
+              {backtest.symbols.join(', ')} &middot; {new Date(backtest.start_date).toLocaleDateString()} –{' '}
+              {new Date(backtest.end_date).toLocaleDateString()} &middot; {backtest.timeframe} timeframe
+            </p>
           </div>
-        </div>
-
-        {/* Error message if failed */}
-        {backtest.status === 'failed' && backtest.error_message && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-            <strong>Backtest failed:</strong> {backtest.error_message}
-          </div>
-        )}
-
-        {/* Strategy & Re-run Actions */}
-        <div className="mb-6 flex gap-3">
-          <Button nativeButton={false} render={<Link href={`/strategies/${backtest.strategy_id}`} />}>
-            View Strategy
-          </Button>
-          <Button
-            variant="outline"
-            nativeButton={false}
-            render={<Link href={`/strategies/${backtest.strategy_id}/edit`} />}
-          >
-            Edit Strategy
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              const params = new URLSearchParams({
-                strategyId: String(backtest.strategy_id),
-                symbols: backtest.symbols.join(','),
-                start_date: backtest.start_date,
-                end_date: backtest.end_date,
-                initial_capital: String(backtest.initial_capital),
-                timeframe: backtest.timeframe,
-                commission: String(backtest.commission),
-                slippage: String(backtest.slippage),
-              });
-              router.push(`/backtests/new?${params.toString()}`);
-            }}
-          >
-            Re-run Backtest
+          <Button variant="destructive" onClick={handleDelete}>
+            Delete
           </Button>
         </div>
+      </div>
 
-        {/* Metrics & Equity Curve */}
-        {r && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Left: Metrics */}
-            <div>
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                <MetricCard
-                  label="Total Return"
-                  value={`${r.total_return_pct >= 0 ? '+' : ''}${r.total_return_pct.toFixed(2)}%`}
-                  sub={`$${r.total_return.toFixed(2)}`}
-                  positive={r.total_return_pct >= 0}
-                />
-                <MetricCard label="Sharpe Ratio" value={r.sharpe_ratio != null ? r.sharpe_ratio.toFixed(2) : '—'} />
-                <MetricCard
-                  label="Max Drawdown"
-                  value={`-${r.max_drawdown_pct.toFixed(2)}%`}
-                  sub={`$${r.max_drawdown.toFixed(2)}`}
-                  positive={false}
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                <MetricCard
-                  label="Win Rate"
-                  value={`${(r.win_rate * 100).toFixed(1)}%`}
-                  sub={`${r.winning_trades}W / ${r.losing_trades}L`}
-                  positive={r.win_rate >= 0.5}
-                />
-                <MetricCard
-                  label="Final Capital"
-                  value={`$${r.final_capital.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
-                  sub={
-                    openTradesValue > 0
-                      ? `Initial: $${backtest.initial_capital.toLocaleString()} · With Open: $${(openTradesValue + r.final_capital).toLocaleString(undefined, { maximumFractionDigits: 2 })}`
-                      : `Initial: $${backtest.initial_capital.toLocaleString()}`
-                  }
-                />
-                <MetricCard
-                  label="Profit Factor"
-                  value={r.profit_factor != null ? r.profit_factor.toFixed(2) : '—'}
-                  positive={r.profit_factor != null ? r.profit_factor >= 1 : undefined}
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <MetricCard label="Total Trades" value={r.total_trades.toString()} />
-                <MetricCard
-                  label="Avg Trade Duration"
-                  value={r.avg_trade_duration != null ? `${(r.avg_trade_duration / 24).toFixed(1)}d` : '—'}
-                />
-                <MetricCard
-                  label="Open Positions Value"
-                  value={
-                    openTradesValue > 0
-                      ? `$${openTradesValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
-                      : '—'
-                  }
-                  sub={
-                    openTradesValue > 0
-                      ? `${openTrades.length} position${openTrades.length !== 1 ? 's' : ''}`
-                      : undefined
-                  }
-                />
-              </div>
+      {/* Error message if failed */}
+      {backtest.status === 'failed' && backtest.error_message && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+          <strong>Backtest failed:</strong> {backtest.error_message}
+        </div>
+      )}
+
+      {/* Strategy & Re-run Actions */}
+      <div className="mb-6 flex gap-3">
+        <Button nativeButton={false} render={<Link href={`/strategies/${backtest.strategy_id}`} />}>
+          View Strategy
+        </Button>
+        <Button
+          variant="outline"
+          nativeButton={false}
+          render={<Link href={`/strategies/${backtest.strategy_id}/edit`} />}
+        >
+          Edit Strategy
+        </Button>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            const params = new URLSearchParams({
+              strategyId: String(backtest.strategy_id),
+              symbols: backtest.symbols.join(','),
+              start_date: backtest.start_date,
+              end_date: backtest.end_date,
+              initial_capital: String(backtest.initial_capital),
+              timeframe: backtest.timeframe,
+              commission: String(backtest.commission),
+              slippage: String(backtest.slippage),
+            });
+            router.push(`/backtests/new?${params.toString()}`);
+          }}
+        >
+          Re-run Backtest
+        </Button>
+      </div>
+
+      {/* Metrics & Equity Curve */}
+      {r && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {/* Left: Metrics */}
+          <div>
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <MetricCard
+                label="Total Return"
+                value={`${r.total_return_pct >= 0 ? '+' : ''}${r.total_return_pct.toFixed(2)}%`}
+                sub={`$${r.total_return.toFixed(2)}`}
+                positive={r.total_return_pct >= 0}
+              />
+              <MetricCard label="Sharpe Ratio" value={r.sharpe_ratio != null ? r.sharpe_ratio.toFixed(2) : '—'} />
+              <MetricCard
+                label="Max Drawdown"
+                value={`-${r.max_drawdown_pct.toFixed(2)}%`}
+                sub={`$${r.max_drawdown.toFixed(2)}`}
+                positive={false}
+              />
             </div>
-
-            {/* Right: Equity Curve */}
-            {equityData.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Equity Curve</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={equityData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis
-                        dataKey="date"
-                        tickFormatter={(d) =>
-                          new Date(d).toLocaleDateString(undefined, {
-                            month: 'short',
-                            year: '2-digit',
-                          })
-                        }
-                        tick={{ fontSize: 11 }}
-                        interval={Math.ceil(equityData.length / 8)}
-                      />
-                      <YAxis
-                        tickFormatter={(v) =>
-                          `$${(v as number).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                        }
-                        tick={{ fontSize: 11 }}
-                        width={80}
-                      />
-                      <Tooltip
-                        formatter={(v) => [
-                          `$${(v as number).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
-                          'Portfolio Value',
-                        ]}
-                        labelFormatter={(l) => new Date(l as string).toLocaleDateString()}
-                      />
-                      <Line type="monotone" dataKey="value" stroke="#2563eb" dot={false} strokeWidth={2} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            )}
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <MetricCard
+                label="Win Rate"
+                value={`${(r.win_rate * 100).toFixed(1)}%`}
+                sub={`${r.winning_trades}W / ${r.losing_trades}L`}
+                positive={r.win_rate >= 0.5}
+              />
+              <MetricCard
+                label="Final Capital"
+                value={`$${r.final_capital.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+                sub={
+                  openTradesValue > 0
+                    ? `Initial: $${backtest.initial_capital.toLocaleString()} · With Open: $${(openTradesValue + r.final_capital).toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+                    : `Initial: $${backtest.initial_capital.toLocaleString()}`
+                }
+              />
+              <MetricCard
+                label="Profit Factor"
+                value={r.profit_factor != null ? r.profit_factor.toFixed(2) : '—'}
+                positive={r.profit_factor != null ? r.profit_factor >= 1 : undefined}
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <MetricCard label="Total Trades" value={r.total_trades.toString()} />
+              <MetricCard
+                label="Avg Trade Duration"
+                value={r.avg_trade_duration != null ? `${(r.avg_trade_duration / 24).toFixed(1)}d` : '—'}
+              />
+              <MetricCard
+                label="Open Positions Value"
+                value={
+                  openTradesValue > 0
+                    ? `$${openTradesValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+                    : '—'
+                }
+                sub={
+                  openTradesValue > 0 ? `${openTrades.length} position${openTrades.length !== 1 ? 's' : ''}` : undefined
+                }
+              />
+            </div>
           </div>
-        )}
 
-        {/* Price History Chart */}
-        {priceData.length > 0 && (
-          <Card className="mb-6">
+          {/* Right: Equity Curve */}
+          {equityData.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Equity Curve</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={equityData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={(d) =>
+                        new Date(d).toLocaleDateString(undefined, {
+                          month: 'short',
+                          year: '2-digit',
+                        })
+                      }
+                      tick={{ fontSize: 11 }}
+                      interval={Math.ceil(equityData.length / 8)}
+                    />
+                    <YAxis
+                      tickFormatter={(v) => `$${(v as number).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                      tick={{ fontSize: 11 }}
+                      width={80}
+                    />
+                    <Tooltip
+                      formatter={(v) => [
+                        `$${(v as number).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+                        'Portfolio Value',
+                      ]}
+                      labelFormatter={(l) => new Date(l as string).toLocaleDateString()}
+                    />
+                    <Line type="monotone" dataKey="value" stroke="#2563eb" dot={false} strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* Price History Chart */}
+      {priceData.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Price History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {priceData.map(({ symbol, bars }) => (
+              <div key={symbol} className={priceData.length > 1 ? 'mb-6' : ''}>
+                {priceData.length > 1 && <h3 className="text-base font-medium text-gray-700 mb-2">{symbol}</h3>}
+                <PriceChart
+                  data={bars}
+                  indicators={symbolIndicators[symbol]?.overlays ?? []}
+                  oscillators={symbolIndicators[symbol]?.oscillators ?? []}
+                  markers={buildSignalMarkers(symbol, signals)}
+                  timeRange={{
+                    from: `${backtest.start_date}T00:00:00Z`,
+                    to: `${backtest.end_date}T23:59:59Z`,
+                  }}
+                />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Signals & Trades Tables - Side by Side */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        {/* Signals Section */}
+        {signals.length > 0 && (
+          <Card className="lg:col-span-1">
             <CardHeader>
-              <CardTitle>Price History</CardTitle>
+              <CardTitle>Signals ({signals.length})</CardTitle>
             </CardHeader>
             <CardContent>
-              {priceData.map(({ symbol, bars }) => (
-                <div key={symbol} className={priceData.length > 1 ? 'mb-6' : ''}>
-                  {priceData.length > 1 && <h3 className="text-base font-medium text-gray-700 mb-2">{symbol}</h3>}
-                  <PriceChart
-                    data={bars}
-                    indicators={symbolIndicators[symbol]?.overlays ?? []}
-                    oscillators={symbolIndicators[symbol]?.oscillators ?? []}
-                    markers={buildSignalMarkers(symbol, signals)}
-                    timeRange={{
-                      from: `${backtest.start_date}T00:00:00Z`,
-                      to: `${backtest.end_date}T23:59:59Z`,
-                    }}
-                  />
-                </div>
-              ))}
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Symbol</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Timestamp</TableHead>
+                    <TableHead className="text-right">Price</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {signals.map((signal) => (
+                    <TableRow key={signal.id}>
+                      <TableCell className="font-mono">{signal.symbol}</TableCell>
+                      <TableCell>
+                        <span
+                          className={`capitalize font-semibold ${
+                            signal.signal_type === 'buy'
+                              ? 'text-green-600'
+                              : signal.signal_type === 'sell'
+                                ? 'text-red-600'
+                                : 'text-muted-foreground'
+                          }`}
+                        >
+                          {signal.signal_type}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {new Date(signal.timestamp).toLocaleDateString('en-GB', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: '2-digit',
+                        })}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">${signal.price.toFixed(2)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         )}
 
-        {/* Signals & Trades Tables - Side by Side */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          {/* Signals Section */}
-          {signals.length > 0 && (
-            <Card className="lg:col-span-1">
-              <CardHeader>
-                <CardTitle>Signals ({signals.length})</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Symbol</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Timestamp</TableHead>
-                      <TableHead className="text-right">Price</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {signals.map((signal) => (
-                      <TableRow key={signal.id}>
-                        <TableCell className="font-mono">{signal.symbol}</TableCell>
-                        <TableCell>
-                          <span
-                            className={`capitalize font-semibold ${
-                              signal.signal_type === 'buy'
-                                ? 'text-green-600'
-                                : signal.signal_type === 'sell'
-                                  ? 'text-red-600'
-                                  : 'text-muted-foreground'
-                            }`}
-                          >
-                            {signal.signal_type}
+        {/* Trades Table */}
+        {trades.length > 0 && (
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle>Trades ({trades.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Symbol</TableHead>
+                    <TableHead>Side</TableHead>
+                    <TableHead>Entry Date</TableHead>
+                    <TableHead className="text-right">Entry Price</TableHead>
+                    <TableHead>Exit Date</TableHead>
+                    <TableHead className="text-right">Exit Price</TableHead>
+                    <TableHead className="text-right">Qty</TableHead>
+                    <TableHead className="text-right">P&amp;L</TableHead>
+                    <TableHead className="text-right">P&amp;L %</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {trades.map((trade) => (
+                    <TableRow key={trade.id}>
+                      <TableCell className="font-mono">{trade.symbol}</TableCell>
+                      <TableCell>
+                        <span
+                          className={`capitalize font-semibold ${trade.side === 'buy' ? 'text-green-600' : 'text-red-600'}`}
+                        >
+                          {trade.side}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {new Date(trade.entry_date).toLocaleDateString('en-GB', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                        })}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">${trade.entry_price.toFixed(2)}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {trade.exit_date
+                          ? new Date(trade.exit_date).toLocaleDateString('en-GB', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                            })
+                          : '—'}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {trade.exit_price != null ? `$${trade.exit_price.toFixed(2)}` : '—'}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">{trade.quantity.toFixed(2)}</TableCell>
+                      <TableCell className="text-right font-mono">
+                        {trade.pnl != null ? (
+                          <span className={trade.pnl >= 0 ? 'text-green-600' : 'text-red-600'}>
+                            {trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(2)}
                           </span>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {new Date(signal.timestamp).toLocaleDateString('en-GB', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: '2-digit',
-                          })}
-                        </TableCell>
-                        <TableCell className="text-right font-mono">${signal.price.toFixed(2)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Trades Table */}
-          {trades.length > 0 && (
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle>Trades ({trades.length})</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Symbol</TableHead>
-                      <TableHead>Side</TableHead>
-                      <TableHead>Entry Date</TableHead>
-                      <TableHead className="text-right">Entry Price</TableHead>
-                      <TableHead>Exit Date</TableHead>
-                      <TableHead className="text-right">Exit Price</TableHead>
-                      <TableHead className="text-right">Qty</TableHead>
-                      <TableHead className="text-right">P&amp;L</TableHead>
-                      <TableHead className="text-right">P&amp;L %</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {trades.map((trade) => (
-                      <TableRow key={trade.id}>
-                        <TableCell className="font-mono">{trade.symbol}</TableCell>
-                        <TableCell>
-                          <span
-                            className={`capitalize font-semibold ${trade.side === 'buy' ? 'text-green-600' : 'text-red-600'}`}
-                          >
-                            {trade.side}
+                        ) : (
+                          '—'
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {trade.pnl_pct != null ? (
+                          <span className={trade.pnl_pct >= 0 ? 'text-green-600' : 'text-red-600'}>
+                            {trade.pnl_pct >= 0 ? '+' : ''}
+                            {trade.pnl_pct.toFixed(2)}%
                           </span>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {new Date(trade.entry_date).toLocaleDateString('en-GB', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric',
-                          })}
-                        </TableCell>
-                        <TableCell className="text-right font-mono">${trade.entry_price.toFixed(2)}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {trade.exit_date
-                            ? new Date(trade.exit_date).toLocaleDateString('en-GB', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric',
-                              })
-                            : '—'}
-                        </TableCell>
-                        <TableCell className="text-right font-mono">
-                          {trade.exit_price != null ? `$${trade.exit_price.toFixed(2)}` : '—'}
-                        </TableCell>
-                        <TableCell className="text-right font-mono">{trade.quantity.toFixed(2)}</TableCell>
-                        <TableCell className="text-right font-mono">
-                          {trade.pnl != null ? (
-                            <span className={trade.pnl >= 0 ? 'text-green-600' : 'text-red-600'}>
-                              {trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(2)}
-                            </span>
-                          ) : (
-                            '—'
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right font-mono">
-                          {trade.pnl_pct != null ? (
-                            <span className={trade.pnl_pct >= 0 ? 'text-green-600' : 'text-red-600'}>
-                              {trade.pnl_pct >= 0 ? '+' : ''}
-                              {trade.pnl_pct.toFixed(2)}%
-                            </span>
-                          ) : (
-                            '—'
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={trade.status === 'closed' ? 'default' : 'outline'} className="capitalize">
-                            {trade.status}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* No results yet */}
-        {backtest.status === 'pending' && (
-          <div className="bg-white rounded-lg shadow p-12 text-center text-gray-500">
-            Backtest is pending execution.
-          </div>
-        )}
-        {backtest.status === 'running' && (
-          <div className="bg-white rounded-lg shadow p-12 text-center text-gray-500">
-            Backtest is currently running...
-          </div>
+                        ) : (
+                          '—'
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={trade.status === 'closed' ? 'default' : 'outline'} className="capitalize">
+                          {trade.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         )}
       </div>
+
+      {/* No results yet */}
+      {backtest.status === 'pending' && (
+        <div className="bg-white rounded-lg shadow p-12 text-center text-gray-500">Backtest is pending execution.</div>
+      )}
+      {backtest.status === 'running' && (
+        <div className="bg-white rounded-lg shadow p-12 text-center text-gray-500">
+          Backtest is currently running...
+        </div>
+      )}
     </div>
   );
 }

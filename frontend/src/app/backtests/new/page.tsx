@@ -111,170 +111,168 @@ function NewBacktestPage() {
   };
 
   return (
-    <div className="min-h-full p-8">
-      <div className="max-w-2xl mx-auto">
-        <div className="mb-6">
-          <Link href="/backtests" className="text-blue-600 hover:underline text-sm">
-            ← Back to Backtests
-          </Link>
-          <h1 className="text-3xl font-bold mt-1">New Backtest</h1>
+    <div className="max-w-2xl mx-auto">
+      <div className="mb-6">
+        <Link href="/backtests" className="text-blue-600 hover:underline text-sm">
+          ← Back to Backtests
+        </Link>
+        <h1 className="text-3xl font-bold mt-1">New Backtest</h1>
+      </div>
+
+      {error && <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">{error}</div>}
+
+      <form onSubmit={handleSubmit} className="bg-card rounded-xl ring-1 ring-foreground/10 p-6 space-y-5">
+        {/* Strategy */}
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            Strategy <span className="text-destructive">*</span>
+          </label>
+          {loadingStrategies ? (
+            <p className="text-sm text-muted-foreground">Loading strategies...</p>
+          ) : (
+            <Select value={form.strategy_id} onValueChange={handleStrategyChange}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a strategy" />
+              </SelectTrigger>
+              <SelectContent>
+                {strategies.map((s) => (
+                  <SelectItem key={s.id} value={s.name}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
-        {error && <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">{error}</div>}
+        {/* Name */}
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            Backtest Name <span className="text-destructive">*</span>
+          </label>
+          <Input
+            required
+            type="text"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            placeholder="e.g. SPY 2023 Backtest"
+            className="w-full"
+          />
+        </div>
 
-        <form onSubmit={handleSubmit} className="bg-card rounded-xl ring-1 ring-foreground/10 p-6 space-y-5">
-          {/* Strategy */}
+        {/* Symbols */}
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            Symbols <span className="text-destructive">*</span>
+          </label>
+          <Input
+            required
+            type="text"
+            value={form.symbols}
+            onChange={(e) => setForm({ ...form, symbols: e.target.value.toUpperCase() })}
+            placeholder="SPY, QQQ, IWM (comma-separated)"
+            className="w-full"
+          />
+          <p className="text-xs text-muted-foreground mt-1">Comma-separated list of ETF symbols</p>
+        </div>
+
+        {/* Date range */}
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium mb-1">
-              Strategy <span className="text-destructive">*</span>
-            </label>
-            {loadingStrategies ? (
-              <p className="text-sm text-muted-foreground">Loading strategies...</p>
-            ) : (
-              <Select value={form.strategy_id} onValueChange={handleStrategyChange}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a strategy" />
-                </SelectTrigger>
-                <SelectContent>
-                  {strategies.map((s) => (
-                    <SelectItem key={s.id} value={String(s.id)}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-
-          {/* Name */}
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Backtest Name <span className="text-destructive">*</span>
-            </label>
-            <Input
-              required
-              type="text"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="e.g. SPY 2023 Backtest"
-              className="w-full"
-            />
-          </div>
-
-          {/* Symbols */}
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Symbols <span className="text-destructive">*</span>
+              Start Date <span className="text-destructive">*</span>
             </label>
             <Input
               required
-              type="text"
-              value={form.symbols}
-              onChange={(e) => setForm({ ...form, symbols: e.target.value.toUpperCase() })}
-              placeholder="SPY, QQQ, IWM (comma-separated)"
+              type="date"
+              value={form.start_date}
+              onChange={(e) => setForm({ ...form, start_date: e.target.value })}
               className="w-full"
             />
-            <p className="text-xs text-muted-foreground mt-1">Comma-separated list of ETF symbols</p>
           </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              End Date <span className="text-destructive">*</span>
+            </label>
+            <Input
+              required
+              type="date"
+              value={form.end_date}
+              onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+              className="w-full"
+            />
+          </div>
+        </div>
 
-          {/* Date range */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Start Date <span className="text-destructive">*</span>
-              </label>
-              <Input
-                required
-                type="date"
-                value={form.start_date}
-                onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-                className="w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                End Date <span className="text-destructive">*</span>
-              </label>
-              <Input
-                required
-                type="date"
-                value={form.end_date}
-                onChange={(e) => setForm({ ...form, end_date: e.target.value })}
-                className="w-full"
-              />
-            </div>
+        {/* Capital + Timeframe */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Initial Capital ($) <span className="text-destructive">*</span>
+            </label>
+            <Input
+              required
+              type="number"
+              min="1"
+              step="any"
+              value={form.initial_capital}
+              onChange={(e) => setForm({ ...form, initial_capital: e.target.value })}
+              className="w-full"
+            />
           </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Timeframe</label>
+            <Select value={form.timeframe} onValueChange={(v) => setForm({ ...form, timeframe: v ?? '1d' })}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TIMEFRAMES.map((tf) => (
+                  <SelectItem key={tf} value={tf}>
+                    {tf}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
 
-          {/* Capital + Timeframe */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Initial Capital ($) <span className="text-destructive">*</span>
-              </label>
-              <Input
-                required
-                type="number"
-                min="1"
-                step="any"
-                value={form.initial_capital}
-                onChange={(e) => setForm({ ...form, initial_capital: e.target.value })}
-                className="w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Timeframe</label>
-              <Select value={form.timeframe} onValueChange={(v) => setForm({ ...form, timeframe: v ?? '1d' })}>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TIMEFRAMES.map((tf) => (
-                    <SelectItem key={tf} value={tf}>
-                      {tf}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        {/* Commission + Slippage */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Commission (per trade, $)</label>
+            <Input
+              type="number"
+              min="0"
+              step="any"
+              value={form.commission}
+              onChange={(e) => setForm({ ...form, commission: e.target.value })}
+              className="w-full"
+            />
           </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Slippage (fraction)</label>
+            <Input
+              type="number"
+              min="0"
+              step="any"
+              value={form.slippage}
+              onChange={(e) => setForm({ ...form, slippage: e.target.value })}
+              className="w-full"
+            />
+            <p className="text-xs text-muted-foreground mt-1">e.g. 0.001 = 0.1% slippage</p>
+          </div>
+        </div>
 
-          {/* Commission + Slippage */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Commission (per trade, $)</label>
-              <Input
-                type="number"
-                min="0"
-                step="any"
-                value={form.commission}
-                onChange={(e) => setForm({ ...form, commission: e.target.value })}
-                className="w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Slippage (fraction)</label>
-              <Input
-                type="number"
-                min="0"
-                step="any"
-                value={form.slippage}
-                onChange={(e) => setForm({ ...form, slippage: e.target.value })}
-                className="w-full"
-              />
-              <p className="text-xs text-muted-foreground mt-1">e.g. 0.001 = 0.1% slippage</p>
-            </div>
-          </div>
-
-          <div className="flex gap-3 pt-2">
-            <Button type="submit" disabled={submitting} className="flex-1">
-              {submitting ? 'Running...' : 'Run Backtest'}
-            </Button>
-            <Button variant="outline" nativeButton={false} render={<Link href="/backtests" />}>
-              Cancel
-            </Button>
-          </div>
-        </form>
-      </div>
+        <div className="flex gap-3 pt-2">
+          <Button type="submit" disabled={submitting} className="flex-1">
+            {submitting ? 'Running...' : 'Run Backtest'}
+          </Button>
+          <Button variant="outline" nativeButton={false} render={<Link href="/backtests" />}>
+            Cancel
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }

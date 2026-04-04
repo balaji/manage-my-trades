@@ -52,7 +52,7 @@ export default function StrategiesPage() {
   }, [loadStrategies, user]);
 
   return (
-    <div className="min-h-full p-8">
+    <>
       {error && <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">{error}</div>}
       {user && (
         <div className="max-w-7xl mx-auto">
@@ -153,6 +153,6 @@ export default function StrategiesPage() {
           </Card>
         </div>
       )}
-    </div>
+    </>
   );
 }

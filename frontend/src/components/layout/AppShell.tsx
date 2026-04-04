@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { useAuth, type UserInfo } from '@/lib/auth-context';
+import PageCard from '@/components/layout/PageCard';
 
 type NavItem = {
   href?: string;
@@ -287,7 +288,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           </header>
 
-          <main className="min-w-0 flex-1">{children}</main>
+          <main className="min-w-0 flex-1">
+            <PageCard>{children}</PageCard>
+          </main>
         </div>
       </div>
     </div>

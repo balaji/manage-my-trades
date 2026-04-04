@@ -50,24 +50,18 @@ export default function EditStrategyPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-full p-8">
-        <div className="max-w-3xl mx-auto text-center py-12 text-gray-500">Loading strategy...</div>
-      </div>
-    );
+    return <div className="max-w-3xl mx-auto text-center py-12 text-gray-500">Loading strategy...</div>;
   }
 
   if (error || !strategy) {
     return (
-      <div className="min-h-full p-8">
-        <div className="max-w-3xl mx-auto">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
-            {error || 'Strategy not found'}
-          </div>
-          <Link href="/strategies" className="inline-block mt-4 text-blue-600 hover:underline">
-            &larr; Back to Strategies
-          </Link>
+      <div className="max-w-3xl mx-auto">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+          {error || 'Strategy not found'}
         </div>
+        <Link href="/strategies" className="inline-block mt-4 text-blue-600 hover:underline">
+          &larr; Back to Strategies
+        </Link>
       </div>
     );
   }
@@ -80,21 +74,19 @@ export default function EditStrategyPage() {
   };
 
   return (
-    <div className="min-h-full p-8">
-      <div className="max-w-3xl mx-auto">
-        <div className="mb-6">
-          <Link href={`/strategies/${strategyId}`} className="text-blue-600 hover:underline text-sm">
-            &larr; Back to Strategy
-          </Link>
-          <h1 className="text-3xl font-bold mt-1">Edit Strategy</h1>
-        </div>
-        <StrategyForm
-          onSubmit={handleOverwrite}
-          onSaveAsNew={handleSaveAsNew}
-          initialData={initialData}
-          submitLabel="Overwrite"
-        />
+    <div className="max-w-3xl mx-auto">
+      <div className="mb-6">
+        <Link href={`/strategies/${strategyId}`} className="text-blue-600 hover:underline text-sm">
+          &larr; Back to Strategy
+        </Link>
+        <h1 className="text-3xl font-bold mt-1">Edit Strategy</h1>
       </div>
+      <StrategyForm
+        onSubmit={handleOverwrite}
+        onSaveAsNew={handleSaveAsNew}
+        initialData={initialData}
+        submitLabel="Overwrite"
+      />
     </div>
   );
 }

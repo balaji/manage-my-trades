@@ -31,7 +31,7 @@ export default function TechnicalAnalysisPage() {
   } = useTechnicalAnalysisChart();
 
   return (
-    <div className="flex min-h-0 flex-col overflow-hidden bg-slate-50 text-slate-900 md:m-5 md:min-h-[calc(100dvh-2.5rem)] md:rounded-[28px] md:border md:border-slate-200 md:bg-white md:shadow-sm">
+    <div className="flex min-h-0 flex-col overflow-hidden">
       <div className="border-b border-slate-200 bg-white px-5 py-4">
         <TechnicalAnalysisControls
           symbol={symbol}
@@ -71,7 +71,7 @@ export default function TechnicalAnalysisPage() {
         ) : (
           !loading &&
           !error && (
-            <div className="flex h-full items-center justify-center px-6 text-center text-slate-500">
+            <div className="flex h-full items-center justify-center px-6 text-center bg-white text-slate-500">
               <div>
                 <p className="text-lg">Enter a symbol and load a chart</p>
                 <p className="mt-2 text-sm">Popular ETFs: SPY, QQQ, IWM, DIA, GLD</p>
