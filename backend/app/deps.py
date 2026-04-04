@@ -13,7 +13,7 @@ async def get_current_user(request: Request, db: AsyncSession = Depends(get_db))
     if not user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
-    user = await UserService(db).get_user(int(user_id))
+    user = await UserService(db).get_user(user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session")
     return user
