@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 from sqlalchemy.orm import configure_mappers
+import uuid
 
 from app.api.v1.endpoints.strategies import serialize_strategy
 from app.models import Backtest, Strategy
@@ -60,7 +61,7 @@ def test_strategy_update_rejects_legacy_indicators_field():
 
 def test_serialize_strategy_excludes_legacy_indicator_rows():
     strategy = SimpleNamespace(
-        id=7,
+        id=uuid.uuid4(),
         name="RSI Mean Reversion",
         description="Buy low, sell high",
         strategy_type="technical",
