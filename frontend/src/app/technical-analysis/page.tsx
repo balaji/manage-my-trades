@@ -32,7 +32,7 @@ export default function TechnicalAnalysisPage() {
 
   return (
     <div className="flex min-h-0 flex-col overflow-hidden">
-      <div className="border-b border-slate-200 bg-white px-5 py-4">
+      <div className="border-b border-slate-200 px-5 py-4">
         <TechnicalAnalysisControls
           symbol={symbol}
           rangeDays={rangeDays}
@@ -60,7 +60,7 @@ export default function TechnicalAnalysisPage() {
         )}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         {hasChartData ? (
           <PriceChart
             data={chartData}
@@ -71,7 +71,7 @@ export default function TechnicalAnalysisPage() {
         ) : (
           !loading &&
           !error && (
-            <div className="flex h-full items-center justify-center px-6 text-center bg-white text-slate-500">
+            <div className="flex h-full items-center justify-center px-6 text-center text-slate-500">
               <div>
                 <p className="text-lg">Enter a symbol and load a chart</p>
                 <p className="mt-2 text-sm">Popular ETFs: SPY, QQQ, IWM, DIA, GLD</p>

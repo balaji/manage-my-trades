@@ -12,7 +12,6 @@ import {
   Flower2,
   LayoutDashboard,
   LogIn,
-  LogOut,
   Menu,
   ScrollText,
 } from 'lucide-react';
@@ -22,6 +21,7 @@ import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/
 import { cn } from '@/lib/utils';
 import { useAuth, type UserInfo } from '@/lib/auth-context';
 import PageCard from '@/components/layout/PageCard';
+import { AccountSettingsDialog } from '@/components/layout/AccountSettingsDialog';
 
 type NavItem = {
   href?: string;
@@ -92,9 +92,10 @@ function SidebarNav({
           'flex w-full items-center rounded-2xl py-3 text-left transition-colors',
           isMinimized ? 'justify-center px-3' : 'gap-3 px-4',
           active
-            ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/10'
-            : 'text-slate-600 hover:bg-white hover:text-slate-900',
-          !item.href && 'cursor-not-allowed text-slate-400 hover:bg-transparent hover:text-slate-400'
+            ? 'bg-foreground text-background shadow-lg shadow-foreground/10'
+            : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+          !item.href &&
+            'cursor-not-allowed text-muted-foreground/50 hover:bg-transparent hover:text-muted-foreground/50'
         );
 
         if (!item.href) {
@@ -124,7 +125,9 @@ function SidebarNav({
             {!isMinimized && (
               <div className="min-w-0 flex-1">
                 <div className="font-medium">{item.label}</div>
-                <div className={cn('text-xs', active ? 'text-slate-300' : 'text-slate-500')}>{item.description}</div>
+                <div className={cn('text-xs', active ? 'text-background/70' : 'text-muted-foreground/70')}>
+                  {item.description}
+                </div>
               </div>
             )}
           </Link>
@@ -132,16 +135,6 @@ function SidebarNav({
       })}
     </nav>
   );
-}
-
-function getInitials(name: string | null | undefined): string {
-  if (!name) return '?';
-  const parts = name.split(' ');
-  return parts
-    .map((p) => p[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
 }
 
 function SidebarFooter({
@@ -163,34 +156,8 @@ function SidebarFooter({
 
   if (user) {
     return (
-      <div className={cn('mt-auto pt-6', isMinimized ? 'flex flex-col items-center gap-2' : 'space-y-2')}>
-        <div className={cn('flex items-center', isMinimized ? 'flex-col gap-2' : 'gap-3 px-4')}>
-          {user.picture ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={user.picture}
-              alt={user.name ?? 'User'}
-              className="size-8 rounded-full object-cover"
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <div className="flex size-8 items-center justify-center rounded-full bg-slate-300 text-xs font-semibold text-slate-700">
-              {getInitials(user.name)}
-            </div>
-          )}
-          {!isMinimized && <p className="min-w-0 truncate text-sm font-medium text-slate-900">{user.name ?? 'User'}</p>}
-        </div>
-        <button
-          onClick={onLogout}
-          className={cn(
-            'flex w-full items-center rounded-2xl text-slate-600 transition-colors hover:bg-white hover:text-slate-900',
-            isMinimized ? 'justify-center px-3 py-3' : 'gap-3 px-4 py-3'
-          )}
-          title="Sign out"
-        >
-          <LogOut className="size-4 shrink-0" />
-          {!isMinimized && <span className="text-sm font-medium">Sign out</span>}
-        </button>
+      <div className={cn('mt-auto pt-6', isMinimized ? 'flex flex-col items-center gap-2' : '')}>
+        <AccountSettingsDialog user={user} isMinimized={isMinimized} onLogout={onLogout} />
       </div>
     );
   }
@@ -200,7 +167,7 @@ function SidebarFooter({
       <button
         onClick={onLogin}
         className={cn(
-          'flex w-full items-center rounded-2xl text-slate-600 transition-colors hover:bg-white hover:text-slate-900',
+          'flex w-full items-center rounded-2xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground',
           isMinimized ? 'justify-center px-3 py-3' : 'gap-3 px-4 py-3'
         )}
         title="Sign in with Google"
@@ -217,8 +184,8 @@ function CurrentSectionLabel({ pathname }: { pathname: string }) {
 
   return (
     <div>
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Workspace</p>
-      <p className="text-sm font-semibold text-slate-900">{currentItem?.label ?? 'Algorithmic ETF Trading'}</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Workspace</p>
+      <p className="text-sm font-semibold text-foreground">{currentItem?.label ?? 'Algorithmic ETF Trading'}</p>
     </div>
   );
 }
@@ -229,11 +196,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? '/';
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.14),_transparent_30%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] text-slate-900">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.14),_transparent_30%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] dark:bg-none dark:bg-slate-900 text-foreground">
       <div className="flex min-h-screen">
         <aside
           className={cn(
-            'hidden shrink-0 border-r border-slate-200/70 bg-slate-100/85 backdrop-blur md:flex md:flex-col transition-all duration-300',
+            'hidden shrink-0 border-r border-border/70 bg-muted/85 backdrop-blur md:flex md:flex-col transition-all duration-300',
             isMinimized ? 'w-20' : 'w-64',
             isMinimized ? 'px-2' : 'px-6',
             'py-8'
@@ -241,7 +208,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         >
           <div className="flex items-center justify-between">
             {!isMinimized && (
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">algotrading 101</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">algotrading 101</p>
             )}
             <Button
               variant="ghost"
@@ -267,17 +234,19 @@ export function AppShell({ children }: { children: ReactNode }) {
         </aside>
 
         <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-          <header className="border-b border-slate-200/70 bg-white/80 px-4 py-3 backdrop-blur md:hidden">
+          <header className="border-b border-border/70 bg-background/80 px-4 py-3 backdrop-blur md:hidden">
             <div className="flex items-center justify-between gap-3">
               <CurrentSectionLabel pathname={pathname} />
               <Dialog>
                 <DialogTrigger render={<Button variant="outline" size="icon" aria-label="Open navigation" />}>
                   <Menu className="size-4" />
                 </DialogTrigger>
-                <DialogContent className="left-auto top-0 h-full max-w-sm translate-x-0 translate-y-0 rounded-none border-l border-slate-200 p-0">
-                  <div className="flex h-full flex-col bg-slate-50 p-6">
-                    <DialogTitle className="text-xl font-semibold text-slate-950">Navigation</DialogTitle>
-                    <p className="mt-2 text-sm text-slate-600">Move between analysis, strategies, and backtests.</p>
+                <DialogContent className="left-auto top-0 h-full max-w-sm translate-x-0 translate-y-0 rounded-none border-l border-border p-0">
+                  <div className="flex h-full flex-col bg-muted p-6">
+                    <DialogTitle className="text-xl font-semibold text-foreground">Navigation</DialogTitle>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Move between analysis, strategies, and backtests.
+                    </p>
                     <div className="mt-6">
                       <SidebarNav pathname={pathname} />
                     </div>
