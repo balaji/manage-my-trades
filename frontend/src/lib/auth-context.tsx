@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
-import { getMe, logoutUser, type UserInfo } from '@/lib/api/auth';
+import { getMe, logoutUser, deleteAccount, type UserInfo } from '@/lib/api/auth';
 
 export type { UserInfo };
 
@@ -10,6 +10,7 @@ type AuthContextType = {
   authLoading: boolean;
   login: () => void;
   logout: () => void;
+  deleteAccount: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -17,6 +18,7 @@ const AuthContext = createContext<AuthContextType>({
   authLoading: true,
   login: () => {},
   logout: () => {},
+  deleteAccount: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -59,7 +61,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
-  return <AuthContext.Provider value={{ user, authLoading, login, logout }}>{children}</AuthContext.Provider>;
+  const deleteAccountFn = useCallback(async () => {
+    await deleteAccount();
+    setUser(null);
+  }, []);
+
+  return (
+    <AuthContext.Provider value={{ user, authLoading, login, logout, deleteAccount: deleteAccountFn }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

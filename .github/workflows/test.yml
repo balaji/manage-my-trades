@@ -40,6 +40,8 @@ jobs:
         env:
           TRADE_DATA_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
           MARKET_DATA_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
+          SESSION_SECRET_KEY: test_secret_key
+          FRONTEND_CALLBACK_URL: http://localhost:3000
 
   frontend-tests:
     runs-on: ubuntu-latest

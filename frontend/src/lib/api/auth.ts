@@ -22,3 +22,11 @@ export async function logoutUser(): Promise<void> {
     throw handleApiError(error);
   }
 }
+
+export async function deleteAccount(): Promise<void> {
+  try {
+    await apiClient.delete('/auth/me');
+  } catch (error) {
+    throw handleApiError(error);
+  }
+}

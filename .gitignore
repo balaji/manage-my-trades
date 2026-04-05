@@ -45,4 +45,8 @@ docker-compose.override.yml
 # Alembic
 alembic/versions/__pycache__/
 .playwright-mcp/
+
+# Agents
 .claude/settings.local.json
+.air
+.junie

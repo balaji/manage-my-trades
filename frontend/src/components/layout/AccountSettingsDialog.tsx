@@ -1,6 +1,7 @@
 'use client';
 
-import { LogOut, Moon, Sun } from 'lucide-react';
+import { useState } from 'react';
+import { LogOut, Moon, Sun, Trash2 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
@@ -21,15 +22,18 @@ export function AccountSettingsDialog({
   user,
   isMinimized,
   onLogout,
+  onDeleteAccount,
 }: {
   user: UserInfo;
   isMinimized?: boolean;
   onLogout: () => void;
+  onDeleteAccount: () => void;
 }) {
   const { theme, setTheme } = useTheme();
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   return (
-    <Dialog>
+    <Dialog onOpenChange={() => setConfirmingDelete(false)}>
       <DialogTrigger
         className={cn(
           'flex items-center rounded-2xl transition-colors hover:bg-accent',
@@ -87,7 +91,7 @@ export function AccountSettingsDialog({
           />
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-col gap-2 sm:flex-col">
           <button
             onClick={onLogout}
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-muted px-4 py-3 text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground"
@@ -96,6 +100,24 @@ export function AccountSettingsDialog({
             <LogOut className="size-4" />
             <span className="text-sm font-medium">Sign out</span>
           </button>
+
+          {confirmingDelete ? (
+            <button
+              onClick={onDeleteAccount}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-destructive px-4 py-3 text-destructive-foreground transition-colors hover:bg-destructive/90"
+            >
+              <Trash2 className="size-4" />
+              <span className="text-sm font-medium">Confirm delete</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => setConfirmingDelete(true)}
+              className="flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-destructive transition-colors hover:bg-destructive/10"
+            >
+              <Trash2 className="size-4" />
+              <span className="text-sm font-medium">Delete account</span>
+            </button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

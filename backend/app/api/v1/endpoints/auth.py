@@ -1,5 +1,6 @@
 """Authentication endpoints."""
 
+import secrets
 from urllib.parse import urlencode
 
 import httpx
@@ -18,19 +19,25 @@ settings = get_settings()
 
 
 @router.get("/google/login")
-async def google_login():
+async def google_login(request: Request):
+    state = secrets.token_urlsafe(32)
+    request.session["oauth_state"] = state
     params = {
         "client_id": settings.GOOGLE_CLIENT_ID,
         "redirect_uri": settings.GOOGLE_REDIRECT_URI,
         "response_type": "code",
         "scope": "openid profile",
         "prompt": "select_account",
+        "state": state,
     }
     return RedirectResponse(f"{settings.GOOGLE_AUTH_BASE_URL}?{urlencode(params)}")
 
 
 @router.get("/google/callback")
-async def google_callback(code: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def google_callback(code: str, request: Request, db: AsyncSession = Depends(get_db), state: str | None = None):
+    expected_state = request.session.pop("oauth_state", None)
+    if not state or state != expected_state:
+        raise HTTPException(status_code=400, detail="Invalid OAuth state parameter")
     async with httpx.AsyncClient(timeout=30.0) as client:
         token_response = await client.post(
             settings.GOOGLE_TOKEN_URL,
@@ -46,10 +53,13 @@ async def google_callback(code: str, request: Request, db: AsyncSession = Depend
         if token_response.status_code >= 400:
             raise HTTPException(status_code=400, detail="Google login failed")
         token_data = token_response.json()
+        access_token = token_data.get("access_token")
+        if not access_token:
+            raise HTTPException(status_code=400, detail="Google login failed: no access token")
 
         userinfo_response = await client.get(
             settings.GOOGLE_USERINFO_URL,
-            headers={"Authorization": f"Bearer {token_data['access_token']}"},
+            headers={"Authorization": f"Bearer {access_token}"},
         )
         if userinfo_response.status_code >= 400:
             raise HTTPException(status_code=400, detail="Google user lookup failed")
@@ -75,3 +85,13 @@ async def logout(request: Request):
 @router.get("/me")
 async def get_me(current_user: User = Depends(get_current_user)):
     return {"id": str(current_user.id), "name": current_user.name, "picture": current_user.picture}
+
+
+@router.delete("/me", status_code=204)
+async def delete_me(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await UserService(db).delete_user(current_user)
+    request.session.clear()

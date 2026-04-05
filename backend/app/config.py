@@ -31,21 +31,26 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_REDIRECT_URI: str = ""
-    SESSION_SECRET_KEY: str = "manage-my-trades-session-secret"
+    SESSION_SECRET_KEY: str = ""
     SESSION_COOKIE_NAME: str = "trade_session"
     GOOGLE_AUTH_BASE_URL: str = "https://accounts.google.com/o/oauth2/v2/auth"
     GOOGLE_TOKEN_URL: str = "https://oauth2.googleapis.com/token"
     GOOGLE_USERINFO_URL: str = "https://openidconnect.googleapis.com/v1/userinfo"
-    FRONTEND_CALLBACK_URL: str = "http://myapp.net:3000/auth/callback"
+    FRONTEND_CALLBACK_URL: str = ""
 
     # Trading Configuration
     DEFAULT_COMMISSION: float = 0.0  # Alpaca has no commission
     DEFAULT_SLIPPAGE: float = 0.001  # 0.1% slippage
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=True)
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=True, extra="ignore")
 
 
 @lru_cache()
 def get_settings() -> Settings:
     """Get cached settings instance."""
-    return Settings()
+    settings = Settings()
+    if not settings.SESSION_SECRET_KEY:
+        raise ValueError("SESSION_SECRET_KEY must be set to a non-empty value")
+    if not settings.FRONTEND_CALLBACK_URL:
+        raise ValueError("FRONTEND_CALLBACK_URL must be set to a non-empty value")
+    return settings

@@ -143,12 +143,14 @@ function SidebarFooter({
   authLoading,
   onLogin,
   onLogout,
+  onDeleteAccount,
 }: {
   isMinimized?: boolean;
   user: UserInfo | null;
   authLoading: boolean;
   onLogin: () => void;
   onLogout: () => void;
+  onDeleteAccount: () => void;
 }) {
   if (authLoading) {
     return <div className={cn('mt-auto pt-6', isMinimized ? 'flex justify-center' : '')} />;
@@ -157,7 +159,12 @@ function SidebarFooter({
   if (user) {
     return (
       <div className={cn('mt-auto pt-6', isMinimized ? 'flex flex-col items-center gap-2' : '')}>
-        <AccountSettingsDialog user={user} isMinimized={isMinimized} onLogout={onLogout} />
+        <AccountSettingsDialog
+          user={user}
+          isMinimized={isMinimized}
+          onLogout={onLogout}
+          onDeleteAccount={onDeleteAccount}
+        />
       </div>
     );
   }
@@ -192,7 +199,7 @@ function CurrentSectionLabel({ pathname }: { pathname: string }) {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [isMinimized, setIsMinimized] = useState(false);
-  const { user, authLoading, login, logout } = useAuth();
+  const { user, authLoading, login, logout, deleteAccount } = useAuth();
   const pathname = usePathname() ?? '/';
 
   return (
@@ -230,6 +237,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             authLoading={authLoading}
             onLogin={login}
             onLogout={logout}
+            onDeleteAccount={deleteAccount}
           />
         </aside>
 
