@@ -54,8 +54,8 @@ export function IndicatorDropdown({
         </svg>
       </Button>
       {open && (
-        <div className="absolute left-0 top-full z-10 mt-1 min-w-[260px] rounded-lg border bg-white shadow-lg">
-          <div className="border-b px-3 py-2">
+        <div className="absolute left-0 top-full z-10 mt-1 min-w-[260px] rounded-lg border bg-white shadow-lg dark:bg-gray-900 dark:border-gray-700">
+          <div className="border-b px-3 py-2 dark:border-gray-700">
             <Input
               type="text"
               value={filterText}
@@ -67,12 +67,12 @@ export function IndicatorDropdown({
           </div>
           <div className="max-h-80 overflow-y-auto">
             {filteredOptions.length === 0 ? (
-              <div className="px-3 py-2 text-sm text-gray-400">No matches</div>
+              <div className="px-3 py-2 text-sm text-gray-400 dark:text-gray-500">No matches</div>
             ) : (
               filteredOptions.map(({ id, color, label }) => (
                 <label
                   key={id}
-                  className="flex cursor-pointer select-none items-center gap-2.5 px-3 py-2 hover:bg-gray-50"
+                  className="flex cursor-pointer select-none items-center gap-2.5 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800"
                 >
                   <input
                     type="checkbox"

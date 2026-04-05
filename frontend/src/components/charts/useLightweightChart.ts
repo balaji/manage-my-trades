@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useTheme } from 'next-themes';
 import {
   createChart,
   createSeriesMarkers,
@@ -14,6 +15,15 @@ import {
 } from 'lightweight-charts';
 
 import type { OscillatorConfig } from './chart-utils';
+
+function getChartColors(isDark: boolean) {
+  return {
+    background: isDark ? '#0f172a' : '#ffffff',
+    text: isDark ? '#94a3b8' : '#333333',
+    grid: isDark ? '#1e293b' : '#f0f0f0',
+    border: isDark ? '#334155' : '#cccccc',
+  };
+}
 
 export interface OscillatorPaneState {
   pane: IPaneApi<Time>;
@@ -41,6 +51,7 @@ export function useLightweightChart({
   totalHeight,
   onChartReady,
 }: UseLightweightChartOptions): UseLightweightChartResult {
+  const { resolvedTheme } = useTheme();
   const chartRef = useRef<IChartApi | null>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const markerSeriesRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
@@ -54,26 +65,44 @@ export function useLightweightChart({
   }, [onChartReady]);
 
   useEffect(() => {
+    if (!chartRef.current) return;
+    const colors = getChartColors(resolvedTheme === 'dark');
+    chartRef.current.applyOptions({
+      layout: {
+        background: { color: colors.background },
+        textColor: colors.text,
+      },
+      grid: {
+        vertLines: { color: colors.grid },
+        horzLines: { color: colors.grid },
+      },
+      rightPriceScale: { borderColor: colors.border },
+      timeScale: { borderColor: colors.border },
+    });
+  }, [resolvedTheme]);
+
+  useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     const initialHeight = container.clientHeight || totalHeight;
+    const colors = getChartColors(resolvedTheme === 'dark');
 
     const chart = createChart(container, {
       width: container.clientWidth,
       height: initialHeight,
       layout: {
-        background: { color: '#ffffff' },
-        textColor: '#333',
+        background: { color: colors.background },
+        textColor: colors.text,
       },
       grid: {
-        vertLines: { color: '#f0f0f0' },
-        horzLines: { color: '#f0f0f0' },
+        vertLines: { color: colors.grid },
+        horzLines: { color: colors.grid },
       },
       crosshair: { mode: 1 },
-      rightPriceScale: { borderColor: '#cccccc' },
+      rightPriceScale: { borderColor: colors.border },
       timeScale: {
-        borderColor: '#cccccc',
+        borderColor: colors.border,
         timeVisible: true,
       },
     });

@@ -196,7 +196,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? '/';
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.14),_transparent_30%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] dark:bg-background text-foreground">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.14),_transparent_30%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] dark:bg-none dark:bg-slate-900 text-foreground">
       <div className="flex min-h-screen">
         <aside
           className={cn(
