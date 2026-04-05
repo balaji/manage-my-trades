@@ -1,10 +1,11 @@
 """Service for authenticated users."""
 
+import uuid
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import User
-import uuid
 
 
 class UserService:
@@ -19,6 +20,7 @@ class UserService:
         if user:
             user.name = name
             user.picture = picture
+            await self.db.flush()
             return user
 
         user = User(google_sub=google_sub, name=name, picture=picture)
@@ -29,3 +31,7 @@ class UserService:
     async def get_user(self, user_id: uuid.UUID) -> User | None:
         result = await self.db.execute(select(User).where(User.id == user_id))
         return result.scalar_one_or_none()
+
+    async def delete_user(self, user: User) -> None:
+        await self.db.delete(user)
+        await self.db.commit()
