@@ -3,9 +3,21 @@
 import { Switch as SwitchPrimitive } from '@base-ui/react/switch';
 import { cn } from '@/lib/utils';
 
-function Switch({ className, ...props }: SwitchPrimitive.Root.Props) {
+function Switch({
+  checked,
+  onCheckedChange,
+  className,
+  ...props
+}: Omit<SwitchPrimitive.Root.Props, 'onCheckedChange'> & {
+  onCheckedChange?: (checked: boolean) => void;
+  className?: string;
+}) {
   return (
     <SwitchPrimitive.Root
+      checked={checked}
+      onCheckedChange={(newChecked) => {
+        onCheckedChange?.(newChecked);
+      }}
       data-slot="switch"
       className={cn(
         'peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent',
