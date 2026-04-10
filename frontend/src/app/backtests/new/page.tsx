@@ -32,6 +32,7 @@ function NewBacktestPage() {
   const [form, setForm] = useState({
     strategy_id: prefillStrategyId ?? '',
     name: '',
+    strategy_name: '',
     symbols: searchParams.get('symbols') || '',
     start_date: searchParams.get('start_date') || oneYearAgo.toISOString().split('T')[0],
     end_date: searchParams.get('end_date') || today.toISOString().split('T')[0],
@@ -73,6 +74,7 @@ function NewBacktestPage() {
       return {
         ...f,
         strategy_id: nextStrategyId,
+        strategy_name: strategy ? strategy.name : '',
         name: strategy ? `${strategy.name} Backtest` : f.name,
       };
     });
@@ -130,13 +132,13 @@ function NewBacktestPage() {
           {loadingStrategies ? (
             <p className="text-sm text-muted-foreground">Loading strategies...</p>
           ) : (
-            <Select value={form.strategy_id} onValueChange={handleStrategyChange}>
+            <Select value={form.strategy_name} onValueChange={handleStrategyChange}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select a strategy" />
               </SelectTrigger>
               <SelectContent>
                 {strategies.map((s) => (
-                  <SelectItem key={s.id} value={s.name}>
+                  <SelectItem key={s.id} value={s.id}>
                     {s.name}
                   </SelectItem>
                 ))}

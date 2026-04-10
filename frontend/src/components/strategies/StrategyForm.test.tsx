@@ -15,6 +15,13 @@ describe('StrategyForm', () => {
     vi.clearAllMocks();
   });
 
+  it('does not render glossary content inside the form', () => {
+    render(<StrategyForm onSubmit={vi.fn().mockResolvedValue(undefined)} />);
+
+    expect(screen.queryByText('Glossary')).not.toBeInTheDocument();
+    expect(screen.queryByText('RSI Mean Reversion')).not.toBeInTheDocument();
+  });
+
   it('shows a validation error and blocks submit when the JSON spec is invalid', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn().mockResolvedValue(undefined);

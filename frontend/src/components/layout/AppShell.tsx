@@ -10,6 +10,7 @@ import {
   ChartNoAxesCombined,
   ChevronLeft,
   Flower2,
+  LibraryBig,
   LayoutDashboard,
   LogIn,
   Menu,
@@ -58,6 +59,12 @@ export const navigationItems: NavItem[] = [
     label: 'Technical Analysis',
     description: 'Charts and indicators',
     icon: ChartNoAxesCombined,
+  },
+  {
+    href: '/glossary',
+    label: 'Glossary',
+    description: 'Strategy definitions',
+    icon: LibraryBig,
   },
   {
     label: 'ML Models',
