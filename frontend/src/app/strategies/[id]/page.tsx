@@ -99,7 +99,9 @@ export default function StrategyDetailPage() {
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto">
-        <div className="text-center py-12">Loading strategy...</div>
+        <div role="status" aria-live="polite" className="text-center py-12">
+          Loading strategy…
+        </div>
       </div>
     );
   }
@@ -233,7 +235,8 @@ export default function StrategyDetailPage() {
                 <Button
                   variant="outline"
                   className="w-full"
-                  onClick={() => router.push(`/strategies/${strategy.id}/edit`)}
+                  nativeButton={false}
+                  render={<Link href={`/strategies/${strategy.id}/edit`} />}
                 >
                   Edit Strategy
                 </Button>

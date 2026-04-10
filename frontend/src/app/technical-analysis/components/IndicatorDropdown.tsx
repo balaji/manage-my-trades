@@ -46,6 +46,7 @@ export function IndicatorDropdown({
       <Button variant="outline" size="sm" onClick={() => onOpenChange(!open)} aria-expanded={open}>
         {buttonLabel}
         <svg
+          aria-hidden="true"
           className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`}
           fill="none"
           stroke="currentColor"

@@ -114,7 +114,9 @@ export default function StrategiesPage() {
           <Card>
             <CardContent className="p-0">
               {loading ? (
-                <div className="p-12 text-center text-muted-foreground">Loading strategies...</div>
+                <div role="status" aria-live="polite" className="p-12 text-center text-muted-foreground">
+                  Loading strategies…
+                </div>
               ) : strategies.length === 0 ? (
                 <div className="p-12 text-center text-muted-foreground">
                   <p className="mb-4">No strategies found</p>

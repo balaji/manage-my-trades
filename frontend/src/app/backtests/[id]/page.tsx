@@ -23,6 +23,7 @@ import {
 } from '@/lib/technical-analysis/chart-model';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { StatusBadge } from '@/components/backtests/StatusBadge';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 
@@ -56,20 +57,6 @@ function MetricCard({
         {sub && <div className="text-xs text-muted-foreground mt-0.5">{sub}</div>}
       </CardContent>
     </Card>
-  );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const variantMap: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-    pending: 'outline',
-    running: 'secondary',
-    completed: 'default',
-    failed: 'destructive',
-  };
-  return (
-    <Badge variant={variantMap[status] ?? 'outline'} className="capitalize">
-      {status}
-    </Badge>
   );
 }
 
@@ -231,7 +218,9 @@ export default function BacktestDetailPage() {
   if (loading) {
     return (
       <div className="min-h-full p-8">
-        <div className="max-w-7xl mx-auto text-center py-12 text-gray-500">Loading backtest...</div>
+        <div role="status" aria-live="polite" className="max-w-7xl mx-auto text-center py-12 text-gray-500">
+          Loading backtest…
+        </div>
       </div>
     );
   }
