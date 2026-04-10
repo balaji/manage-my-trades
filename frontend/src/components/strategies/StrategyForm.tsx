@@ -128,7 +128,11 @@ export function StrategyForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {error && <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>}
+      {error && (
+        <div aria-live="polite" className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
+          {error}
+        </div>
+      )}
 
       <Card>
         <CardHeader>
@@ -137,25 +141,35 @@ export function StrategyForm({
         <CardContent>
           <div className="space-y-4">
             <div>
-              <label className="mb-2 block text-sm font-medium">Strategy Name *</label>
+              <label htmlFor="strategy-name" className="mb-2 block text-sm font-medium">
+                Strategy Name *
+              </label>
               <Input
+                id="strategy-name"
+                name="name"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g., RSI Mean Reversion"
+                autoComplete="off"
+                placeholder="e.g., RSI Mean Reversion…"
                 required
                 className="w-full"
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium">Description</label>
+              <label htmlFor="strategy-description" className="mb-2 block text-sm font-medium">
+                Description
+              </label>
               <textarea
+                id="strategy-description"
+                name="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                autoComplete="off"
                 className="w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                 rows={3}
-                placeholder="Describe your trading strategy..."
+                placeholder="Describe your trading strategy…"
               />
             </div>
           </div>
@@ -169,12 +183,18 @@ export function StrategyForm({
         <CardContent>
           <div className="space-y-4">
             <div>
+              <label htmlFor="strategy-prompt" className="mb-2 block text-sm font-medium">
+                Strategy Request
+              </label>
               <textarea
+                id="strategy-prompt"
+                name="prompt"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
+                autoComplete="off"
                 className="w-full rounded-lg border border-input bg-transparent px-2.5 py-2 font-mono text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                 rows={6}
-                placeholder="Buy SPY when 14-day RSI falls below 30, sell when it rises above 70, use 10% position sizing on daily bars."
+                placeholder="Buy SPY when 14-day RSI falls below 30, sell when it rises above 70, use 10% position sizing on daily bars…"
               />
               <p className="mt-2 text-sm text-muted-foreground">
                 Creates a draft technical strategy spec. Review the generated JSON before saving.
@@ -182,11 +202,13 @@ export function StrategyForm({
             </div>
 
             <Button type="button" onClick={handleCompile} disabled={compiling}>
-              {compiling ? 'Compiling...' : 'Compile'}
+              {compiling ? 'Compiling…' : 'Compile'}
             </Button>
 
             {compileSummary && (
-              <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-900">{compileSummary}</div>
+              <div aria-live="polite" className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-900">
+                {compileSummary}
+              </div>
             )}
 
             {promptWarnings.length > 0 && (
@@ -221,9 +243,16 @@ export function StrategyForm({
               <CardTitle>Strategy Spec</CardTitle>
             </CardHeader>
             <CardContent>
+              <label htmlFor="strategy-spec" className="sr-only">
+                Strategy Spec
+              </label>
               <textarea
+                id="strategy-spec"
+                name="specJson"
                 value={specJson}
                 onChange={(e) => setSpecJson(e.target.value)}
+                autoComplete="off"
+                spellCheck={false}
                 className="w-full rounded-lg border border-input bg-transparent px-2.5 py-2 font-mono text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                 rows={24}
               />
@@ -232,12 +261,12 @@ export function StrategyForm({
 
           <div className="flex gap-3">
             <Button type="submit" disabled={submitting} size="lg">
-              {submitting ? 'Saving...' : submitLabel}
+              {submitting ? 'Saving…' : submitLabel}
             </Button>
 
             {onSaveAsNew && (
               <Button type="button" variant="outline" size="lg" onClick={handleSaveAsNew} disabled={savingAsNew}>
-                {savingAsNew ? 'Saving Copy...' : 'Save As New'}
+                {savingAsNew ? 'Saving Copy…' : 'Save As New'}
               </Button>
             )}
           </div>

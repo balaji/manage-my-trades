@@ -46,6 +46,8 @@ export function AccountSettingsDialog({
           <img
             src={user.picture}
             alt={user.name ?? 'User'}
+            width={32}
+            height={32}
             className="size-8 rounded-full object-cover"
             referrerPolicy="no-referrer"
           />
@@ -68,6 +70,8 @@ export function AccountSettingsDialog({
             <img
               src={user.picture}
               alt={user.name ?? 'User'}
+              width={64}
+              height={64}
               className="size-16 rounded-full object-cover"
               referrerPolicy="no-referrer"
             />
@@ -93,6 +97,7 @@ export function AccountSettingsDialog({
 
         <DialogFooter className="flex-col gap-2 sm:flex-col">
           <button
+            type="button"
             onClick={onLogout}
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-muted px-4 py-3 text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground"
             title="Sign out"
@@ -103,6 +108,7 @@ export function AccountSettingsDialog({
 
           {confirmingDelete ? (
             <button
+              type="button"
               onClick={onDeleteAccount}
               className="flex w-full items-center justify-center gap-2 rounded-lg bg-destructive px-4 py-3 text-destructive-foreground transition-colors hover:bg-destructive/90"
             >
@@ -111,6 +117,7 @@ export function AccountSettingsDialog({
             </button>
           ) : (
             <button
+              type="button"
               onClick={() => setConfirmingDelete(true)}
               className="flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-destructive transition-colors hover:bg-destructive/10"
             >

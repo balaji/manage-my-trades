@@ -27,7 +27,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function BacktestsPage() {
-  const { user } = useAuth();
+  const { user, authLoading } = useAuth();
   const [backtests, setBacktests] = useState<Backtest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,13 +46,17 @@ export default function BacktestsPage() {
   };
 
   useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+
     if (user) {
-      load();
+      void load();
       setError(null);
     } else {
       setError('Please sign in to view backtests.');
     }
-  }, [user]);
+  }, [authLoading, user]);
 
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Delete backtest "${name}"? This cannot be undone.`)) return;

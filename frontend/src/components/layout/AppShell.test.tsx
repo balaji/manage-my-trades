@@ -37,6 +37,7 @@ describe('AppShell', () => {
     expect(screen.getByText('Dashboard').closest('[aria-disabled="true"]')).toBeInTheDocument();
     expect(screen.getByText('Paper Trading').closest('[aria-disabled="true"]')).toBeInTheDocument();
     expect(screen.getByText('ML Models').closest('[aria-disabled="true"]')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /collapse sidebar/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Sign in with Google/i })).toBeInTheDocument();
     expect(screen.getByText('Page body')).toBeInTheDocument();
   });

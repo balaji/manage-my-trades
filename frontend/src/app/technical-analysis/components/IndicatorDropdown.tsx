@@ -39,6 +39,7 @@ export function IndicatorDropdown({
   const filteredOptions = normalizedFilter
     ? options.filter(({ label }) => label.toLowerCase().includes(normalizedFilter))
     : options;
+  const filterInputId = `${buttonLabel.toLowerCase().replace(/\s+/g, '-')}-indicator-filter`;
 
   return (
     <div className="relative">
@@ -56,13 +57,19 @@ export function IndicatorDropdown({
       {open && (
         <div className="absolute left-0 top-full z-10 mt-1 min-w-[260px] rounded-lg border bg-white shadow-lg dark:bg-gray-900 dark:border-gray-700">
           <div className="border-b px-3 py-2 dark:border-gray-700">
+            <label htmlFor={filterInputId} className="sr-only">
+              Filter indicators
+            </label>
             <Input
+              id={filterInputId}
+              name="indicatorFilter"
               type="text"
               value={filterText}
               onChange={(event) => onFilterTextChange(event.target.value)}
-              placeholder="Filter..."
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="Filter indicators…"
               className="w-full"
-              autoFocus
             />
           </div>
           <div className="max-h-80 overflow-y-auto">

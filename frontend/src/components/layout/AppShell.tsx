@@ -179,9 +179,10 @@ function SidebarFooter({
   return (
     <div className={cn('mt-auto pt-6', isMinimized ? 'flex justify-center' : '')}>
       <button
+        type="button"
         onClick={onLogin}
         className={cn(
-          'flex w-full items-center rounded-2xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground',
+          'flex w-full items-center rounded-2xl text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
           isMinimized ? 'justify-center px-3 py-3' : 'gap-3 px-4 py-3'
         )}
         title="Sign in with Google"
@@ -214,7 +215,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="flex min-h-screen">
         <aside
           className={cn(
-            'hidden shrink-0 border-r border-border/70 bg-muted/85 backdrop-blur md:flex md:flex-col transition-all duration-300',
+            'hidden shrink-0 border-r border-border/70 bg-muted/85 backdrop-blur transition-[width,padding] duration-300 md:flex md:flex-col',
             isMinimized ? 'w-20' : 'w-64',
             isMinimized ? 'px-2' : 'px-6',
             'py-8'
@@ -228,6 +229,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               variant="ghost"
               size="icon"
               onClick={() => setIsMinimized(!isMinimized)}
+              aria-label={isMinimized ? 'Expand sidebar' : 'Collapse sidebar'}
               className="ml-auto"
               title={isMinimized ? 'Expand sidebar' : 'Collapse sidebar'}
             >
@@ -265,7 +267,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                     <div className="mt-6">
                       <SidebarNav pathname={pathname} />
                     </div>
-                    <SidebarFooter user={user} authLoading={authLoading} onLogin={login} onLogout={logout} />
+                    <SidebarFooter
+                      user={user}
+                      authLoading={authLoading}
+                      onLogin={login}
+                      onLogout={logout}
+                      onDeleteAccount={deleteAccount}
+                    />
                   </div>
                 </DialogContent>
               </Dialog>

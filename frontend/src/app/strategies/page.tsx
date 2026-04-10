@@ -18,7 +18,7 @@ function getIndicatorCount(strategy: Strategy): number {
 }
 
 export default function StrategiesPage() {
-  const { user } = useAuth();
+  const { user, authLoading } = useAuth();
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,13 +43,17 @@ export default function StrategiesPage() {
   }, [filterActive, filterType]);
 
   useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+
     if (user) {
-      loadStrategies();
+      void loadStrategies();
       setError(null);
     } else {
       setError('Please sign in to view strategies.');
     }
-  }, [loadStrategies, user]);
+  }, [authLoading, loadStrategies, user]);
 
   return (
     <>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { marketDataApi, technicalAnalysisApi } from '@/lib/api';
+import { marketDataApi } from '@/lib/api/market-data';
+import { technicalAnalysisApi } from '@/lib/api/technical-analysis';
 import type { IndicatorResult } from '@/lib/api/technical-analysis';
 import {
   buildChartSeries,
