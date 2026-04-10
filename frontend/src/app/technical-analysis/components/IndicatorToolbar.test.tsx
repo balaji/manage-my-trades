@@ -35,7 +35,7 @@ describe('IndicatorToolbar', () => {
     );
 
     await user.click(screen.getByRole('button', { name: 'Oscillators' }));
-    await user.type(screen.getByPlaceholderText('Filter...'), 'relative');
+    await user.type(screen.getByLabelText(/filter indicators/i), 'relative');
 
     expect(screen.getByRole('checkbox', { name: /Relative Strength Index 14/i })).toBeInTheDocument();
     expect(screen.queryByRole('checkbox', { name: /Moving Average Convergence/i })).not.toBeInTheDocument();

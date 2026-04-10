@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import TechnicalAnalysisPage from './page';
-import { marketDataApi, technicalAnalysisApi } from '@/lib/api';
+import { marketDataApi } from '@/lib/api/market-data';
+import { technicalAnalysisApi } from '@/lib/api/technical-analysis';
 
 const priceChartMock = vi.fn(
   ({ oscillators = [] }: { oscillators?: Array<{ selectionId?: string; data: Array<{ value: number }> }> }) => (
@@ -27,10 +28,13 @@ vi.mock('@/components/charts/PriceChart', () => ({
   PriceChart: (props: any) => priceChartMock(props),
 }));
 
-vi.mock('@/lib/api', () => ({
+vi.mock('@/lib/api/market-data', () => ({
   marketDataApi: {
     getBars: vi.fn(),
   },
+}));
+
+vi.mock('@/lib/api/technical-analysis', () => ({
   technicalAnalysisApi: {
     getSupportedIndicators: vi.fn(),
     calculateIndicators: vi.fn(),
@@ -194,7 +198,7 @@ describe('TechnicalAnalysisPage', () => {
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Load Chart' })).toBeEnabled());
 
-    const symbolInput = screen.getByPlaceholderText(/enter symbol/i);
+    const symbolInput = screen.getByLabelText(/symbol/i);
     await user.clear(symbolInput);
     await user.type(symbolInput, 'AAPL');
 
@@ -344,7 +348,7 @@ describe('TechnicalAnalysisPage', () => {
     expect(screen.getByRole('checkbox', { name: /Relative Strength Index 14/i })).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: /Moving Average Convergence/i })).toBeInTheDocument();
 
-    await user.type(screen.getByPlaceholderText('Filter...'), 'relative');
+    await user.type(screen.getByLabelText(/filter indicators/i), 'relative');
 
     expect(screen.getByRole('checkbox', { name: /Relative Strength Index 14/i })).toBeInTheDocument();
     expect(screen.queryByRole('checkbox', { name: /Moving Average Convergence/i })).not.toBeInTheDocument();

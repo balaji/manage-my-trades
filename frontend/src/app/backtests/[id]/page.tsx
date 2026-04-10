@@ -3,10 +3,10 @@
 /**
  * Backtest results page.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import type { SeriesMarker, Time, UTCTimestamp } from 'lightweight-charts';
 import { getBacktest, getBacktestTrades, getBacktestSignals, deleteBacktest } from '@/lib/api/backtests';
 import { getStrategy } from '@/lib/api/strategies';
@@ -15,7 +15,6 @@ import { Backtest, BacktestTrade } from '@/lib/types/backtest';
 import { Signal } from '@/lib/types/signal';
 import { marketDataApi } from '@/lib/api/market-data';
 import { MarketDataResponse } from '@/lib/types/market-data';
-import { PriceChart } from '@/components/charts/PriceChart';
 import {
   buildChartSeries,
   buildStrategyIndicatorDefinitions,
@@ -24,8 +23,19 @@ import {
 } from '@/lib/technical-analysis/chart-model';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { StatusBadge } from '@/components/backtests/StatusBadge';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+
+const PriceChart = dynamic(() => import('@/components/charts/PriceChart').then((mod) => mod.PriceChart), {
+  ssr: false,
+  loading: () => <div className="h-[400px] rounded-lg bg-muted/40" />,
+});
+
+const BacktestEquityChart = dynamic(() => import('./BacktestEquityChart').then((mod) => mod.BacktestEquityChart), {
+  ssr: false,
+  loading: () => <div className="h-[300px] rounded-lg bg-muted/40" />,
+});
 
 function MetricCard({
   label,
@@ -47,20 +57,6 @@ function MetricCard({
         {sub && <div className="text-xs text-muted-foreground mt-0.5">{sub}</div>}
       </CardContent>
     </Card>
-  );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const variantMap: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-    pending: 'outline',
-    running: 'secondary',
-    completed: 'default',
-    failed: 'destructive',
-  };
-  return (
-    <Badge variant={variantMap[status] ?? 'outline'} className="capitalize">
-      {status}
-    </Badge>
   );
 }
 
@@ -93,68 +89,119 @@ export default function BacktestDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     const load = async () => {
       setLoading(true);
       setError(null);
+
+      const backtestPromise = getBacktest(backtestId);
+      const tradesPromise = getBacktestTrades(backtestId, { limit: 500 });
+      const signalsPromise = getBacktestSignals(backtestId, { limit: 500 });
+
       try {
-        const [bt, tradesData, signalsData] = await Promise.all([
-          getBacktest(backtestId),
-          getBacktestTrades(backtestId, { limit: 500 }),
-          getBacktestSignals(backtestId, { limit: 500 }),
+        const bt = await backtestPromise;
+        if (cancelled) {
+          return;
+        }
+
+        const chartResourcesPromise =
+          bt.status === 'completed'
+            ? (async () => {
+                const [bars, strategy, { indicators: supportedIndicators }] = await Promise.all([
+                  marketDataApi.getBars({
+                    symbols: bt.symbols,
+                    start_date: bt.start_date,
+                    end_date: bt.end_date,
+                    timeframe: bt.timeframe,
+                  }),
+                  getStrategy(bt.strategy_id).catch(() => null),
+                  technicalAnalysisApi.getSupportedIndicators().catch(() => ({ indicators: [] })),
+                ]);
+
+                const specIndicators: Array<{ alias: string; indicator: string; params: Record<string, unknown> }> =
+                  strategy?.spec?.indicators ?? [];
+
+                if (specIndicators.length === 0) {
+                  return {
+                    priceData: bars,
+                    symbolIndicators: {} as Record<
+                      string,
+                      { overlays: IndicatorSeriesConfig[]; oscillators: OscillatorSeriesConfig[] }
+                    >,
+                  };
+                }
+
+                const indicatorRequests = specIndicators.map((definition) => ({
+                  name: definition.indicator,
+                  params: definition.params ?? {},
+                }));
+                const definitions = buildStrategyIndicatorDefinitions(specIndicators);
+                const symbolIndicators = Object.fromEntries(
+                  await Promise.all(
+                    bt.symbols.map(async (symbol) => {
+                      try {
+                        const response = await technicalAnalysisApi.calculateIndicators({
+                          symbol,
+                          timeframe: bt.timeframe,
+                          start_date: bt.start_date,
+                          end_date: bt.end_date,
+                          indicators: indicatorRequests,
+                        });
+                        return [
+                          symbol,
+                          buildChartSeries(response.indicators, supportedIndicators, definitions),
+                        ] as const;
+                      } catch {
+                        return [symbol, { overlays: [], oscillators: [] }] as const;
+                      }
+                    })
+                  )
+                );
+
+                return { priceData: bars, symbolIndicators };
+              })()
+            : Promise.resolve({
+                priceData: [] as MarketDataResponse[],
+                symbolIndicators: {} as Record<
+                  string,
+                  { overlays: IndicatorSeriesConfig[]; oscillators: OscillatorSeriesConfig[] }
+                >,
+              });
+
+        const [tradesData, signalsData, chartResources] = await Promise.all([
+          tradesPromise,
+          signalsPromise,
+          chartResourcesPromise,
         ]);
+
+        if (cancelled) {
+          return;
+        }
+
         setBacktest(bt);
         setTrades(tradesData.trades);
         setSignals(signalsData.signals);
-        if (bt.status === 'completed') {
-          const [bars, strategy, { indicators: supportedIndicators }] = await Promise.all([
-            marketDataApi.getBars({
-              symbols: bt.symbols,
-              start_date: bt.start_date,
-              end_date: bt.end_date,
-              timeframe: bt.timeframe,
-            }),
-            getStrategy(bt.strategy_id).catch(() => null),
-            technicalAnalysisApi.getSupportedIndicators().catch(() => ({ indicators: [] })),
-          ]);
-          setPriceData(bars);
-
-          const specIndicators: Array<{ alias: string; indicator: string; params: Record<string, unknown> }> =
-            strategy?.spec?.indicators ?? [];
-
-          if (specIndicators.length > 0) {
-            const indicatorRequests = specIndicators.map((d) => ({ name: d.indicator, params: d.params ?? {} }));
-            const definitions = buildStrategyIndicatorDefinitions(specIndicators);
-            const perSymbol: Record<
-              string,
-              { overlays: IndicatorSeriesConfig[]; oscillators: OscillatorSeriesConfig[] }
-            > = {};
-
-            await Promise.all(
-              bt.symbols.map(async (symbol) => {
-                try {
-                  const response = await technicalAnalysisApi.calculateIndicators({
-                    symbol,
-                    timeframe: bt.timeframe,
-                    start_date: bt.start_date,
-                    end_date: bt.end_date,
-                    indicators: indicatorRequests,
-                  });
-                  perSymbol[symbol] = buildChartSeries(response.indicators, supportedIndicators, definitions);
-                } catch {
-                  perSymbol[symbol] = { overlays: [], oscillators: [] };
-                }
-              })
-            );
-            setSymbolIndicators(perSymbol);
-          }
-        }
+        setPriceData(chartResources.priceData);
+        setSymbolIndicators(chartResources.symbolIndicators);
       } catch (err: any) {
+        if (cancelled) {
+          return;
+        }
+
         setError(err.message || 'Failed to load backtest');
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
-    load();
+
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
   }, [backtestId]);
 
   const handleDelete = async () => {
@@ -171,7 +218,9 @@ export default function BacktestDetailPage() {
   if (loading) {
     return (
       <div className="min-h-full p-8">
-        <div className="max-w-7xl mx-auto text-center py-12 text-gray-500">Loading backtest...</div>
+        <div role="status" aria-live="polite" className="max-w-7xl mx-auto text-center py-12 text-gray-500">
+          Loading backtest…
+        </div>
       </div>
     );
   }
@@ -339,35 +388,7 @@ export default function BacktestDetailPage() {
                 <CardTitle>Equity Curve</CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={equityData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis
-                      dataKey="date"
-                      tickFormatter={(d) =>
-                        new Date(d).toLocaleDateString(undefined, {
-                          month: 'short',
-                          year: '2-digit',
-                        })
-                      }
-                      tick={{ fontSize: 11 }}
-                      interval={Math.ceil(equityData.length / 8)}
-                    />
-                    <YAxis
-                      tickFormatter={(v) => `$${(v as number).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
-                      tick={{ fontSize: 11 }}
-                      width={80}
-                    />
-                    <Tooltip
-                      formatter={(v) => [
-                        `$${(v as number).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
-                        'Portfolio Value',
-                      ]}
-                      labelFormatter={(l) => new Date(l as string).toLocaleDateString()}
-                    />
-                    <Line type="monotone" dataKey="value" stroke="#2563eb" dot={false} strokeWidth={2} />
-                  </LineChart>
-                </ResponsiveContainer>
+                <BacktestEquityChart equityData={equityData} />
               </CardContent>
             </Card>
           )}

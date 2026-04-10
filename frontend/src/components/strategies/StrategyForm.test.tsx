@@ -55,13 +55,8 @@ describe('StrategyForm', () => {
     });
     render(<StrategyForm onSubmit={onSubmit} />);
 
-    await user.type(screen.getByPlaceholderText('e.g., RSI Mean Reversion'), 'Mean Reversion');
-    await user.type(
-      screen.getByPlaceholderText(
-        'Buy SPY when 14-day RSI falls below 30, sell when it rises above 70, use 10% position sizing on daily bars.'
-      ),
-      'Generate a momentum strategy'
-    );
+    await user.type(screen.getByLabelText(/strategy name/i), 'Mean Reversion');
+    await user.type(screen.getByLabelText(/strategy request/i), 'Generate a momentum strategy');
     await user.click(screen.getByRole('button', { name: 'Compile' }));
     const specTextarea = await screen.findByDisplayValue(/"kind": "technical"/);
     fireEvent.change(specTextarea, { target: { value: '{invalid json' } });
@@ -106,14 +101,9 @@ describe('StrategyForm', () => {
 
     render(<StrategyForm onSubmit={onSubmit} />);
 
-    await user.type(screen.getByPlaceholderText('e.g., RSI Mean Reversion'), 'Trend Follower');
-    await user.type(screen.getByPlaceholderText('Describe your trading strategy...'), 'Follows breakouts');
-    await user.type(
-      screen.getByPlaceholderText(
-        'Buy SPY when 14-day RSI falls below 30, sell when it rises above 70, use 10% position sizing on daily bars.'
-      ),
-      'Generate a momentum strategy'
-    );
+    await user.type(screen.getByLabelText(/strategy name/i), 'Trend Follower');
+    await user.type(screen.getByLabelText(/^description$/i), 'Follows breakouts');
+    await user.type(screen.getByLabelText(/strategy request/i), 'Generate a momentum strategy');
 
     await user.click(screen.getByRole('button', { name: 'Compile' }));
     expect(await screen.findByText('Compiled strategy summary')).toBeInTheDocument();
@@ -152,12 +142,7 @@ describe('StrategyForm', () => {
 
     render(<StrategyForm onSubmit={vi.fn().mockResolvedValue(undefined)} />);
 
-    await user.type(
-      screen.getByPlaceholderText(
-        'Buy SPY when 14-day RSI falls below 30, sell when it rises above 70, use 10% position sizing on daily bars.'
-      ),
-      'Generate a momentum strategy'
-    );
+    await user.type(screen.getByLabelText(/strategy request/i), 'Generate a momentum strategy');
 
     await user.click(screen.getByRole('button', { name: 'Compile' }));
 
@@ -172,5 +157,16 @@ describe('StrategyForm', () => {
       name: undefined,
       description: undefined,
     });
+  });
+
+  it('wires accessible labels and field metadata for the editable inputs', () => {
+    render(<StrategyForm onSubmit={vi.fn().mockResolvedValue(undefined)} />);
+
+    expect(screen.getByLabelText(/strategy name/i)).toHaveAttribute('name', 'name');
+    expect(screen.getByLabelText(/strategy name/i)).toHaveAttribute('autocomplete', 'off');
+    expect(screen.getByLabelText(/^description$/i)).toHaveAttribute('name', 'description');
+    expect(screen.getByLabelText(/^description$/i)).toHaveAttribute('autocomplete', 'off');
+    expect(screen.getByLabelText(/strategy request/i)).toHaveAttribute('name', 'prompt');
+    expect(screen.getByLabelText(/strategy request/i)).toHaveAttribute('autocomplete', 'off');
   });
 });

@@ -8,51 +8,39 @@ import Link from 'next/link';
 import { listBacktests, deleteBacktest } from '@/lib/api/backtests';
 import { useAuth } from '@/lib/auth-context';
 import { Backtest, BacktestStatus } from '@/lib/types/backtest';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
-
-function StatusBadge({ status }: { status: string }) {
-  const variantMap: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-    pending: 'outline',
-    running: 'secondary',
-    completed: 'default',
-    failed: 'destructive',
-  };
-  return (
-    <Badge variant={variantMap[status] ?? 'outline'} className="capitalize">
-      {status}
-    </Badge>
-  );
-}
+import { StatusBadge } from '@/components/backtests/StatusBadge';
 
 export default function BacktestsPage() {
-  const { user } = useAuth();
+  const { user, authLoading } = useAuth();
   const [backtests, setBacktests] = useState<Backtest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await listBacktests({ limit: 100 });
-      setBacktests(data.backtests);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load backtests');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+
     if (user) {
-      load();
       setError(null);
+      const load = async () => {
+        setLoading(true);
+        try {
+          const data = await listBacktests({ limit: 100 });
+          setBacktests(data.backtests);
+        } catch (err: any) {
+          setError(err.message || 'Failed to load backtests');
+        } finally {
+          setLoading(false);
+        }
+      };
+      void load();
     } else {
       setError('Please sign in to view backtests.');
     }
-  }, [user]);
+  }, [authLoading, user]);
 
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Delete backtest "${name}"? This cannot be undone.`)) return;
@@ -80,7 +68,9 @@ export default function BacktestsPage() {
           </div>
 
           {loading ? (
-            <div className="text-center py-12 text-gray-500">Loading backtests...</div>
+            <div role="status" aria-live="polite" className="text-center py-12 text-gray-500">
+              Loading backtests…
+            </div>
           ) : backtests.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
               <p className="text-lg mb-4">No backtests yet</p>

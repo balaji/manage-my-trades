@@ -40,6 +40,7 @@ function NewBacktestPage() {
     commission: searchParams.get('commission') || '0',
     slippage: searchParams.get('slippage') || '0.001',
   });
+  const selectedStrategyName = strategies.find((strategy) => strategy.id === form.strategy_id)?.name;
 
   useEffect(() => {
     const loadStrategies = async () => {
@@ -52,12 +53,13 @@ function NewBacktestPage() {
           if (strategy) {
             setForm((f) => ({
               ...f,
+              strategy_id: strategy.id,
               name: `${strategy.name} Backtest`,
             }));
           }
         }
       } catch (err) {
-        console.error('Failed to load strategies:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load strategies');
       } finally {
         setLoadingStrategies(false);
       }
@@ -119,24 +121,30 @@ function NewBacktestPage() {
         <h1 className="text-3xl font-bold mt-1">New Backtest</h1>
       </div>
 
-      {error && <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">{error}</div>}
+      {error && (
+        <div aria-live="polite" className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
+          {error}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="bg-card rounded-xl ring-1 ring-foreground/10 p-6 space-y-5">
         {/* Strategy */}
         <div>
-          <label className="block text-sm font-medium mb-1">
+          <label id="backtest-strategy-label" className="mb-1 block text-sm font-medium">
             Strategy <span className="text-destructive">*</span>
           </label>
           {loadingStrategies ? (
-            <p className="text-sm text-muted-foreground">Loading strategies...</p>
+            <p aria-live="polite" className="text-sm text-muted-foreground">
+              Loading strategies…
+            </p>
           ) : (
             <Select value={form.strategy_id} onValueChange={handleStrategyChange}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a strategy" />
+              <SelectTrigger aria-labelledby="backtest-strategy-label" className="w-full">
+                <SelectValue placeholder="Select a strategy">{selectedStrategyName}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {strategies.map((s) => (
-                  <SelectItem key={s.id} value={s.name}>
+                  <SelectItem key={s.id} value={s.id}>
                     {s.name}
                   </SelectItem>
                 ))}
@@ -147,30 +155,37 @@ function NewBacktestPage() {
 
         {/* Name */}
         <div>
-          <label className="block text-sm font-medium mb-1">
+          <label htmlFor="backtest-name" className="mb-1 block text-sm font-medium">
             Backtest Name <span className="text-destructive">*</span>
           </label>
           <Input
+            id="backtest-name"
+            name="name"
             required
             type="text"
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
-            placeholder="e.g. SPY 2023 Backtest"
+            autoComplete="off"
+            placeholder="e.g., SPY 2023 Backtest…"
             className="w-full"
           />
         </div>
 
         {/* Symbols */}
         <div>
-          <label className="block text-sm font-medium mb-1">
+          <label htmlFor="backtest-symbols" className="mb-1 block text-sm font-medium">
             Symbols <span className="text-destructive">*</span>
           </label>
           <Input
+            id="backtest-symbols"
+            name="symbols"
             required
             type="text"
             value={form.symbols}
             onChange={(e) => setForm({ ...form, symbols: e.target.value.toUpperCase() })}
-            placeholder="SPY, QQQ, IWM (comma-separated)"
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="SPY, QQQ, IWM…"
             className="w-full"
           />
           <p className="text-xs text-muted-foreground mt-1">Comma-separated list of ETF symbols</p>
@@ -179,26 +194,32 @@ function NewBacktestPage() {
         {/* Date range */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label htmlFor="backtest-start-date" className="mb-1 block text-sm font-medium">
               Start Date <span className="text-destructive">*</span>
             </label>
             <Input
+              id="backtest-start-date"
+              name="start_date"
               required
               type="date"
               value={form.start_date}
               onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+              autoComplete="off"
               className="w-full"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label htmlFor="backtest-end-date" className="mb-1 block text-sm font-medium">
               End Date <span className="text-destructive">*</span>
             </label>
             <Input
+              id="backtest-end-date"
+              name="end_date"
               required
               type="date"
               value={form.end_date}
               onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+              autoComplete="off"
               className="w-full"
             />
           </div>
@@ -207,23 +228,29 @@ function NewBacktestPage() {
         {/* Capital + Timeframe */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label htmlFor="backtest-initial-capital" className="mb-1 block text-sm font-medium">
               Initial Capital ($) <span className="text-destructive">*</span>
             </label>
             <Input
+              id="backtest-initial-capital"
+              name="initial_capital"
               required
               type="number"
               min="1"
               step="any"
               value={form.initial_capital}
               onChange={(e) => setForm({ ...form, initial_capital: e.target.value })}
+              autoComplete="off"
+              inputMode="decimal"
               className="w-full"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Timeframe</label>
+            <label id="backtest-timeframe-label" className="mb-1 block text-sm font-medium">
+              Timeframe
+            </label>
             <Select value={form.timeframe} onValueChange={(v) => setForm({ ...form, timeframe: v ?? '1d' })}>
-              <SelectTrigger className="w-full">
+              <SelectTrigger aria-labelledby="backtest-timeframe-label" className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -240,33 +267,45 @@ function NewBacktestPage() {
         {/* Commission + Slippage */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Commission (per trade, $)</label>
+            <label htmlFor="backtest-commission" className="mb-1 block text-sm font-medium">
+              Commission (per trade, $)
+            </label>
             <Input
+              id="backtest-commission"
+              name="commission"
               type="number"
               min="0"
               step="any"
               value={form.commission}
               onChange={(e) => setForm({ ...form, commission: e.target.value })}
+              autoComplete="off"
+              inputMode="decimal"
               className="w-full"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Slippage (fraction)</label>
+            <label htmlFor="backtest-slippage" className="mb-1 block text-sm font-medium">
+              Slippage (fraction)
+            </label>
             <Input
+              id="backtest-slippage"
+              name="slippage"
               type="number"
               min="0"
               step="any"
               value={form.slippage}
               onChange={(e) => setForm({ ...form, slippage: e.target.value })}
+              autoComplete="off"
+              inputMode="decimal"
               className="w-full"
             />
-            <p className="text-xs text-muted-foreground mt-1">e.g. 0.001 = 0.1% slippage</p>
+            <p className="mt-1 text-xs text-muted-foreground">e.g., 0.001 = 0.1% slippage</p>
           </div>
         </div>
 
         <div className="flex gap-3 pt-2">
           <Button type="submit" disabled={submitting} className="flex-1">
-            {submitting ? 'Running...' : 'Run Backtest'}
+            {submitting ? 'Running…' : 'Run Backtest'}
           </Button>
           <Button variant="outline" nativeButton={false} render={<Link href="/backtests" />}>
             Cancel

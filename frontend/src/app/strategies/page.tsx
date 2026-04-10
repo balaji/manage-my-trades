@@ -18,7 +18,7 @@ function getIndicatorCount(strategy: Strategy): number {
 }
 
 export default function StrategiesPage() {
-  const { user } = useAuth();
+  const { user, authLoading } = useAuth();
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,13 +43,17 @@ export default function StrategiesPage() {
   }, [filterActive, filterType]);
 
   useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+
     if (user) {
-      loadStrategies();
+      void loadStrategies();
       setError(null);
     } else {
       setError('Please sign in to view strategies.');
     }
-  }, [loadStrategies, user]);
+  }, [authLoading, loadStrategies, user]);
 
   return (
     <>
@@ -110,7 +114,9 @@ export default function StrategiesPage() {
           <Card>
             <CardContent className="p-0">
               {loading ? (
-                <div className="p-12 text-center text-muted-foreground">Loading strategies...</div>
+                <div role="status" aria-live="polite" className="p-12 text-center text-muted-foreground">
+                  Loading strategies…
+                </div>
               ) : strategies.length === 0 ? (
                 <div className="p-12 text-center text-muted-foreground">
                   <p className="mb-4">No strategies found</p>

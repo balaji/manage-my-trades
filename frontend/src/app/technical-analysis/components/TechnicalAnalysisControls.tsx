@@ -28,17 +28,24 @@ export function TechnicalAnalysisControls({
   return (
     <div className="flex flex-wrap items-end gap-4">
       <div className="min-w-56 flex-1">
+        <label htmlFor="technical-analysis-symbol" className="sr-only">
+          Symbol
+        </label>
         <Input
+          id="technical-analysis-symbol"
+          name="symbol"
           type="text"
           value={symbol}
           onChange={(event) => onSymbolChange(event.target.value)}
           onKeyDown={(event) => event.key === 'Enter' && !loadDisabled && void onLoad()}
-          placeholder="Enter symbol (e.g., SPY)"
+          autoComplete="off"
+          spellCheck={false}
+          placeholder="Enter symbol…"
           className="w-full"
         />
       </div>
       <Button onClick={() => void onLoad()} disabled={loadDisabled}>
-        {loading ? 'Loading...' : 'Load Chart'}
+        {loading ? 'Loading…' : 'Load Chart'}
       </Button>
       <Button variant="outline" onClick={onClear} disabled={loading}>
         Clear

@@ -44,7 +44,11 @@ export default function TechnicalAnalysisPage() {
           onRangeChange={selectRange}
         />
 
-        {error && <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-red-700">{error}</div>}
+        {error && (
+          <div aria-live="polite" className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-red-700">
+            {error}
+          </div>
+        )}
 
         {hasChartData && (
           <IndicatorToolbar

@@ -46,6 +46,8 @@ export function AccountSettingsDialog({
           <img
             src={user.picture}
             alt={user.name ?? 'User'}
+            width={32}
+            height={32}
             className="size-8 rounded-full object-cover"
             referrerPolicy="no-referrer"
           />
@@ -68,6 +70,8 @@ export function AccountSettingsDialog({
             <img
               src={user.picture}
               alt={user.name ?? 'User'}
+              width={64}
+              height={64}
               className="size-16 rounded-full object-cover"
               referrerPolicy="no-referrer"
             />
@@ -93,28 +97,31 @@ export function AccountSettingsDialog({
 
         <DialogFooter className="flex-col gap-2 sm:flex-col">
           <button
+            type="button"
             onClick={onLogout}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-muted px-4 py-3 text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-muted px-4 py-3 text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
             title="Sign out"
           >
-            <LogOut className="size-4" />
+            <LogOut aria-hidden="true" className="size-4" />
             <span className="text-sm font-medium">Sign out</span>
           </button>
 
           {confirmingDelete ? (
             <button
+              type="button"
               onClick={onDeleteAccount}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-destructive px-4 py-3 text-destructive-foreground transition-colors hover:bg-destructive/90"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-destructive px-4 py-3 text-destructive-foreground transition-colors hover:bg-destructive/90 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-destructive/50"
             >
-              <Trash2 className="size-4" />
+              <Trash2 aria-hidden="true" className="size-4" />
               <span className="text-sm font-medium">Confirm delete</span>
             </button>
           ) : (
             <button
+              type="button"
               onClick={() => setConfirmingDelete(true)}
-              className="flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-destructive transition-colors hover:bg-destructive/10"
+              className="flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-destructive/50"
             >
-              <Trash2 className="size-4" />
+              <Trash2 aria-hidden="true" className="size-4" />
               <span className="text-sm font-medium">Delete account</span>
             </button>
           )}
