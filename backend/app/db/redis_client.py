@@ -1,5 +1,6 @@
 """Redis client for caching."""
 
+import json
 from datetime import datetime, timedelta, timezone
 
 import redis.asyncio as aioredis
@@ -36,6 +37,11 @@ def get_redis() -> Redis | None:
 
 def regime_cache_key(symbol: str, timeframe: str, n_regimes: int, regime_type: str) -> str:
     return f"regime:{symbol}:{timeframe}:{n_regimes}:{regime_type}"
+
+
+def indicator_cache_key(symbol: str, timeframe: str, name: str, params: dict) -> str:
+    sorted_params = json.dumps(params, sort_keys=True, separators=(",", ":"))
+    return f"indicator:{symbol}:{timeframe}:{name.upper()}:{sorted_params}"
 
 
 def seconds_until_midnight_utc() -> int:

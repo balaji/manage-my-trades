@@ -3,7 +3,7 @@ Technical analysis service for calculating indicators.
 """
 
 import json
-from datetime import date, datetime
+from datetime import datetime
 from typing import List, Dict, Any
 import logging
 import pandas as pd
@@ -11,7 +11,7 @@ import pandas as pd
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.redis_client import regime_cache_key, seconds_until_midnight_utc
+from app.db.redis_client import indicator_cache_key, regime_cache_key, seconds_until_midnight_utc
 from app.services.market_data_service import MarketDataService
 from app.core.indicators.calculator import IndicatorCalculator, get_supported_indicators
 from app.core.regime_detector import RegimeDetector
@@ -33,67 +33,74 @@ class TechnicalAnalysisService:
         self.market_data_service = MarketDataService(market_db)
         self.redis = redis_client
 
+    async def _compute_indicators(
+        self,
+        symbol: str,
+        timeframe: str,
+        indicators: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        bars_data = await self.market_data_service.get_bars(
+            symbols=[symbol],
+            start=None,
+            end=None,
+            timeframe=timeframe,
+        )
+        symbol_bars = bars_data.get(symbol, [])
+        if not symbol_bars:
+            raise ValueError(f"No market data found for {symbol}")
+        df = pd.DataFrame(symbol_bars)
+        calculator = IndicatorCalculator(df)
+        results = calculator.calculate_multiple(indicators)
+        logger.info("Computed %d indicators for %s/%s", len(results), symbol, timeframe)
+        return results
+
     async def calculate_indicators(
         self,
         symbol: str,
         timeframe: str,
-        start: date,
-        end: date,
         indicators: List[Dict[str, Any]],
     ) -> Dict[str, Any]:
         """
-        Calculate technical indicators for a symbol.
+        Calculate technical indicators for a symbol, fetching all available history.
 
-        Args:
-            symbol: Ticker symbol
-            timeframe: Timeframe string
-            start: Start datetime
-            end: End datetime
-            indicators: List of indicator configurations
-
-        Returns:
-            Dictionary with calculated indicators
+        Results are cached in Redis per indicator (symbol + timeframe + name + params)
+        until midnight UTC. Range changes on the frontend do not trigger re-fetches.
         """
-        try:
-            # Get market data
-            bars_data = await self.market_data_service.get_bars(
-                symbols=[symbol],
-                start=start,
-                end=end,
-                timeframe=timeframe,
-            )
+        cached_results: List[Dict[str, Any]] = []
+        missing_indicators: List[Dict[str, Any]] = []
 
-            return self.calculate_indicators_with_bars(bars_data[symbol], symbol, timeframe, indicators)
+        for indicator in indicators:
+            name = indicator.get("name", "")
+            params = indicator.get("params", {})
+            if not self.redis:
+                missing_indicators.append(indicator)
+                continue
+            key = indicator_cache_key(symbol, timeframe, name, params)
+            try:
+                cached = await self.redis.get(key)
+                if cached:
+                    logger.debug("Indicator cache hit for %s", key)
+                    cached_results.append(json.loads(cached))
+                else:
+                    missing_indicators.append(indicator)
+            except Exception as e:
+                logger.warning("Redis read failed for indicator %s: %s", key, e)
+                missing_indicators.append(indicator)
 
-        except Exception as e:
-            logger.error(f"Error calculating indicators: {e}")
-            raise
+        if missing_indicators:
+            computed = await self._compute_indicators(symbol, timeframe, missing_indicators)
+            if self.redis:
+                ttl = seconds_until_midnight_utc()
+                for result in computed:
+                    key = indicator_cache_key(symbol, timeframe, result["name"], result.get("params", {}))
+                    try:
+                        await self.redis.setex(key, ttl, json.dumps(result, default=_json_default))
+                        logger.debug("Indicator cached with TTL=%ds for %s", ttl, key)
+                    except Exception as e:
+                        logger.warning("Redis write failed for indicator: %s", e)
+            cached_results.extend(computed)
 
-    def calculate_indicators_with_bars(
-        self,
-        bars_data: List[Dict[str, Any]],
-        symbol: str,
-        timeframe: str,
-        indicators: List[Dict[str, Any]],
-    ) -> Dict[str, Any]:
-        try:
-            if not bars_data:
-                raise ValueError(f"No market data found for {symbol}")
-
-            # Convert to DataFrame
-            df = pd.DataFrame(bars_data)
-
-            # Calculate indicators
-            calculator = IndicatorCalculator(df)
-            results = calculator.calculate_multiple(indicators)
-
-            logger.info(f"Calculated {len(results)} indicators for {symbol}")
-
-            return {"symbol": symbol, "timeframe": timeframe, "indicators": results}
-
-        except Exception as e:
-            logger.error(f"Error calculating indicators: {e}")
-            raise
+        return {"symbol": symbol, "timeframe": timeframe, "indicators": cached_results}
 
     async def _compute_regimes(
         self,

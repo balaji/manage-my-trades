@@ -14,8 +14,6 @@ export interface IndicatorConfig {
 export interface CalculateIndicatorsRequest {
   symbol: string;
   timeframe?: string;
-  start_date: string;
-  end_date: string;
   indicators: IndicatorConfig[];
 }
 

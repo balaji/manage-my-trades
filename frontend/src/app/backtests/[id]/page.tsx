@@ -144,8 +144,6 @@ export default function BacktestDetailPage() {
                         const response = await technicalAnalysisApi.calculateIndicators({
                           symbol,
                           timeframe: bt.timeframe,
-                          start_date: bt.start_date,
-                          end_date: bt.end_date,
                           indicators: indicatorRequests,
                         });
                         return [

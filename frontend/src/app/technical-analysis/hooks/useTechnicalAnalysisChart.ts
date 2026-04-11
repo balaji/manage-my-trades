@@ -10,14 +10,13 @@ import {
   serializeIndicatorKey,
 } from '@/lib/technical-analysis/chart-model';
 import type { OHLCVBar } from '@/lib/types/market-data';
-import { DEFAULT_RANGE_DAYS, DEFAULT_SYMBOL, INDICATOR_LOOKBACK_DAYS } from '../constants';
+import { DEFAULT_RANGE_DAYS, DEFAULT_SYMBOL } from '../constants';
 
 type SupportedIndicators = Awaited<ReturnType<typeof technicalAnalysisApi.getSupportedIndicators>>['indicators'];
 
 interface LoadedRequest {
   symbol: string;
   startDate: string;
-  indicatorStartDate: string;
   endDate: string;
 }
 
@@ -31,12 +30,8 @@ function buildDateRange(days: number) {
   startDate.setDate(startDate.getDate() - days);
   endDate.setDate(endDate.getDate() - 1);
 
-  const indicatorStartDate = new Date(startDate);
-  indicatorStartDate.setDate(indicatorStartDate.getDate() - INDICATOR_LOOKBACK_DAYS);
-
   return {
     startDate: formatDate(startDate),
-    indicatorStartDate: formatDate(indicatorStartDate),
     endDate: formatDate(endDate),
   };
 }
@@ -158,10 +153,15 @@ export function useTechnicalAnalysisChart() {
       }
 
       const requestVersion = ++chartRequestVersionRef.current;
-      const selectedIndicatorRequests = indicatorOptions
-        .filter((option) => enabledIndicatorIds.has(option.id))
-        .map(({ name, params }) => ({ name, params }));
       const dateRange = buildDateRange(days);
+      const isSymbolChange = loadedRequest?.symbol !== normalizedSymbol;
+
+      // Only fetch indicators when the symbol changes; range changes reuse cached results.
+      const selectedIndicatorRequests = isSymbolChange
+        ? indicatorOptions
+            .filter((option) => enabledIndicatorIds.has(option.id))
+            .map(({ name, params }) => ({ name, params }))
+        : [];
 
       setError(null);
       setSymbol(normalizedSymbol);
@@ -180,8 +180,6 @@ export function useTechnicalAnalysisChart() {
               ? technicalAnalysisApi.calculateIndicators({
                   symbol: normalizedSymbol,
                   timeframe: '1d',
-                  start_date: dateRange.indicatorStartDate,
-                  end_date: dateRange.endDate,
                   indicators: selectedIndicatorRequests,
                 })
               : Promise.resolve({
@@ -197,11 +195,12 @@ export function useTechnicalAnalysisChart() {
 
           if (marketData.length > 0 && marketData[0].bars.length > 0) {
             setChartData(marketData[0].bars);
-            setIndicatorResults(indicatorResult.indicators);
+            if (isSymbolChange) {
+              setIndicatorResults(indicatorResult.indicators);
+            }
             setLoadedRequest({
               symbol: normalizedSymbol,
               startDate: dateRange.startDate,
-              indicatorStartDate: dateRange.indicatorStartDate,
               endDate: dateRange.endDate,
             });
             return;
@@ -220,7 +219,7 @@ export function useTechnicalAnalysisChart() {
         }
       });
     },
-    [enabledIndicatorIds, indicatorOptions, rangeDays, symbol]
+    [enabledIndicatorIds, indicatorOptions, loadedRequest?.symbol, rangeDays, symbol]
   );
 
   const selectRange = useCallback(
@@ -261,8 +260,6 @@ export function useTechnicalAnalysisChart() {
         const response = await technicalAnalysisApi.calculateIndicators({
           symbol: loadedRequest.symbol,
           timeframe: '1d',
-          start_date: loadedRequest.indicatorStartDate,
-          end_date: loadedRequest.endDate,
           indicators: [{ name: option.name, params: option.params }],
         });
 
