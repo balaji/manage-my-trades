@@ -53,6 +53,41 @@ export interface SupportedIndicator {
   };
 }
 
+export type RegimeType = 'directional' | 'volatility' | 'combined';
+
+export type RegimeLabel =
+  | 'bullish'
+  | 'bearish'
+  | 'sideways'
+  | 'low_vol'
+  | 'normal_vol'
+  | 'high_vol'
+  | 'bearish_high_vol'
+  | 'bearish_low_vol'
+  | 'bullish_low_vol'
+  | 'bullish_high_vol';
+
+export interface RegimeSegment {
+  start: string;
+  end: string;
+  regime: RegimeLabel;
+}
+
+export interface DetectRegimesRequest {
+  symbol: string;
+  timeframe?: string;
+  start_date: string;
+  end_date: string;
+  n_regimes?: number;
+  regime_type?: RegimeType;
+}
+
+export interface RegimeResponse {
+  symbol: string;
+  timeframe: string;
+  segments: RegimeSegment[];
+}
+
 export const technicalAnalysisApi = {
   /**
    * Calculate one or more technical indicators for a symbol.
@@ -72,6 +107,15 @@ export const technicalAnalysisApi = {
   /**
    * Get a list of all supported technical indicators and their parameters.
    */
+  async detectRegimes(request: DetectRegimesRequest): Promise<RegimeResponse> {
+    try {
+      const response = await apiClient.post<RegimeResponse>(`${TECHNICAL_ANALYSIS_BASE}/regimes`, request);
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
   async getSupportedIndicators(): Promise<{
     indicators: SupportedIndicator[];
   }> {

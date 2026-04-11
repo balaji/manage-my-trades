@@ -6,7 +6,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_market_db
 from app.services.technical_analysis_service import TechnicalAnalysisService
-from app.schemas.technical_analysis import IndicatorRequest, IndicatorResponse, SupportedIndicatorsResponse
+from app.schemas.technical_analysis import (
+    IndicatorRequest,
+    IndicatorResponse,
+    RegimeRequest,
+    RegimeResponse,
+    SupportedIndicatorsResponse,
+)
 
 router = APIRouter()
 
@@ -92,6 +98,35 @@ async def calculate_indicators(
         )
 
         return result
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post(
+    "/regimes",
+    response_model=RegimeResponse,
+    summary="Detect Market Regimes",
+)
+async def detect_regimes(request: RegimeRequest, market_db: AsyncSession = Depends(get_market_db)) -> RegimeResponse:
+    """
+    Detect market regimes using a Hidden Markov Model.
+
+    Returns contiguous time segments labeled as bullish, bearish, or sideways.
+    """
+    try:
+        service = TechnicalAnalysisService(market_db)
+        result = await service.detect_regimes(
+            symbol=request.symbol,
+            timeframe=request.timeframe,
+            start=request.start_date,
+            end=request.end_date,
+            n_regimes=request.n_regimes,
+            regime_type=request.regime_type,
+        )
+        return RegimeResponse(**result)
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

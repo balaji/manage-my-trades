@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { marketDataApi } from '@/lib/api/market-data';
 import { technicalAnalysisApi } from '@/lib/api/technical-analysis';
-import type { IndicatorResult } from '@/lib/api/technical-analysis';
+import type { IndicatorResult, RegimeSegment, RegimeType } from '@/lib/api/technical-analysis';
+import type { RegimeSegmentData } from '@/components/charts/PriceChart';
+import { toChartUnixSeconds } from '@/lib/chart-time';
 import {
   buildChartSeries,
   buildIndicatorPresetOptions,
@@ -55,6 +57,10 @@ export function useTechnicalAnalysisChart() {
   const [enabledIndicatorIds, setEnabledIndicatorIds] = useState<Set<string>>(emptySet());
   const [loadingIndicatorIds, setLoadingIndicatorIds] = useState<Set<string>>(emptySet());
   const [loadedRequest, setLoadedRequest] = useState<LoadedRequest | null>(null);
+  const [regimeType, setRegimeType] = useState<RegimeType | null>(null);
+  const [regimeSegments, setRegimeSegments] = useState<RegimeSegmentData[]>([]);
+  const [regimeLoading, setRegimeLoading] = useState(false);
+  const regimeRequestRef = useRef<string | null>(null);
   const chartRequestVersionRef = useRef(0);
 
   const indicatorOptions = useMemo(() => buildIndicatorPresetOptions(supportedIndicators), [supportedIndicators]);
@@ -293,6 +299,63 @@ export function useTechnicalAnalysisChart() {
     [enabledIndicatorIds, indicatorOptions, loadedIndicatorIds, loadedRequest]
   );
 
+  useEffect(() => {
+    setRegimeSegments([]);
+    regimeRequestRef.current = null;
+  }, [loadedRequest?.symbol, loadedRequest?.startDate, loadedRequest?.endDate]);
+
+  const fetchRegimes = useCallback(
+    async (type: RegimeType) => {
+      if (!loadedRequest) return;
+
+      const cacheKey = `${loadedRequest.symbol}:${loadedRequest.startDate}:${loadedRequest.endDate}:${type}`;
+      if (regimeRequestRef.current === cacheKey) return;
+
+      setRegimeLoading(true);
+      try {
+        const response = await technicalAnalysisApi.detectRegimes({
+          symbol: loadedRequest.symbol,
+          timeframe: '1d',
+          start_date: loadedRequest.startDate,
+          end_date: loadedRequest.endDate,
+          regime_type: type,
+        });
+
+        regimeRequestRef.current = cacheKey;
+        setRegimeSegments(
+          response.segments.map((seg: RegimeSegment) => ({
+            start: toChartUnixSeconds(seg.start),
+            end: toChartUnixSeconds(seg.end),
+            regime: seg.regime,
+          }))
+        );
+      } catch {
+        setRegimeType(null);
+      } finally {
+        setRegimeLoading(false);
+      }
+    },
+    [loadedRequest]
+  );
+
+  const selectRegimeType = useCallback(
+    async (type: RegimeType | null) => {
+      setRegimeType(type);
+      if (type) {
+        await fetchRegimes(type);
+      } else {
+        setRegimeSegments([]);
+      }
+    },
+    [fetchRegimes]
+  );
+
+  useEffect(() => {
+    if (regimeType && loadedRequest) {
+      void fetchRegimes(regimeType);
+    }
+  }, [fetchRegimes, loadedRequest, regimeType]);
+
   const clear = useCallback(() => {
     chartRequestVersionRef.current += 1;
     setSymbol(DEFAULT_SYMBOL);
@@ -304,6 +367,9 @@ export function useTechnicalAnalysisChart() {
     setEnabledIndicatorIds(emptySet());
     setLoadingIndicatorIds(emptySet());
     setLoadedRequest(null);
+    setRegimeType(null);
+    setRegimeSegments([]);
+    regimeRequestRef.current = null;
   }, []);
 
   return {
@@ -323,10 +389,15 @@ export function useTechnicalAnalysisChart() {
     loadDisabled: loading || !supportedIndicatorsReady || indicatorOptions.length === 0,
     hasChartData: chartData.length > 0,
     timeRange,
+    showRegimes: regimeType !== null,
+    regimeType,
+    regimeSegments,
+    regimeLoading,
     setSymbol: (value: string) => setSymbol(value.toUpperCase()),
     loadData,
     clear,
     selectRange,
     toggleIndicator,
+    selectRegimeType,
   };
 }

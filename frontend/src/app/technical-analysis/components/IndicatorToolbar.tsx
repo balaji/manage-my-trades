@@ -2,6 +2,9 @@
 
 import { useCallback, useMemo, useRef, useState } from 'react';
 import type { IndicatorPresetOption } from '@/lib/technical-analysis/chart-model';
+import type { RegimeType } from '@/lib/api/technical-analysis';
+import { buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { IndicatorDropdown } from './IndicatorDropdown';
 import { useClickOutside } from '../hooks/useClickOutside';
 
@@ -17,6 +20,9 @@ interface IndicatorToolbarProps {
   loadingIndicatorIds: Set<string>;
   loading: boolean;
   onSelect: (id: string) => void | Promise<void>;
+  regimeType?: RegimeType | null;
+  onRegimeTypeChange?: (type: RegimeType | null) => void;
+  regimeLoading?: boolean;
 }
 
 const PANE_CONFIG: Array<{ key: IndicatorPane; buttonLabel: string }> = [
@@ -34,6 +40,9 @@ export function IndicatorToolbar({
   loadingIndicatorIds,
   loading,
   onSelect,
+  regimeType = null,
+  onRegimeTypeChange,
+  regimeLoading = false,
 }: IndicatorToolbarProps) {
   const [activePane, setActivePane] = useState<IndicatorPane | null>(null);
   const [filterByPane, setFilterByPane] = useState<Record<IndicatorPane, string>>({
@@ -105,6 +114,29 @@ export function IndicatorToolbar({
           onSelect={onSelect}
         />
       ))}
+
+      {onRegimeTypeChange && (
+        <div className="inline-flex items-center gap-1.5">
+          {regimeLoading && (
+            <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-slate-500 border-t-transparent" />
+          )}
+          <select
+            value={regimeType ?? ''}
+            onChange={(e) => onRegimeTypeChange(e.target.value ? (e.target.value as RegimeType) : null)}
+            disabled={loading || regimeLoading}
+            className={cn(
+              buttonVariants({ variant: 'outline', size: 'sm' }),
+              'cursor-pointer',
+              regimeType && 'border-indigo-500 text-indigo-600 dark:border-indigo-700 dark:text-indigo-400'
+            )}
+          >
+            <option value="">Regimes: None</option>
+            <option value="directional">Regimes: Directional</option>
+            <option value="volatility">Regimes: Volatility</option>
+            <option value="combined">Regimes: Combined</option>
+          </select>
+        </div>
+      )}
 
       {activeOverlayLegend.map(({ id, color, label }) => (
         <span key={id} className="flex items-center gap-1.5 text-sm text-slate-600">

@@ -1,7 +1,7 @@
 """Technical analysis schemas."""
 
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -53,3 +53,32 @@ class SupportedIndicatorsResponse(BaseModel):
     """List of supported indicators."""
 
     indicators: list[dict[str, Any]]
+
+
+class RegimeRequest(BaseModel):
+    """Request for HMM regime detection."""
+
+    symbol: str = Field(..., description="Ticker symbol")
+    timeframe: str = Field(default="1d", description="Timeframe (1d, 1h, etc.)")
+    start_date: date = Field(..., description="Start date")
+    end_date: date = Field(..., description="End date")
+    n_regimes: int = Field(default=3, ge=2, le=4, description="Number of regimes to detect")
+    regime_type: Literal["directional", "volatility", "combined"] = Field(
+        default="directional", description="Regime label assignment strategy"
+    )
+
+
+class RegimeSegment(BaseModel):
+    """A contiguous time segment with a single regime label."""
+
+    start: datetime
+    end: datetime
+    regime: str
+
+
+class RegimeResponse(BaseModel):
+    """Response with detected regime segments."""
+
+    symbol: str
+    timeframe: str
+    segments: list[RegimeSegment]

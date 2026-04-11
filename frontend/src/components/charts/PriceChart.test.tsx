@@ -39,6 +39,8 @@ type MockChart = {
   applyOptions: ReturnType<typeof vi.fn>;
   panes: ReturnType<typeof vi.fn>;
   timeScale: ReturnType<typeof vi.fn>;
+  subscribeCrosshairMove: ReturnType<typeof vi.fn>;
+  unsubscribeCrosshairMove: ReturnType<typeof vi.fn>;
 };
 
 vi.mock('lightweight-charts', () => {
@@ -118,6 +120,8 @@ describe('PriceChart', () => {
         applyOptions: vi.fn(),
         panes: vi.fn(() => panes),
         timeScale: vi.fn(() => timeScale),
+        subscribeCrosshairMove: vi.fn(),
+        unsubscribeCrosshairMove: vi.fn(),
       };
 
       return chart;
