@@ -10,6 +10,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import get_settings
 from app.db.session import init_db, init_market_db
+from app.db.redis_client import connect_redis, close_redis
 from app.api.v1 import api_router
 
 # Configure logging
@@ -39,11 +40,17 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Failed to initialize market data database: {e}")
         raise
+    try:
+        await connect_redis()
+        logger.info("Redis connected successfully")
+    except Exception as e:
+        logger.warning(f"Redis unavailable, regime caching disabled: {e}")
 
     yield
 
     # Shutdown
     logger.info("Shutting down application...")
+    await close_redis()
 
 
 # OpenAPI tags metadata

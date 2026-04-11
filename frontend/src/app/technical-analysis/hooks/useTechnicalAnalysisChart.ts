@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { marketDataApi } from '@/lib/api/market-data';
 import { technicalAnalysisApi } from '@/lib/api/technical-analysis';
 import type { IndicatorResult, RegimeSegment, RegimeType } from '@/lib/api/technical-analysis';
@@ -48,7 +48,6 @@ function emptySet<T>() {
 export function useTechnicalAnalysisChart() {
   const [symbol, setSymbol] = useState(DEFAULT_SYMBOL);
   const [rangeDays, setRangeDays] = useState(DEFAULT_RANGE_DAYS);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [chartData, setChartData] = useState<OHLCVBar[]>([]);
   const [indicatorResults, setIndicatorResults] = useState<IndicatorResult[]>([]);
@@ -60,6 +59,7 @@ export function useTechnicalAnalysisChart() {
   const [regimeType, setRegimeType] = useState<RegimeType | null>(null);
   const [regimeSegments, setRegimeSegments] = useState<RegimeSegmentData[]>([]);
   const [regimeLoading, setRegimeLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const regimeRequestRef = useRef<string | null>(null);
   const chartRequestVersionRef = useRef(0);
 
@@ -163,65 +163,62 @@ export function useTechnicalAnalysisChart() {
         .map(({ name, params }) => ({ name, params }));
       const dateRange = buildDateRange(days);
 
-      setLoading(true);
       setError(null);
-      setLoadingIndicatorIds(emptySet());
       setSymbol(normalizedSymbol);
+      startTransition(async () => {
+        setLoadingIndicatorIds(emptySet());
 
-      try {
-        const [marketData, indicatorResult] = await Promise.all([
-          marketDataApi.getBars({
-            symbols: [normalizedSymbol],
-            start_date: dateRange.startDate,
-            end_date: dateRange.endDate,
-            timeframe: '1d',
-          }),
-          selectedIndicatorRequests.length > 0
-            ? technicalAnalysisApi.calculateIndicators({
-                symbol: normalizedSymbol,
-                timeframe: '1d',
-                start_date: dateRange.indicatorStartDate,
-                end_date: dateRange.endDate,
-                indicators: selectedIndicatorRequests,
-              })
-            : Promise.resolve({
-                symbol: normalizedSymbol,
-                timeframe: '1d',
-                indicators: [],
-              }),
-        ]);
+        try {
+          const [marketData, indicatorResult] = await Promise.all([
+            marketDataApi.getBars({
+              symbols: [normalizedSymbol],
+              start_date: dateRange.startDate,
+              end_date: dateRange.endDate,
+              timeframe: '1d',
+            }),
+            selectedIndicatorRequests.length > 0
+              ? technicalAnalysisApi.calculateIndicators({
+                  symbol: normalizedSymbol,
+                  timeframe: '1d',
+                  start_date: dateRange.indicatorStartDate,
+                  end_date: dateRange.endDate,
+                  indicators: selectedIndicatorRequests,
+                })
+              : Promise.resolve({
+                  symbol: normalizedSymbol,
+                  timeframe: '1d',
+                  indicators: [],
+                }),
+          ]);
 
-        if (requestVersion !== chartRequestVersionRef.current) {
-          return;
+          if (requestVersion !== chartRequestVersionRef.current) {
+            return;
+          }
+
+          if (marketData.length > 0 && marketData[0].bars.length > 0) {
+            setChartData(marketData[0].bars);
+            setIndicatorResults(indicatorResult.indicators);
+            setLoadedRequest({
+              symbol: normalizedSymbol,
+              startDate: dateRange.startDate,
+              indicatorStartDate: dateRange.indicatorStartDate,
+              endDate: dateRange.endDate,
+            });
+            return;
+          }
+
+          setError('No data available for this symbol');
+          setChartData([]);
+          setIndicatorResults([]);
+          setLoadedRequest(null);
+        } catch (err: any) {
+          if (requestVersion !== chartRequestVersionRef.current) {
+            return;
+          }
+
+          setError(err.message || 'Failed to load data');
         }
-
-        if (marketData.length > 0 && marketData[0].bars.length > 0) {
-          setChartData(marketData[0].bars);
-          setIndicatorResults(indicatorResult.indicators);
-          setLoadedRequest({
-            symbol: normalizedSymbol,
-            startDate: dateRange.startDate,
-            indicatorStartDate: dateRange.indicatorStartDate,
-            endDate: dateRange.endDate,
-          });
-          return;
-        }
-
-        setError('No data available for this symbol');
-        setChartData([]);
-        setIndicatorResults([]);
-        setLoadedRequest(null);
-      } catch (err: any) {
-        if (requestVersion !== chartRequestVersionRef.current) {
-          return;
-        }
-
-        setError(err.message || 'Failed to load data');
-      } finally {
-        if (requestVersion === chartRequestVersionRef.current) {
-          setLoading(false);
-        }
-      }
+      });
     },
     [enabledIndicatorIds, indicatorOptions, rangeDays, symbol]
   );
@@ -302,13 +299,13 @@ export function useTechnicalAnalysisChart() {
   useEffect(() => {
     setRegimeSegments([]);
     regimeRequestRef.current = null;
-  }, [loadedRequest?.symbol, loadedRequest?.startDate, loadedRequest?.endDate]);
+  }, [loadedRequest?.symbol]);
 
   const fetchRegimes = useCallback(
     async (type: RegimeType) => {
       if (!loadedRequest) return;
 
-      const cacheKey = `${loadedRequest.symbol}:${loadedRequest.startDate}:${loadedRequest.endDate}:${type}`;
+      const cacheKey = `${loadedRequest.symbol}:${type}`;
       if (regimeRequestRef.current === cacheKey) return;
 
       setRegimeLoading(true);
@@ -316,8 +313,6 @@ export function useTechnicalAnalysisChart() {
         const response = await technicalAnalysisApi.detectRegimes({
           symbol: loadedRequest.symbol,
           timeframe: '1d',
-          start_date: loadedRequest.startDate,
-          end_date: loadedRequest.endDate,
           regime_type: type,
         });
 
@@ -338,29 +333,23 @@ export function useTechnicalAnalysisChart() {
     [loadedRequest]
   );
 
-  const selectRegimeType = useCallback(
-    async (type: RegimeType | null) => {
-      setRegimeType(type);
-      if (type) {
-        await fetchRegimes(type);
-      } else {
-        setRegimeSegments([]);
-      }
-    },
-    [fetchRegimes]
-  );
+  const selectRegimeType = useCallback((type: RegimeType | null) => {
+    setRegimeType(type);
+    if (!type) {
+      setRegimeSegments([]);
+    }
+  }, []);
 
   useEffect(() => {
-    if (regimeType && loadedRequest) {
+    if (regimeType) {
       void fetchRegimes(regimeType);
     }
-  }, [fetchRegimes, loadedRequest, regimeType]);
+  }, [fetchRegimes, regimeType]);
 
   const clear = useCallback(() => {
     chartRequestVersionRef.current += 1;
     setSymbol(DEFAULT_SYMBOL);
     setRangeDays(DEFAULT_RANGE_DAYS);
-    setLoading(false);
     setError(null);
     setChartData([]);
     setIndicatorResults([]);
@@ -375,7 +364,7 @@ export function useTechnicalAnalysisChart() {
   return {
     symbol,
     rangeDays,
-    loading,
+    loading: isPending,
     error,
     chartData,
     enabledIndicatorIds,
@@ -386,7 +375,7 @@ export function useTechnicalAnalysisChart() {
     activeOverlaySeries,
     activeOscillatorSeries,
     activeOverlayLegend,
-    loadDisabled: loading || !supportedIndicatorsReady || indicatorOptions.length === 0,
+    loadDisabled: isPending || !supportedIndicatorsReady || indicatorOptions.length === 0,
     hasChartData: chartData.length > 0,
     timeRange,
     showRegimes: regimeType !== null,

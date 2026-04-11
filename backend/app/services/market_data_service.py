@@ -26,8 +26,8 @@ class MarketDataService:
     async def get_bars(
         self,
         symbols: List[str],
-        start: date,
-        end: date,
+        start: date | None,
+        end: date | None,
         timeframe: str = "1d",
     ) -> Dict[str, List[Dict[str, Any]]]:
         """
@@ -46,26 +46,35 @@ class MarketDataService:
 
         for symbol in symbols:
             # Check if we have stale data and need to refresh
-            latest_date = await self._get_latest_date(symbol, timeframe)
-            cutoff_date = date.today() - timedelta(days=1)
+            await self._refresh_stale_data(symbol, timeframe)
 
-            if latest_date is None or latest_date < cutoff_date:
-                # Fetch missing data from Alpaca
-                fetch_start = latest_date + timedelta(days=1) if latest_date else start
-                fetch_end = cutoff_date
-
-                logger.info(f"Refreshing stale data for {symbol} from {fetch_start} to {fetch_end}")
-                alpaca_data = await self.alpaca_service.get_bars([symbol], fetch_start, fetch_end, timeframe)
-
-                if symbol in alpaca_data and alpaca_data[symbol]:
-                    bars = alpaca_data[symbol]
-                    await self._cache_bars(symbol, timeframe, bars)
-
-            # Fetch from cache
-            cached_bars = await self._get_cached_bars(symbol, start, end, timeframe)
-            result[symbol] = cached_bars if cached_bars else []
+            # Fetch from database
+            db_bars = await self._get_db_bars(symbol, start, end, timeframe)
+            result[symbol] = db_bars if db_bars else []
 
         return result
+
+    async def _refresh_stale_data(self, symbol: str, timeframe: str) -> None:
+        """
+        Refresh stale data for a symbol/timeframe.
+
+        Args:
+            symbol: Ticker symbol
+            timeframe: Timeframe string
+        """
+        latest_date = await self._get_latest_date(symbol, timeframe)
+        cutoff_date = date.today() - timedelta(days=1)
+
+        if latest_date is None or latest_date < cutoff_date:
+            fetch_start = latest_date + timedelta(days=1) if latest_date else date.today() - timedelta(days=365)
+            fetch_end = cutoff_date
+
+            logger.info(f"Refreshing stale data for {symbol} from {fetch_start} to {fetch_end}")
+            alpaca_data = await self.alpaca_service.get_bars([symbol], fetch_start, fetch_end, timeframe)
+
+            if symbol in alpaca_data and alpaca_data[symbol]:
+                bars = alpaca_data[symbol]
+                await self._cache_bars(symbol, timeframe, bars)
 
     async def _get_latest_date(self, symbol: str, timeframe: str) -> Optional[date]:
         """
@@ -91,8 +100,8 @@ class MarketDataService:
             logger.error(f"Error getting latest date for {symbol}/{timeframe}: {e}")
             return None
 
-    async def _get_cached_bars(
-        self, symbol: str, start: date, end: date, timeframe: str
+    async def _get_db_bars(
+        self, symbol: str, start: date | None, end: date | None, timeframe: str
     ) -> Optional[List[Dict[str, Any]]]:
         """
         Get cached bars from database.
@@ -106,19 +115,16 @@ class MarketDataService:
         Returns:
             List of bars or None if not fully cached
         """
+        predicate = (
+            MarketData.symbol == symbol,
+            MarketData.timeframe == timeframe,
+        )
+
+        if start and end:
+            predicate += (MarketData.trade_date >= start, MarketData.trade_date <= end)
+
         try:
-            query = (
-                select(MarketData)
-                .where(
-                    and_(
-                        MarketData.symbol == symbol,
-                        MarketData.timeframe == timeframe,
-                        MarketData.trade_date >= start,
-                        MarketData.trade_date <= end,
-                    )
-                )
-                .order_by(MarketData.trade_date)
-            )
+            query = select(MarketData).where(and_(*predicate)).order_by(MarketData.trade_date)
 
             result = await self.db.execute(query)
             bars = result.scalars().all()

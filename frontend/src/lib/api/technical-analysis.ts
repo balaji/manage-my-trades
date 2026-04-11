@@ -76,8 +76,6 @@ export interface RegimeSegment {
 export interface DetectRegimesRequest {
   symbol: string;
   timeframe?: string;
-  start_date: string;
-  end_date: string;
   n_regimes?: number;
   regime_type?: RegimeType;
 }

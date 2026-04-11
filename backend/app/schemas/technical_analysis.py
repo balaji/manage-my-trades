@@ -60,8 +60,6 @@ class RegimeRequest(BaseModel):
 
     symbol: str = Field(..., description="Ticker symbol")
     timeframe: str = Field(default="1d", description="Timeframe (1d, 1h, etc.)")
-    start_date: date = Field(..., description="Start date")
-    end_date: date = Field(..., description="End date")
     n_regimes: int = Field(default=3, ge=2, le=4, description="Number of regimes to detect")
     regime_type: Literal["directional", "volatility", "combined"] = Field(
         default="directional", description="Regime label assignment strategy"

@@ -23,6 +23,7 @@ services:
     environment:
       - TRADE_DATA_DATABASE_URL=postgresql+psycopg://trading_user:trading_password@database:5432/trading_db
       - MARKET_DATA_DATABASE_URL=postgresql+psycopg://trading_user:trading_password@database:5432/market_data_db
+      - REDIS_URL=redis://redis:6379/0
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -47,6 +48,22 @@ services:
           path: ./backend/pyproject.toml
         - action: rebuild
           path: ./backend/uv.lock
+
+  redis:
+    image: redis:7-alpine
+    container_name: trading_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - trading_network
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
   frontend:
     env_file:
@@ -78,6 +95,7 @@ services:
 volumes:
   trades_data:
     external: true
+  redis_data:
 
 networks:
   trading_network:

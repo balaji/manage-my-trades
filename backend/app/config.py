@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     TRADE_DATA_DATABASE_URL: str = ""
     MARKET_DATA_DATABASE_URL: str = ""
+    REDIS_URL: str = "redis://localhost:6379/0"
     CORS_ORIGINS: List[str] = []
     ALPACA_API_KEY: str = ""
     ALPACA_SECRET_KEY: str = ""
