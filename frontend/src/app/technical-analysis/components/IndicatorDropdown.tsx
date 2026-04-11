@@ -56,7 +56,7 @@ export function IndicatorDropdown({
         </svg>
       </Button>
       {open && (
-        <div className="absolute left-0 top-full z-10 mt-1 min-w-[260px] rounded-lg border bg-white shadow-lg dark:bg-gray-900 dark:border-gray-700">
+        <div className="absolute left-0 top-full z-50 mt-1 min-w-[260px] rounded-lg border bg-white shadow-lg dark:bg-gray-900 dark:border-gray-700">
           <div className="border-b px-3 py-2 dark:border-gray-700">
             <label htmlFor={filterInputId} className="sr-only">
               Filter indicators

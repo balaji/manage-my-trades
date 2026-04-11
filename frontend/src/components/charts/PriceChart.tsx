@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useLayoutEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { IChartApi, SeriesMarker, Time } from 'lightweight-charts';
 import type { OHLCVBar } from '@/lib/types/market-data';
 

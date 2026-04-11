@@ -3,7 +3,7 @@
 /**
  * Backtests list page.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useTransition } from 'react';
 import Link from 'next/link';
 import { listBacktests, deleteBacktest } from '@/lib/api/backtests';
 import { useAuth } from '@/lib/auth-context';
@@ -15,8 +15,9 @@ import { StatusBadge } from '@/components/backtests/StatusBadge';
 export default function BacktestsPage() {
   const { user, authLoading } = useAuth();
   const [backtests, setBacktests] = useState<Backtest[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [hasLoadedBacktests, setHasLoadedBacktests] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     if (authLoading) {
@@ -26,21 +27,26 @@ export default function BacktestsPage() {
     if (user) {
       setError(null);
       const load = async () => {
-        setLoading(true);
-        try {
-          const data = await listBacktests({ limit: 100 });
-          setBacktests(data.backtests);
-        } catch (err: any) {
-          setError(err.message || 'Failed to load backtests');
-        } finally {
-          setLoading(false);
-        }
+        startTransition(async () => {
+          try {
+            const data = await listBacktests({ limit: 100 });
+            setBacktests(data.backtests);
+          } catch (err: any) {
+            setError(err.message || 'Failed to load backtests');
+          } finally {
+            setHasLoadedBacktests(true);
+          }
+        });
       };
       void load();
     } else {
+      setBacktests([]);
+      setHasLoadedBacktests(false);
       setError('Please sign in to view backtests.');
     }
   }, [authLoading, user]);
+
+  const showInitialLoading = isPending && !hasLoadedBacktests;
 
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Delete backtest "${name}"? This cannot be undone.`)) return;
@@ -67,7 +73,7 @@ export default function BacktestsPage() {
             </Button>
           </div>
 
-          {loading ? (
+          {showInitialLoading ? (
             <div role="status" aria-live="polite" className="text-center py-12 text-gray-500">
               Loading backtests…
             </div>

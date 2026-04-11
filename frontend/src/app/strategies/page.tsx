@@ -3,7 +3,7 @@
 /**
  * Strategies list page.
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useTransition } from 'react';
 import Link from 'next/link';
 import { getStrategies } from '@/lib/api/strategies';
 import { useAuth } from '@/lib/auth-context';
@@ -20,26 +20,27 @@ function getIndicatorCount(strategy: Strategy): number {
 export default function StrategiesPage() {
   const { user, authLoading } = useAuth();
   const [strategies, setStrategies] = useState<Strategy[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [hasLoadedStrategies, setHasLoadedStrategies] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filterActive, setFilterActive] = useState<boolean | undefined>(undefined);
   const [filterType, setFilterType] = useState<string>('');
+  const [isPending, startTransition] = useTransition();
 
   const loadStrategies = useCallback(async () => {
-    setLoading(true);
     setError(null);
-
-    try {
-      const response = await getStrategies({
-        is_active: filterActive,
-        strategy_type: filterType || undefined,
-      });
-      setStrategies(response.strategies);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load strategies');
-    } finally {
-      setLoading(false);
-    }
+    startTransition(async () => {
+      try {
+        const response = await getStrategies({
+          is_active: filterActive,
+          strategy_type: filterType || undefined,
+        });
+        setStrategies(response.strategies);
+      } catch (err: any) {
+        setError(err.message || 'Failed to load strategies');
+      } finally {
+        setHasLoadedStrategies(true);
+      }
+    });
   }, [filterActive, filterType]);
 
   useEffect(() => {
@@ -51,9 +52,14 @@ export default function StrategiesPage() {
       void loadStrategies();
       setError(null);
     } else {
+      setStrategies([]);
+      setHasLoadedStrategies(false);
       setError('Please sign in to view strategies.');
     }
   }, [authLoading, loadStrategies, user]);
+
+  const showInitialLoading = isPending && !hasLoadedStrategies;
+  const showRefreshing = isPending && hasLoadedStrategies;
 
   return (
     <>
@@ -113,7 +119,12 @@ export default function StrategiesPage() {
           {/* Strategies List */}
           <Card>
             <CardContent className="p-0">
-              {loading ? (
+              {showRefreshing && (
+                <div role="status" aria-live="polite" className="border-b px-6 py-3 text-sm text-muted-foreground">
+                  Updating strategies…
+                </div>
+              )}
+              {showInitialLoading ? (
                 <div role="status" aria-live="polite" className="p-12 text-center text-muted-foreground">
                   Loading strategies…
                 </div>

@@ -32,10 +32,15 @@ export function useRegimeOverlay(
 
     const primitive = primitiveRef.current;
     return () => {
-      if (primitive && series) {
-        series.detachPrimitive(primitive);
-        primitiveRef.current = null;
+      // Use candlestickSeriesRef.current (live value) rather than the captured `series`
+      // to detect whether the chart was already removed by useLightweightChart's cleanup.
+      // Calling detachPrimitive after chart.remove() schedules a spurious rAF that throws
+      // "Object is disposed" when it fires on the now-disposed canvas bindings.
+      const liveSeries = candlestickSeriesRef.current;
+      if (primitive && liveSeries) {
+        liveSeries.detachPrimitive(primitive);
       }
+      primitiveRef.current = null;
     };
   }, [chartRef, candlestickSeriesRef, segments, enabled]);
 }
