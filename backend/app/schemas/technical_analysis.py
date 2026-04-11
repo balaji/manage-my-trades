@@ -1,6 +1,6 @@
 """Technical analysis schemas."""
 
-from datetime import date, datetime
+from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -11,8 +11,6 @@ class IndicatorRequest(BaseModel):
 
     symbol: str = Field(..., description="Ticker symbol")
     timeframe: str = Field(default="1d", description="Timeframe (1m, 5m, 15m, 1h, 1d)")
-    start_date: date = Field(..., description="Start date")
-    end_date: date = Field(..., description="End date")
     indicators: list[dict[str, Any]] = Field(
         ...,
         description="List of indicators to calculate. Each should have 'name' and optional 'params'",

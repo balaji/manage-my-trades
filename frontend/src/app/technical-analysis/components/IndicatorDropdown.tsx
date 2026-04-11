@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import type { IndicatorPresetOption } from '@/lib/technical-analysis/chart-model';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,15 +32,19 @@ export function IndicatorDropdown({
   loading,
   onSelect,
 }: IndicatorDropdownProps) {
+  const filterInputId = useMemo(
+    () => `${buttonLabel.toLowerCase().replace(/\s+/g, '-')}-indicator-filter`,
+    [buttonLabel]
+  );
+
+  const filteredOptions = useMemo(() => {
+    const normalizedFilter = filterText.trim().toLowerCase();
+    return normalizedFilter ? options.filter(({ label }) => label.toLowerCase().includes(normalizedFilter)) : options;
+  }, [filterText, options]);
+
   if (options.length === 0) {
     return null;
   }
-
-  const normalizedFilter = filterText.trim().toLowerCase();
-  const filteredOptions = normalizedFilter
-    ? options.filter(({ label }) => label.toLowerCase().includes(normalizedFilter))
-    : options;
-  const filterInputId = `${buttonLabel.toLowerCase().replace(/\s+/g, '-')}-indicator-filter`;
 
   return (
     <div className="relative">

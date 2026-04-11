@@ -18,7 +18,7 @@ The home route redirects to `/technical-analysis`.
 - TypeScript
 - Tailwind CSS
 - Axios for backend requests
-- TanStack Query, Zustand, Recharts, and lightweight-charts where needed
+- Recharts, and lightweight-charts where needed
 - Vitest and Testing Library for tests
 
 ## Project Structure

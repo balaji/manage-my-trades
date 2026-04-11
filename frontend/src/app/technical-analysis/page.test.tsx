@@ -368,26 +368,12 @@ describe('TechnicalAnalysisPage', () => {
       | ((value: { symbol: string; timeframe: string; indicators: Array<any> }) => void)
       | null = null;
 
-    vi.mocked(technicalAnalysisApi.calculateIndicators)
-      .mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            resolveStaleIndicatorRequest = resolve;
-          })
-      )
-      .mockResolvedValueOnce({
-        symbol: 'SPY',
-        timeframe: '1d',
-        indicators: [
-          {
-            name: 'RSI',
-            params: { timeperiod: 14 },
-            outputs: {
-              real: [{ timestamp: recentTimestamp, value: 56 }],
-            },
-          },
-        ],
-      });
+    vi.mocked(technicalAnalysisApi.calculateIndicators).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveStaleIndicatorRequest = resolve;
+        })
+    );
 
     render(<TechnicalAnalysisPage />);
 
@@ -403,8 +389,9 @@ describe('TechnicalAnalysisPage', () => {
 
     await user.click(screen.getByRole('button', { name: '6 months' }));
 
-    await waitFor(() => expect(technicalAnalysisApi.calculateIndicators).toHaveBeenCalledTimes(2));
-    await waitFor(() => expect(screen.getByTestId(`oscillator-${rsiSelectionId}`)).toHaveTextContent('56'));
+    // Range change reuses cached results and does not trigger another calculateIndicators call
+    await waitFor(() => expect(marketDataApi.getBars).toHaveBeenCalledTimes(2));
+    expect(technicalAnalysisApi.calculateIndicators).toHaveBeenCalledTimes(1);
 
     await act(async () => {
       resolveStaleIndicatorRequest?.({
@@ -422,6 +409,7 @@ describe('TechnicalAnalysisPage', () => {
       });
     });
 
-    await waitFor(() => expect(screen.getByTestId(`oscillator-${rsiSelectionId}`)).toHaveTextContent('56'));
+    // Stale response is ignored - oscillator should not appear
+    await waitFor(() => expect(screen.queryByTestId(`oscillator-${rsiSelectionId}`)).not.toBeInTheDocument());
   });
 });

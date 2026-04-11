@@ -1,6 +1,5 @@
 export const DEFAULT_SYMBOL = 'SPY';
 export const DEFAULT_RANGE_DAYS = 180;
-export const INDICATOR_LOOKBACK_DAYS = 30;
 
 export const RANGES = [
   { label: '6 months', days: 180 },

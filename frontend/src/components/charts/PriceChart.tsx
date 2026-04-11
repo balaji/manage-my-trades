@@ -32,7 +32,7 @@ interface PriceChartProps {
   onChartReady?: (chart: IChartApi) => void;
 }
 
-export function PriceChart({
+export const PriceChart = React.memo(function PriceChart({
   data,
   indicators = [],
   oscillators = [],
@@ -101,4 +101,4 @@ export function PriceChart({
       />
     </div>
   );
-}
+});

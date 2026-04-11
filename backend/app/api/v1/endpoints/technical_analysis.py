@@ -51,19 +51,20 @@ router = APIRouter()
     },
 )
 async def calculate_indicators(
-    request: IndicatorRequest, market_db: AsyncSession = Depends(get_market_db)
+    request: IndicatorRequest,
+    market_db: AsyncSession = Depends(get_market_db),
+    redis: Redis | None = Depends(get_redis),
 ) -> Dict[str, Any]:
     """
     Calculate one or more technical indicators for a symbol.
 
-    Fetches historical data and computes requested technical indicators.
-    Supports multiple indicators in a single request.
+    Fetches all available historical data and computes requested technical indicators.
+    Results are cached in Redis per indicator until midnight UTC so range changes on
+    the frontend do not trigger recomputation.
 
     **Request Body:**
     - **symbol**: Ticker symbol (e.g., SPY)
     - **timeframe**: Data timeframe (1m, 5m, 15m, 1h, 1d)
-    - **start_date**: Start date for data (ISO 8601 format)
-    - **end_date**: End date for data (ISO 8601 format)
     - **indicators**: List of indicators with their parameters
 
     **Supported Indicators:**
@@ -76,8 +77,6 @@ async def calculate_indicators(
     {
         "symbol": "SPY",
         "timeframe": "1d",
-        "start_date": "2024-01-01T00:00:00Z",
-        "end_date": "2024-12-31T00:00:00Z",
         "indicators": [
             {"name": "SMA", "params": {"timeperiod": 20}},
             {"name": "RSI", "params": {"timeperiod": 14}},
@@ -87,15 +86,13 @@ async def calculate_indicators(
     ```
 
     **Returns:**
-    - Time-series data with calculated indicator values
+    - Time-series data with calculated indicator values for the full available history
     """
     try:
-        service = TechnicalAnalysisService(market_db)
+        service = TechnicalAnalysisService(market_db, redis_client=redis)
         result = await service.calculate_indicators(
             symbol=request.symbol,
             timeframe=request.timeframe,
-            start=request.start_date,
-            end=request.end_date,
             indicators=request.indicators,
         )
 
