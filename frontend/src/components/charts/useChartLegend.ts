@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useTheme } from 'next-themes';
 import { IChartApi, ISeriesApi, MouseEventParams, Time } from 'lightweight-charts';
 import type { OscillatorPaneState } from './useLightweightChart';
 import type { RegimeSegmentData } from './RegimeBackgroundPrimitive';
@@ -60,9 +61,11 @@ export function useChartLegend(
   indicatorSeriesRef: React.RefObject<Map<string, ISeriesApi<'Line'>>>,
   oscillatorPaneRef: React.RefObject<Map<string, OscillatorPaneState>>,
   regimeSegments: RegimeSegmentData[],
-  showRegimes: boolean,
-  isDark: boolean = true
+  showRegimes: boolean
 ): React.RefObject<HTMLDivElement | null> {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme !== 'light';
+
   const regimeSegmentsRef = useRef(regimeSegments);
   const showRegimesRef = useRef(showRegimes);
   const isDarkRef = useRef(isDark);

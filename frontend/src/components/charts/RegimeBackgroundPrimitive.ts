@@ -2,7 +2,6 @@ import type {
   IChartApiBase,
   IPrimitivePaneRenderer,
   IPrimitivePaneView,
-  ISeriesApi,
   ISeriesPrimitive,
   PrimitivePaneViewZOrder,
   SeriesAttachedParameter,

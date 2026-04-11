@@ -13,7 +13,6 @@ import { useRegimeOverlay } from './useRegimeOverlay';
 import type { RegimeSegmentData } from './useRegimeOverlay';
 import { useChartLegend } from './useChartLegend';
 import { toChartUnixSeconds } from '@/lib/chart-time';
-import { useTheme } from 'next-themes';
 
 export type { IndicatorConfig, OscillatorConfig, RegimeSegmentData };
 
@@ -49,9 +48,6 @@ export function PriceChart({
   const totalHeight = (height ?? 400) + oscillatorPaneCount * oscillatorHeight;
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === 'dark';
-
   const { chartRef, candlestickSeriesRef, markerSeriesRef, closeSeriesRef, indicatorSeriesRef, oscillatorPaneRef } =
     useLightweightChart({ containerRef, totalHeight, onChartReady });
 
@@ -93,8 +89,7 @@ export function PriceChart({
     indicatorSeriesRef,
     oscillatorPaneRef,
     regimeSegments,
-    showRegimes,
-    isDark
+    showRegimes
   );
 
   return (
