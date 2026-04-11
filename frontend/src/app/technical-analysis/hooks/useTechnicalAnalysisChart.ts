@@ -341,7 +341,7 @@ export function useTechnicalAnalysisChart() {
   }, []);
 
   useEffect(() => {
-    if (regimeType && loadedRequest) {
+    if (regimeType) {
       void fetchRegimes(regimeType);
     }
   }, [fetchRegimes, regimeType]);

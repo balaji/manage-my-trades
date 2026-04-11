@@ -36,6 +36,7 @@ export function useRegimeOverlay(
       // to detect whether the chart was already removed by useLightweightChart's cleanup.
       // Calling detachPrimitive after chart.remove() schedules a spurious rAF that throws
       // "Object is disposed" when it fires on the now-disposed canvas bindings.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       const liveSeries = candlestickSeriesRef.current;
       if (primitive && liveSeries) {
         liveSeries.detachPrimitive(primitive);
