@@ -9,14 +9,21 @@ import { preserveVisibleRange } from './chart-utils';
 import { useLightweightChart } from './useLightweightChart';
 import { useIndicatorSeries } from './useIndicatorSeries';
 import { useOscillatorPanes } from './useOscillatorPanes';
+import { useRegimeOverlay } from './useRegimeOverlay';
+import type { RegimeSegmentData } from './useRegimeOverlay';
+import { useChartLegend } from './useChartLegend';
+import { toChartUnixSeconds } from '@/lib/chart-time';
+import { useTheme } from 'next-themes';
 
-export type { IndicatorConfig, OscillatorConfig };
+export type { IndicatorConfig, OscillatorConfig, RegimeSegmentData };
 
 interface PriceChartProps {
   data: OHLCVBar[];
   indicators?: IndicatorConfig[];
   oscillators?: OscillatorConfig[];
   markers?: SeriesMarker<Time>[];
+  regimeSegments?: RegimeSegmentData[];
+  showRegimes?: boolean;
   oscillatorHeight?: number;
   height?: number;
   timeRange?: {
@@ -31,6 +38,8 @@ export function PriceChart({
   indicators = [],
   oscillators = [],
   markers = [],
+  regimeSegments = [],
+  showRegimes = false,
   oscillatorHeight = 160,
   height,
   timeRange,
@@ -40,6 +49,8 @@ export function PriceChart({
   const totalHeight = (height ?? 400) + oscillatorPaneCount * oscillatorHeight;
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
 
   const { chartRef, candlestickSeriesRef, markerSeriesRef, closeSeriesRef, indicatorSeriesRef, oscillatorPaneRef } =
     useLightweightChart({ containerRef, totalHeight, onChartReady });
@@ -56,7 +67,7 @@ export function PriceChart({
 
     const candlestickMap = new Map<number, { time: number; open: number; high: number; low: number; close: number }>();
     data.forEach((bar) => {
-      const time = new Date(bar.timestamp).getTime() / 1000;
+      const time = toChartUnixSeconds(bar.timestamp);
       candlestickMap.set(time, { time, open: bar.open, high: bar.high, low: bar.low, close: bar.close });
     });
     const candlestickData = Array.from(candlestickMap.values()).sort((a, b) => a.time - b.time);
@@ -75,10 +86,24 @@ export function PriceChart({
 
   useIndicatorSeries(chartRef, indicatorSeriesRef, indicators);
   useOscillatorPanes(chartRef, oscillatorPaneRef, oscillators, oscillatorHeight, timeRange);
+  useRegimeOverlay(chartRef, candlestickSeriesRef, regimeSegments, showRegimes);
+  const legendRef = useChartLegend(
+    chartRef,
+    candlestickSeriesRef,
+    indicatorSeriesRef,
+    oscillatorPaneRef,
+    regimeSegments,
+    showRegimes,
+    isDark
+  );
 
   return (
-    <div className="w-full">
+    <div className="relative w-full">
       <div ref={containerRef} className="h-full w-full" style={{ height: `${totalHeight}px` }} />
+      <div
+        ref={legendRef}
+        className="pointer-events-none absolute left-2 top-2 z-10 rounded bg-white/80 px-2 py-1 font-mono text-xs text-gray-900 dark:bg-slate-900/80 dark:text-slate-100"
+      />
     </div>
   );
 }

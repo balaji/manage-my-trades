@@ -23,11 +23,16 @@ export default function TechnicalAnalysisPage() {
     loadDisabled,
     hasChartData,
     timeRange,
+    showRegimes,
+    regimeType,
+    regimeSegments,
+    regimeLoading,
     setSymbol,
     loadData,
     clear,
     selectRange,
     toggleIndicator,
+    selectRegimeType,
   } = useTechnicalAnalysisChart();
 
   return (
@@ -60,6 +65,9 @@ export default function TechnicalAnalysisPage() {
             loadingIndicatorIds={loadingIndicatorIds}
             loading={loading}
             onSelect={toggleIndicator}
+            regimeType={regimeType}
+            onRegimeTypeChange={selectRegimeType}
+            regimeLoading={regimeLoading}
           />
         )}
       </div>
@@ -70,6 +78,8 @@ export default function TechnicalAnalysisPage() {
             data={chartData}
             indicators={activeOverlaySeries}
             oscillators={activeOscillatorSeries}
+            regimeSegments={regimeSegments}
+            showRegimes={showRegimes}
             timeRange={timeRange}
           />
         ) : (

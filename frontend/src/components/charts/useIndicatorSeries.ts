@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { IChartApi, ISeriesApi, LineSeries, LineWidth } from 'lightweight-charts';
+import { toChartUnixSeconds } from '@/lib/chart-time';
 
 import { IndicatorConfig, preserveVisibleRange } from './chart-utils';
 
@@ -53,7 +54,7 @@ export function useIndicatorSeries(
 
         const lineMap = new Map<number, { time: number; value: number }>();
         indicator.data.forEach((point) => {
-          const time = new Date(point.timestamp).getTime() / 1000;
+          const time = toChartUnixSeconds(point.timestamp);
           lineMap.set(time, { time, value: point.value });
         });
         const lineData = Array.from(lineMap.values()).sort((a, b) => a.time - b.time);

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { IChartApi, ISeriesApi, LineSeries, LineStyle, LineWidth, UTCTimestamp } from 'lightweight-charts';
+import { toChartUnixSeconds } from '@/lib/chart-time';
 
 import { OscillatorConfig, parseTimeRangeBounds, preserveVisibleRange } from './chart-utils';
 import type { OscillatorPaneState } from './useLightweightChart';
@@ -98,7 +99,7 @@ export function useOscillatorPanes(
 
           const lineMap = new Map<UTCTimestamp, { time: UTCTimestamp; value: number }>();
           oscillator.data.forEach((point) => {
-            const pointTime = new Date(point.timestamp).getTime();
+            const pointTime = toChartUnixSeconds(point.timestamp) * 1000;
             if (visibleBounds && (pointTime < visibleBounds.from || pointTime > visibleBounds.to)) {
               return;
             }

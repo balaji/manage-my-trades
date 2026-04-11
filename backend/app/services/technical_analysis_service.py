@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.market_data_service import MarketDataService
 from app.core.indicators.calculator import IndicatorCalculator, get_supported_indicators
+from app.core.regime_detector import RegimeDetector
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +84,32 @@ class TechnicalAnalysisService:
         except Exception as e:
             logger.error(f"Error calculating indicators: {e}")
             raise
+
+    async def detect_regimes(
+        self,
+        symbol: str,
+        timeframe: str,
+        start: date,
+        end: date,
+        n_regimes: int = 3,
+        regime_type: str = "directional",
+    ) -> Dict[str, Any]:
+        bars_data = await self.market_data_service.get_bars(
+            symbols=[symbol],
+            start=start,
+            end=end,
+            timeframe=timeframe,
+        )
+
+        symbol_bars = bars_data.get(symbol, [])
+        if not symbol_bars:
+            raise ValueError(f"No market data found for {symbol}")
+
+        df = pd.DataFrame(symbol_bars)
+        detector = RegimeDetector(n_regimes=n_regimes, regime_type=regime_type)
+        segments = detector.detect(df)
+
+        return {"symbol": symbol, "timeframe": timeframe, "segments": segments}
 
     def get_supported_indicators(self) -> List[Dict[str, Any]]:
         """
