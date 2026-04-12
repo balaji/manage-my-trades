@@ -55,13 +55,23 @@ function fmt(value: number): string {
   return value.toFixed(2);
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
 export function useChartLegend(
   chartRef: React.RefObject<IChartApi | null>,
   candlestickSeriesRef: React.RefObject<ISeriesApi<'Candlestick'> | null>,
   indicatorSeriesRef: React.RefObject<Map<string, ISeriesApi<'Line'>>>,
   oscillatorPaneRef: React.RefObject<Map<string, OscillatorPaneState>>,
   regimeSegments: RegimeSegmentData[],
-  showRegimes: boolean
+  showRegimes: boolean,
+  symbolDisplayName?: string
 ): React.RefObject<HTMLDivElement | null> {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme !== 'light';
@@ -69,13 +79,22 @@ export function useChartLegend(
   const regimeSegmentsRef = useRef(regimeSegments);
   const showRegimesRef = useRef(showRegimes);
   const isDarkRef = useRef(isDark);
+  const symbolDisplayNameRef = useRef(symbolDisplayName);
 
   useEffect(() => {
     regimeSegmentsRef.current = regimeSegments;
     showRegimesRef.current = showRegimes;
     isDarkRef.current = isDark;
-  }, [regimeSegments, showRegimes, isDark]);
+    symbolDisplayNameRef.current = symbolDisplayName;
+  }, [isDark, regimeSegments, showRegimes, symbolDisplayName]);
   const legendRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const legend = legendRef.current;
+    if (!legend) return;
+
+    legend.innerHTML = symbolDisplayName ? `<div style="font-weight:600">${escapeHtml(symbolDisplayName)}</div>` : '';
+  }, [symbolDisplayName]);
 
   useEffect(() => {
     const chart = chartRef.current;
@@ -83,10 +102,19 @@ export function useChartLegend(
 
     function updateLegend(param: MouseEventParams<Time>) {
       const legend = legendRef.current;
-      if (!legend || !param.time) return;
+      if (!legend) return;
 
       const candleSeries = candlestickSeriesRef.current;
       let html = '';
+
+      if (symbolDisplayNameRef.current) {
+        html += `<div style="font-weight:600">${escapeHtml(symbolDisplayNameRef.current)}</div>`;
+      }
+
+      if (!param.time) {
+        legend.innerHTML = html;
+        return;
+      }
 
       if (candleSeries) {
         const data = param.seriesData.get(candleSeries) as CandleData | undefined;

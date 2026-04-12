@@ -6,7 +6,7 @@ fetches from latest_date + 1 to today via Alpaca, bulk-inserts new rows, and wri
 
 Usage:
     cd backend
-    uv run python scripts/update_market_data.py
+    uv run python -m scripts.update_market_data
 """
 
 import asyncio

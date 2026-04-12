@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { TechnicalAnalysisSymbolInput } from './TechnicalAnalysisSymbolInput';
 import { RANGES } from '../constants';
 
 interface TechnicalAnalysisControlsProps {
@@ -10,7 +10,7 @@ interface TechnicalAnalysisControlsProps {
   loading: boolean;
   loadDisabled: boolean;
   onSymbolChange: (value: string) => void;
-  onLoad: () => void | Promise<void>;
+  onLoad: (symbolOverride?: string) => void | Promise<void>;
   onClear: () => void;
   onRangeChange: (days: number) => void | Promise<void>;
 }
@@ -27,23 +27,12 @@ export function TechnicalAnalysisControls({
 }: TechnicalAnalysisControlsProps) {
   return (
     <div className="flex flex-wrap items-end gap-4">
-      <div className="min-w-56 flex-1">
-        <label htmlFor="technical-analysis-symbol" className="sr-only">
-          Symbol
-        </label>
-        <Input
-          id="technical-analysis-symbol"
-          name="symbol"
-          type="text"
-          value={symbol}
-          onChange={(event) => onSymbolChange(event.target.value)}
-          onKeyDown={(event) => event.key === 'Enter' && !loadDisabled && void onLoad()}
-          autoComplete="off"
-          spellCheck={false}
-          placeholder="Enter symbol…"
-          className="w-full"
-        />
-      </div>
+      <TechnicalAnalysisSymbolInput
+        symbol={symbol}
+        loadDisabled={loadDisabled}
+        onSymbolChange={onSymbolChange}
+        onLoad={onLoad}
+      />
       <Button onClick={() => void onLoad()} disabled={loadDisabled}>
         {loading ? 'Loading…' : 'Load Chart'}
       </Button>

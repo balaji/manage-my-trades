@@ -9,7 +9,7 @@ from app.models.trade import Trade
 from app.models.signal import Signal
 from app.models.paper_trading import Position, Order
 from app.models.ml_model import MLModel, MLModelMetrics
-from app.models.market_data import MarketData, IndicatorCache, PortfolioHistory
+from app.models.market_data import Asset, MarketData, IndicatorCache, PortfolioHistory
 
 __all__ = [
     "Strategy",
@@ -22,6 +22,7 @@ __all__ = [
     "Order",
     "MLModel",
     "MLModelMetrics",
+    "Asset",
     "MarketData",
     "IndicatorCache",
     "PortfolioHistory",

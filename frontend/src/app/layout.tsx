@@ -5,7 +5,11 @@ import { AppShell } from '@/components/layout/AppShell';
 import { AuthProvider } from '@/lib/auth-context';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
 
-const googleSans = Google_Sans({ subsets: ['latin'] });
+const googleSans = Google_Sans({
+  subsets: ['latin'],
+  fallback: ['system-ui', 'Arial', 'Helvetica', 'sans-serif'],
+  adjustFontFallback: false,
+});
 
 export const metadata: Metadata = {
   title: 'Algorithmic ETF Trading',

@@ -6,10 +6,10 @@ from datetime import date, timedelta
 from typing import List, Dict, Any, Optional
 import logging
 
-from sqlalchemy import select, and_, func
+from sqlalchemy import select, and_, case, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.market_data import MarketData
+from app.models.market_data import Asset, MarketData
 from app.services.alpaca_service import get_alpaca_service
 
 logger = logging.getLogger(__name__)
@@ -206,7 +206,40 @@ class MarketDataService:
         Returns:
             List of symbol information
         """
-        return await self.alpaca_service.search_symbols(query)
+        normalized_query = query.strip().lower()
+        if not normalized_query:
+            return []
+
+        symbol_text = func.lower(Asset.symbol)
+        name_text = func.lower(Asset.name)
+        contains_query = f"%{normalized_query}%"
+        starts_with_query = f"{normalized_query}%"
+
+        statement = (
+            select(Asset.symbol, Asset.name)
+            .where(
+                Asset.status.is_(True),
+                or_(
+                    symbol_text.like(contains_query),
+                    name_text.like(contains_query),
+                ),
+            )
+            .order_by(
+                case(
+                    (symbol_text == normalized_query, 0),
+                    (symbol_text.like(starts_with_query), 1),
+                    (name_text.like(starts_with_query), 2),
+                    (symbol_text.like(contains_query), 3),
+                    else_=4,
+                ),
+                func.length(Asset.symbol),
+                Asset.symbol,
+            )
+            .limit(10)
+        )
+
+        result = await self.db.execute(statement)
+        return [{"symbol": row["symbol"], "name": row["name"]} for row in result.mappings().all()]
 
     async def get_latest_quote(self, symbol: str) -> Optional[Dict[str, Any]]:
         """
