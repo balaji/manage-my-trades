@@ -24,6 +24,12 @@ function getRecentTimestamp() {
   return `${date.toISOString().split('T')[0]}T00:00:00Z`;
 }
 
+async function advanceAutocompleteDebounce() {
+  await act(async () => {
+    await new Promise((resolve) => window.setTimeout(resolve, 250));
+  });
+}
+
 vi.mock('@/components/charts/PriceChart', () => ({
   PriceChart: (props: any) => priceChartMock(props),
 }));
@@ -31,6 +37,7 @@ vi.mock('@/components/charts/PriceChart', () => ({
 vi.mock('@/lib/api/market-data', () => ({
   marketDataApi: {
     getBars: vi.fn(),
+    searchSymbols: vi.fn(),
   },
 }));
 
@@ -87,6 +94,7 @@ describe('TechnicalAnalysisPage', () => {
         ],
       },
     ]);
+    vi.mocked(marketDataApi.searchSymbols).mockResolvedValue({ symbols: [] });
 
     vi.mocked(technicalAnalysisApi.calculateIndicators).mockResolvedValue({
       symbol: 'SPY',
@@ -110,6 +118,86 @@ describe('TechnicalAnalysisPage', () => {
     expect(technicalAnalysisApi.calculateIndicators).not.toHaveBeenCalled();
 
     expect(await screen.findByTestId('price-chart')).toBeInTheDocument();
+  });
+
+  it('passes the resolved symbol display name to the chart for direct loads', async () => {
+    const user = userEvent.setup();
+
+    vi.mocked(marketDataApi.searchSymbols).mockResolvedValueOnce({
+      symbols: [{ symbol: 'SPY', name: 'SPDR S&P 500 ETF Trust' }],
+    });
+
+    render(<TechnicalAnalysisPage />);
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Load Chart' })).toBeEnabled());
+    await user.click(screen.getByRole('button', { name: 'Load Chart' }));
+
+    await screen.findByTestId('price-chart');
+
+    await waitFor(() =>
+      expect(priceChartMock.mock.calls.at(-1)?.[0]).toEqual(
+        expect.objectContaining({
+          symbolDisplayName: 'SPDR S&P 500 ETF Trust',
+        })
+      )
+    );
+  });
+
+  it('keeps the controls header above the chart layer for overlays like autocomplete', async () => {
+    render(<TechnicalAnalysisPage />);
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Load Chart' })).toBeEnabled());
+
+    const controlsHeader = screen.getByRole('button', { name: 'Load Chart' }).closest('.border-b');
+    const chartRegion = screen.getByText('Enter a symbol and load a chart').closest('.overflow-y-auto');
+
+    expect(controlsHeader).toHaveClass('relative', 'z-10');
+    expect(chartRegion).toHaveClass('relative', 'z-0');
+  });
+
+  it('loads the chart immediately when an autocomplete suggestion is selected', async () => {
+    const user = userEvent.setup();
+
+    vi.mocked(marketDataApi.searchSymbols).mockResolvedValueOnce({
+      symbols: [{ symbol: 'QQQ', name: 'Invesco QQQ Trust' }],
+    });
+    vi.mocked(marketDataApi.getBars).mockResolvedValueOnce([
+      {
+        symbol: 'QQQ',
+        timeframe: '1d',
+        bars: [
+          {
+            timestamp: getRecentTimestamp(),
+            open: 100,
+            high: 101,
+            low: 99,
+            close: 100.5,
+            volume: 1000000,
+          },
+        ],
+      },
+    ]);
+
+    render(<TechnicalAnalysisPage />);
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Load Chart' })).toBeEnabled());
+
+    const symbolInput = screen.getByLabelText(/symbol/i);
+    await user.clear(symbolInput);
+    await user.type(symbolInput, 'QQQ');
+    await advanceAutocompleteDebounce();
+
+    await user.click(await screen.findByRole('option', { name: /QQQ.*Invesco QQQ Trust/i }));
+
+    await screen.findByTestId('price-chart');
+
+    await waitFor(() =>
+      expect(marketDataApi.getBars).toHaveBeenCalledWith(
+        expect.objectContaining({
+          symbols: ['QQQ'],
+        })
+      )
+    );
   });
 
   it('preserves selected oscillators when switching ranges', async () => {

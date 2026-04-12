@@ -43,10 +43,10 @@ export const navigationItems: NavItem[] = [
     icon: ScrollText,
   },
   {
-    href: '/backtests',
-    label: 'Backtesting',
-    description: 'Historical performance',
-    icon: BarChart3,
+    href: '/technical-analysis',
+    label: 'Technical Analysis',
+    description: 'Charts and indicators',
+    icon: ChartNoAxesCombined,
   },
   {
     href: '/strategies',
@@ -55,21 +55,21 @@ export const navigationItems: NavItem[] = [
     icon: ChessQueen,
   },
   {
-    href: '/technical-analysis',
-    label: 'Technical Analysis',
-    description: 'Charts and indicators',
-    icon: ChartNoAxesCombined,
+    label: 'ML Models',
+    description: 'Model workflows',
+    icon: Flower2,
+  },
+  {
+    href: '/backtests',
+    label: 'Backtesting',
+    description: 'Historical performance',
+    icon: BarChart3,
   },
   {
     href: '/glossary',
     label: 'Glossary',
     description: 'Strategy definitions',
     icon: LibraryBig,
-  },
-  {
-    label: 'ML Models',
-    description: 'Model workflows',
-    icon: Flower2,
   },
 ];
 

@@ -2,13 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { marketDataApi } from '@/lib/api/market-data';
 import { technicalAnalysisApi } from '@/lib/api/technical-analysis';
 import type { IndicatorResult, RegimeSegment, RegimeType } from '@/lib/api/technical-analysis';
-import type { RegimeSegmentData } from '@/components/charts/PriceChart';
+import type { RegimeSegmentData } from '@/components/charts/useRegimeOverlay';
 import { toChartUnixSeconds } from '@/lib/chart-time';
-import {
-  buildChartSeries,
-  buildIndicatorPresetOptions,
-  serializeIndicatorKey,
-} from '@/lib/technical-analysis/chart-model';
+import { buildIndicatorPresetOptions, serializeIndicatorKey } from '@/lib/technical-analysis/chart-model';
 import type { OHLCVBar } from '@/lib/types/market-data';
 import { DEFAULT_RANGE_DAYS, DEFAULT_SYMBOL } from '../constants';
 
@@ -18,6 +14,16 @@ interface LoadedRequest {
   symbol: string;
   startDate: string;
   endDate: string;
+}
+
+interface LoadDataOptions {
+  days?: number;
+  symbolOverride?: string;
+}
+
+function getExactSymbolDisplayName(symbol: string, candidates: Array<{ symbol: string; name: string }>): string | null {
+  const match = candidates.find((candidate) => candidate.symbol.toUpperCase() === symbol);
+  return match?.name ?? null;
 }
 
 function formatDate(value: Date) {
@@ -45,6 +51,7 @@ export function useTechnicalAnalysisChart() {
   const [rangeDays, setRangeDays] = useState(DEFAULT_RANGE_DAYS);
   const [error, setError] = useState<string | null>(null);
   const [chartData, setChartData] = useState<OHLCVBar[]>([]);
+  const [symbolDisplayName, setSymbolDisplayName] = useState<string | null>(null);
   const [indicatorResults, setIndicatorResults] = useState<IndicatorResult[]>([]);
   const [supportedIndicators, setSupportedIndicators] = useState<SupportedIndicators>([]);
   const [supportedIndicatorsReady, setSupportedIndicatorsReady] = useState(false);
@@ -60,11 +67,6 @@ export function useTechnicalAnalysisChart() {
 
   const indicatorOptions = useMemo(() => buildIndicatorPresetOptions(supportedIndicators), [supportedIndicators]);
 
-  const optionDefinitions = useMemo(
-    () => indicatorOptions.map(({ id, name, params, label, color }) => ({ id, name, params, label, color })),
-    [indicatorOptions]
-  );
-
   const groupedOptions = useMemo(
     () => ({
       overlay: indicatorOptions.filter((option) => option.pane === 'overlay'),
@@ -78,34 +80,9 @@ export function useTechnicalAnalysisChart() {
     () => new Set(indicatorResults.map((result) => serializeIndicatorKey(result.name, result.params ?? {}))),
     [indicatorResults]
   );
-
-  const chartSeries = useMemo(
-    () => buildChartSeries(indicatorResults, supportedIndicators, optionDefinitions, loadedRequest?.startDate),
-    [indicatorResults, loadedRequest?.startDate, optionDefinitions, supportedIndicators]
-  );
-
-  const activeOverlaySeries = useMemo(
-    () => chartSeries.overlays.filter((series) => enabledIndicatorIds.has(series.selectionId)),
-    [chartSeries.overlays, enabledIndicatorIds]
-  );
-  const activeOscillatorSeries = useMemo(
-    () => chartSeries.oscillators.filter((series) => enabledIndicatorIds.has(series.selectionId)),
-    [chartSeries.oscillators, enabledIndicatorIds]
-  );
   const activeOverlayLegend = useMemo(
     () => groupedOptions.overlay.filter((option) => enabledIndicatorIds.has(option.id)),
     [enabledIndicatorIds, groupedOptions.overlay]
-  );
-
-  const timeRange = useMemo(
-    () =>
-      loadedRequest
-        ? {
-            from: `${loadedRequest.startDate}T00:00:00Z`,
-            to: `${loadedRequest.endDate}T23:59:59Z`,
-          }
-        : undefined,
-    [loadedRequest]
   );
 
   useEffect(() => {
@@ -140,13 +117,13 @@ export function useTechnicalAnalysisChart() {
   }, []);
 
   const loadData = useCallback(
-    async (days = rangeDays) => {
+    async ({ days = rangeDays, symbolOverride }: LoadDataOptions = {}) => {
       if (indicatorOptions.length === 0) {
         setError('No chartable indicators are configured');
         return;
       }
 
-      const normalizedSymbol = symbol.trim().toUpperCase();
+      const normalizedSymbol = (symbolOverride ?? symbol).trim().toUpperCase();
       if (!normalizedSymbol) {
         setError('Enter a symbol to load a chart');
         return;
@@ -162,6 +139,9 @@ export function useTechnicalAnalysisChart() {
             .filter((option) => enabledIndicatorIds.has(option.id))
             .map(({ name, params }) => ({ name, params }))
         : [];
+      const symbolSearchRequest = isSymbolChange
+        ? marketDataApi.searchSymbols(normalizedSymbol).catch(() => ({ symbols: [] }))
+        : Promise.resolve(null);
 
       setError(null);
       setSymbol(normalizedSymbol);
@@ -169,7 +149,7 @@ export function useTechnicalAnalysisChart() {
         setLoadingIndicatorIds(emptySet());
 
         try {
-          const [marketData, indicatorResult] = await Promise.all([
+          const [marketData, indicatorResult, symbolSearchResult] = await Promise.all([
             marketDataApi.getBars({
               symbols: [normalizedSymbol],
               start_date: dateRange.startDate,
@@ -187,6 +167,7 @@ export function useTechnicalAnalysisChart() {
                   timeframe: '1d',
                   indicators: [],
                 }),
+            symbolSearchRequest,
           ]);
 
           if (requestVersion !== chartRequestVersionRef.current) {
@@ -195,6 +176,9 @@ export function useTechnicalAnalysisChart() {
 
           if (marketData.length > 0 && marketData[0].bars.length > 0) {
             setChartData(marketData[0].bars);
+            if (symbolSearchResult) {
+              setSymbolDisplayName(getExactSymbolDisplayName(normalizedSymbol, symbolSearchResult.symbols));
+            }
             if (isSymbolChange) {
               setIndicatorResults(indicatorResult.indicators);
             }
@@ -208,6 +192,7 @@ export function useTechnicalAnalysisChart() {
 
           setError('No data available for this symbol');
           setChartData([]);
+          setSymbolDisplayName(null);
           setIndicatorResults([]);
           setLoadedRequest(null);
         } catch (err: any) {
@@ -225,7 +210,7 @@ export function useTechnicalAnalysisChart() {
   const selectRange = useCallback(
     async (days: number) => {
       setRangeDays(days);
-      await loadData(days);
+      await loadData({ days });
     },
     [loadData]
   );
@@ -349,6 +334,7 @@ export function useTechnicalAnalysisChart() {
     setRangeDays(DEFAULT_RANGE_DAYS);
     setError(null);
     setChartData([]);
+    setSymbolDisplayName(null);
     setIndicatorResults([]);
     setEnabledIndicatorIds(emptySet());
     setLoadingIndicatorIds(emptySet());
@@ -364,22 +350,22 @@ export function useTechnicalAnalysisChart() {
     loading: isPending,
     error,
     chartData,
+    symbolDisplayName,
+    indicatorResults,
+    indicatorOptions,
+    supportedIndicators,
     enabledIndicatorIds,
     loadingIndicatorIds,
+    loadedRequest,
     overlayOptions: groupedOptions.overlay,
     oscillatorOptions: groupedOptions.oscillator,
     otherOptions: groupedOptions.other,
-    activeOverlaySeries,
-    activeOscillatorSeries,
     activeOverlayLegend,
     loadDisabled: isPending || !supportedIndicatorsReady || indicatorOptions.length === 0,
-    hasChartData: chartData.length > 0,
-    timeRange,
-    showRegimes: regimeType !== null,
     regimeType,
     regimeSegments,
     regimeLoading,
-    setSymbol: (value: string) => setSymbol(value.toUpperCase()),
+    setSymbol,
     loadData,
     clear,
     selectRange,

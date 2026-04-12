@@ -244,6 +244,51 @@ describe('PriceChart', () => {
     expect(timeScale.fitContent).toHaveBeenCalled();
   });
 
+  it('renders the symbol display name in the chart legend', async () => {
+    const data = [
+      {
+        timestamp: '2024-01-01T00:00:00Z',
+        open: 100,
+        high: 102,
+        low: 99,
+        close: 101,
+        volume: 1000,
+      },
+    ];
+
+    const { container } = render(<PriceChart data={data} symbolDisplayName="SPDR S&P 500 ETF Trust" />);
+
+    await waitFor(() => expect(mocks.createChartMock).toHaveBeenCalledTimes(1));
+
+    const chart = mocks.createChartMock.mock.results[0]?.value as MockChart;
+    const candlestickSeries = chart.addSeries.mock.results[0]?.value as MockSeries;
+    const onCrosshairMove = chart.subscribeCrosshairMove.mock.calls[0]?.[0] as
+      | ((param: {
+          time: number;
+          seriesData: Map<MockSeries, { open: number; high: number; low: number; close: number }>;
+        }) => void)
+      | undefined;
+
+    expect(onCrosshairMove).toBeTypeOf('function');
+
+    onCrosshairMove?.({
+      time: (new Date('2024-01-01T00:00:00Z').getTime() / 1000) as number,
+      seriesData: new Map([
+        [
+          candlestickSeries,
+          {
+            open: 100,
+            high: 102,
+            low: 99,
+            close: 101,
+          },
+        ],
+      ]),
+    });
+
+    expect(container.firstChild).toHaveTextContent('SPDR S&P 500 ETF Trust');
+  });
+
   it('fits the chart to newly loaded price data', async () => {
     const data = [
       {

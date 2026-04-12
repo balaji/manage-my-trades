@@ -4,6 +4,7 @@ import { PriceChart } from '@/components/charts/PriceChart';
 import { IndicatorToolbar } from './components/IndicatorToolbar';
 import { TechnicalAnalysisControls } from './components/TechnicalAnalysisControls';
 import { useTechnicalAnalysisChart } from './hooks/useTechnicalAnalysisChart';
+import { useTechnicalAnalysisPriceChart } from './hooks/useTechnicalAnalysisPriceChart';
 
 export default function TechnicalAnalysisPage() {
   const {
@@ -12,18 +13,18 @@ export default function TechnicalAnalysisPage() {
     loading,
     error,
     chartData,
+    symbolDisplayName,
+    indicatorResults,
+    indicatorOptions,
+    supportedIndicators,
     enabledIndicatorIds,
     loadingIndicatorIds,
+    loadedRequest,
     overlayOptions,
     oscillatorOptions,
     otherOptions,
     activeOverlayLegend,
-    activeOverlaySeries,
-    activeOscillatorSeries,
     loadDisabled,
-    hasChartData,
-    timeRange,
-    showRegimes,
     regimeType,
     regimeSegments,
     regimeLoading,
@@ -35,16 +36,28 @@ export default function TechnicalAnalysisPage() {
     selectRegimeType,
   } = useTechnicalAnalysisChart();
 
+  const { hasChartData, priceChartProps } = useTechnicalAnalysisPriceChart({
+    chartData,
+    symbolDisplayName,
+    indicatorResults,
+    indicatorOptions,
+    supportedIndicators,
+    enabledIndicatorIds,
+    loadedRequest,
+    regimeType,
+    regimeSegments,
+  });
+
   return (
     <div className="flex min-h-0 flex-col overflow-hidden">
-      <div className="border-b border-slate-200 px-5 py-4">
+      <div className="relative z-10 border-b border-slate-200 px-5 py-4">
         <TechnicalAnalysisControls
           symbol={symbol}
           rangeDays={rangeDays}
           loading={loading}
           loadDisabled={loadDisabled}
           onSymbolChange={setSymbol}
-          onLoad={loadData}
+          onLoad={(symbolOverride) => loadData({ symbolOverride })}
           onClear={clear}
           onRangeChange={selectRange}
         />
@@ -72,16 +85,9 @@ export default function TechnicalAnalysisPage() {
         )}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="relative z-0 min-h-0 flex-1 overflow-y-auto">
         {hasChartData ? (
-          <PriceChart
-            data={chartData}
-            indicators={activeOverlaySeries}
-            oscillators={activeOscillatorSeries}
-            regimeSegments={regimeSegments}
-            showRegimes={showRegimes}
-            timeRange={timeRange}
-          />
+          <PriceChart {...priceChartProps} />
         ) : (
           !loading &&
           !error && (

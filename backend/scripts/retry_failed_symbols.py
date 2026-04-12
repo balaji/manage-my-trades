@@ -6,7 +6,7 @@ from Alpaca individually, and writes any persistent failures to alpaca_denylist.
 
 Usage:
     cd backend
-    uv run python scripts/retry_failed_symbols.py
+    uv run python -m scripts.retry_failed_symbols
 """
 
 import asyncio

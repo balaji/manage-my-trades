@@ -1,8 +1,6 @@
-"""
-Market data models.
-"""
+"""Market data models."""
 
-from sqlalchemy import Column, Integer, String, Float, Date, DateTime, Index, UniqueConstraint, text
+from sqlalchemy import Boolean, Column, Date, DateTime, Float, Index, Integer, String, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import UUID
 from app.db.session import MarketDataBase, Base
 
@@ -63,6 +61,20 @@ class IndicatorCache(MarketDataBase):
             "timestamp",
         ),
     )
+
+
+class Asset(MarketDataBase):
+    """Asset symbol metadata."""
+
+    __tablename__ = "assets"
+
+    id = Column(Integer, primary_key=True, index=True)
+    symbol = Column(String(20), nullable=False)
+    name = Column(String(255), nullable=False)
+    status = Column(Boolean, nullable=False)
+    exchange = Column(String(100), nullable=False)
+
+    __table_args__ = (UniqueConstraint("symbol", name="uq_assets_symbol"),)
 
 
 class PortfolioHistory(Base):

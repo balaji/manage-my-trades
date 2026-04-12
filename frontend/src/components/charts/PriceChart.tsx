@@ -18,6 +18,7 @@ export type { IndicatorConfig, OscillatorConfig, RegimeSegmentData };
 
 interface PriceChartProps {
   data: OHLCVBar[];
+  symbolDisplayName?: string;
   indicators?: IndicatorConfig[];
   oscillators?: OscillatorConfig[];
   markers?: SeriesMarker<Time>[];
@@ -34,6 +35,7 @@ interface PriceChartProps {
 
 export const PriceChart = React.memo(function PriceChart({
   data,
+  symbolDisplayName,
   indicators = [],
   oscillators = [],
   markers = [],
@@ -89,7 +91,8 @@ export const PriceChart = React.memo(function PriceChart({
     indicatorSeriesRef,
     oscillatorPaneRef,
     regimeSegments,
-    showRegimes
+    showRegimes,
+    symbolDisplayName
   );
 
   return (
